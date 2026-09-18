@@ -38,10 +38,10 @@ test("keeps only the authentication and checks previews", async ({ page }) => {
 
 test("navigates through the authentication preview", async ({ page }) => {
   await page.goto("/ui-preview/auth");
-  await page.getByRole("link", { name: "Создать аккаунт" }).click();
+  await page.getByRole("tab", { name: "Регистрация" }).click();
   await expect(page).toHaveURL(/\/ui-preview\/auth\?mode=signup/);
   await expect(page.getByRole("heading", { name: "Создайте аккаунт" })).toBeVisible();
-  await page.getByRole("link", { name: "Войти" }).last().click();
+  await page.getByRole("tab", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/ui-preview\/auth$/);
   await page.getByRole("link", { name: "Забыли пароль?" }).click();
   await expect(page).toHaveURL(/\/ui-preview\/auth\?mode=reset/);

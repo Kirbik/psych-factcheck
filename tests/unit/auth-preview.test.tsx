@@ -20,4 +20,13 @@ describe("AuthPreview", () => {
     expect(preview.getByRole("heading", { name: "Восстановить пароль" })).toBeInTheDocument();
     expect(preview.queryByLabelText("Пароль")).not.toBeInTheDocument();
   });
+
+  it("keeps the login tab on the preview login route", () => {
+    const { container } = render(<AuthPreview mode="signup" />);
+    const loginTab = container.querySelector<HTMLAnchorElement>(
+      'a[role="tab"][href="/ui-preview/auth"]',
+    );
+
+    expect(loginTab).toBeInTheDocument();
+  });
 });

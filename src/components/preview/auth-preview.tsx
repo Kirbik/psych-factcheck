@@ -83,7 +83,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
           <a href="#how">Как это работает</a>
           <a href="#about">О сервисе</a>
           <a href="#sources">Источники</a>
-          <Link className={styles.signIn} href="/">
+          <Link className={styles.signIn} href="/ui-preview/auth">
             Войти
           </Link>
         </nav>
@@ -107,7 +107,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
               <Link
                 aria-selected={mode === "login"}
                 className={mode === "login" ? styles.tabActive : styles.tab}
-                href="/"
+                href="/ui-preview/auth"
                 role="tab"
               >
                 Войти
