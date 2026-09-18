@@ -1,0 +1,31 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# tests and builds
+/coverage
+/test-results
+/playwright-report
+/.next
+/out
+
+# environment and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+.env.example
+
+# platform and tooling
+.DS_Store
+Thumbs.db
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*

@@ -1,0 +1,64 @@
+.preview {
+  --ink: #1b1916;
+  --ink2: #4a443c;
+  --muted: #8a8177;
+  --paper: #fff;
+  --field: #fcfaf7;
+  --line: #e7dfd4;
+  --line-soft: #f0eae1;
+  --accent: #17604c;
+  background:
+    radial-gradient(900px 420px at 6% 0%, rgba(232, 185, 138, 0.34), transparent 62%),
+    radial-gradient(820px 560px at 96% 100%, rgba(23, 96, 76, 0.16), transparent 66%),
+    linear-gradient(180deg, #fcfaf7 0%, #f7f2ea 100%);
+  color: var(--ink);
+  font-family: var(--auth-preview-inter), Arial, sans-serif;
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 1.65;
+  min-height: 100dvh;
+}
+
+.header { align-items: center; backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.66); border-bottom: 1px solid rgba(43, 34, 24, 0.07); display: flex; height: 68px; justify-content: space-between; padding: 0 32px; }
+.brand { align-items: center; color: var(--ink); display: flex; font-family: var(--auth-preview-lora), Georgia, serif; font-size: 17px; font-weight: 600; gap: 10px; letter-spacing: -0.005em; line-height: 1.2; text-decoration: none; }
+.mark { align-items: center; background: var(--accent); border-radius: 10px; color: #fff; display: flex; height: 27px; justify-content: center; width: 27px; }
+.mark svg, .remember svg { fill: none; height: 17px; stroke: currentColor; stroke-linecap: round; stroke-width: 2; width: 17px; }
+.nav { align-items: center; color: var(--muted); display: flex; font-size: 13.5px; font-weight: 400; gap: 25px; line-height: 20px; }
+.nav a { color: inherit; text-decoration: none; }
+.nav .signIn { border: 1px solid rgba(23, 96, 76, 0.28); border-radius: 999px; color: var(--accent); font-size: 13px; font-weight: 500; line-height: 20px; padding: 8px 15px; }
+.stage { min-height: 820px; padding-top: 64px; }
+.card { background: var(--paper); border: 1px solid rgba(43, 34, 24, 0.07); border-radius: 24px; box-shadow: 0 1px 2px rgba(43, 34, 24, 0.04), 0 14px 34px -20px rgba(43, 34, 24, 0.2); margin: 0 auto; padding: 38px 40px 30px; width: 452px; }
+.tabs { border-bottom: 1px solid var(--line-soft); display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; }
+.tab, .tabActive { align-items: center; border-bottom: 2px solid transparent; color: var(--muted); display: flex; font-size: 14px; font-weight: 500; height: 44px; justify-content: center; line-height: 20px; text-decoration: none; }
+.tabActive { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+.tab:focus-visible, .tabActive:focus-visible, .passwordRow a:focus-visible, .footer a:focus-visible, .brand:focus-visible, .nav a:focus-visible, .primary:focus-visible { outline: 3.5px solid rgba(23, 96, 76, 0.13); outline-offset: 2px; }
+.card h1 { font-family: var(--auth-preview-lora), Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 8px; }
+.description { color: var(--muted); font-size: 14.5px; font-weight: 400; line-height: 1.55; margin: 0 0 20px; }
+.fieldLabel { color: var(--ink2); display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.fieldWrap { align-items: center; background: var(--field); border: 1px solid var(--line); border-radius: 12px; display: flex; gap: 11px; height: 52px; padding: 0 15px; }
+.fieldWrap:focus-within { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(23, 96, 76, 0.13); }
+.fieldWrap + .passwordRow { margin-top: 17px; }
+.fieldWrap svg { fill: none; flex: none; height: 17px; stroke: var(--muted); stroke-linecap: round; stroke-width: 1.8; width: 17px; }
+.fieldWrap:focus-within svg { stroke: var(--accent); }
+.fieldWrap input { background: transparent; border: 0; caret-color: var(--accent); color: var(--ink); font: 400 14.5px/1.55 var(--auth-preview-inter), Arial, sans-serif; min-width: 0; outline: 0; width: 100%; }
+.fieldWrap input::placeholder { color: #b0a79a; }
+.passwordRow { align-items: center; display: flex; justify-content: space-between; margin-top: 17px; }
+.passwordRow .fieldLabel { margin: 0; }
+.passwordRow a, .footer a { color: var(--accent); font-size: 12.5px; font-weight: 500; text-decoration: none; }
+.remember { align-items: center; color: var(--ink2); cursor: pointer; display: flex; font-size: 13px; font-weight: 400; gap: 9px; line-height: 1.5; margin: 20px 0; }
+.remember input { height: 1px; opacity: 0; position: absolute; width: 1px; }
+.remember span { align-items: center; background: var(--accent); border: 1px solid #b8d1c6; border-radius: 6px; color: #fff; display: grid; height: 18px; place-items: center; width: 18px; }
+.remember input:not(:checked) + span { background: #fff; color: transparent; }
+.primary { align-items: center; background: var(--accent); border: 0; border-radius: 12px; box-shadow: 0 10px 22px -10px rgba(23, 96, 76, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.14); color: #fff; cursor: pointer; display: flex; font: 600 15px/1.2 var(--auth-preview-inter), Arial, sans-serif; gap: 9px; height: 54px; justify-content: center; width: 100%; }
+.primary svg { fill: none; height: 17px; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; width: 17px; }
+.resetCard .primary { margin-top: 20px; }
+.footer { border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12.5px; font-weight: 400; line-height: 1.5; margin-top: 24px; padding-top: 20px; text-align: center; }
+.footer p { margin: 0; }
+.footer a { margin-left: 5px; }
+
+@media (max-width: 640px) {
+  .header { padding: 0 20px; }
+  .nav a:not(.signIn) { display: none; }
+  .stage { min-height: 0; padding: 32px 20px 44px; }
+  .card { border-radius: 20px; padding: 32px 24px 28px; width: 100%; }
+}

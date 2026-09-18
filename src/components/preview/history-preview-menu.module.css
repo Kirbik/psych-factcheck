@@ -1,0 +1,47 @@
+.menuCell {
+  position: relative;
+}
+
+.menuPopup {
+  position: absolute;
+  z-index: 10;
+  top: 52px;
+  right: 8px;
+  width: 168px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 12px 28px rgba(43, 32, 22, 0.14);
+}
+
+.menuItem {
+  display: flex;
+  min-height: 44px;
+  width: 100%;
+  align-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: 500 14px/20px var(--history-preview-inter), Inter, sans-serif;
+  padding: 10px 12px;
+  text-align: left;
+  text-decoration: none;
+}
+
+.menuItem:focus-visible {
+  outline: 3.5px solid rgba(23, 96, 76, 0.13);
+  outline-offset: 1px;
+}
+
+.menuDanger {
+  color: #b4551f;
+}
+
+@media (max-width: 720px) {
+  .menuPopup {
+    right: 0;
+  }
+}

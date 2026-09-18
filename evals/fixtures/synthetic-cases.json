@@ -1,0 +1,9 @@
+[
+  {
+    "id": "fact-001",
+    "claim": "All depression is caused by low serotonin",
+    "expectedVerdicts": ["CONTRADICTED", "OVERSIMPLIFIED"],
+    "forbiddenVerdicts": ["SUPPORTED"],
+    "synthetic": true
+  }
+]
