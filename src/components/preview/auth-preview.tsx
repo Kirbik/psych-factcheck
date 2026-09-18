@@ -149,6 +149,9 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
     initialAuthActionState,
   );
   const [remember, setRemember] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordRepeat, setPasswordRepeat] = useState("");
   const screen = copy[mode];
   const isReset = mode === "reset";
 
@@ -195,7 +198,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
       </label>
       <div className={styles.fieldWrap}>
         <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7 7.5 5.7L19.5 7" /></svg>
-        <input id="preview-email" name="email" type="email" placeholder="name@example.ru" />
+        <input id="preview-email" name="email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} placeholder="name@example.ru" />
       </div>
 
       {!isReset ? (
@@ -216,7 +219,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
           </span>
           <div className={styles.fieldWrap}>
             <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-            <input id="preview-password" name="password" type="password" placeholder="Введите пароль" />
+            <input id="preview-password" name="password" onChange={(event) => setPassword(event.target.value)} type="password" value={password} placeholder="Введите пароль" />
           </div>
           {mode === "signup" ? (
             <>
@@ -225,7 +228,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
               </label>
               <div className={styles.fieldWrap}>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                <input id="preview-password-repeat" name="passwordRepeat" type="password" placeholder="Повторите пароль" />
+                <input id="preview-password-repeat" name="passwordRepeat" onChange={(event) => setPasswordRepeat(event.target.value)} type="password" value={passwordRepeat} placeholder="Повторите пароль" />
               </div>
             </>
           ) : null}
@@ -238,7 +241,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
       ) : null}
 
       {authState.message ? (
-        <p className={styles.description} role="alert">
+        <p className={`${styles.description} ${styles.authError}`} role="alert">
           {authState.message}
         </p>
       ) : null}

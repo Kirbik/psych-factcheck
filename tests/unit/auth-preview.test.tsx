@@ -32,7 +32,7 @@ describe("AuthPreview", () => {
 
   it("submits credentials through the supplied auth action", async () => {
     cleanup();
-    const action = vi.fn(async () => ({ message: "Неверный email или пароль." }));
+    const action = vi.fn(async () => ({ message: "Неверный email или пароль" }));
     const { getByLabelText, getByRole } = render(
       <AuthPreview actions={{ login: action, signup: action }} mode="login" />,
     );
@@ -47,7 +47,9 @@ describe("AuthPreview", () => {
 
     await vi.waitFor(() => {
       expect(action).toHaveBeenCalled();
-      expect(getByRole("alert")).toHaveTextContent("Неверный email или пароль.");
+      expect(getByRole("alert")).toHaveTextContent("Неверный email или пароль");
     });
+    expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
+    expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
   });
 });

@@ -13,7 +13,7 @@ function validationState(formData: FormData): AuthActionState | undefined {
   }
 
   return {
-    message: "Проверьте введённые данные.",
+    message: "Проверьте введённые данные",
     fieldErrors: parsed.error.flatten().fieldErrors,
   };
 }
@@ -29,7 +29,7 @@ export async function signUp(
 
   const credentials = parseAuthCredentials(formData);
   if (!credentials.success) {
-    return { message: "Проверьте введённые данные." };
+    return { message: "Проверьте введённые данные" };
   }
 
   const supabase = await createServerAuthClient();
@@ -58,7 +58,7 @@ export async function signIn(
 
   const credentials = parseAuthCredentials(formData);
   if (!credentials.success) {
-    return { message: "Проверьте введённые данные." };
+    return { message: "Проверьте введённые данные" };
   }
 
   const supabase = await createServerAuthClient();

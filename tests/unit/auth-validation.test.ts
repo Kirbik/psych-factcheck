@@ -35,13 +35,13 @@ describe("auth credential validation", () => {
 describe("provider auth errors", () => {
   it("maps invalid credentials without exposing provider details", () => {
     expect(toSafeAuthError("Invalid login credentials")).toBe(
-      "Неверный email или пароль.",
+      "Неверный email или пароль",
     );
   });
 
   it("maps unknown provider failures to a generic message", () => {
     expect(toSafeAuthError("unexpected internal diagnostic")).toBe(
-      "Не удалось выполнить действие. Попробуйте ещё раз.",
+      "Не удалось выполнить действие. Попробуйте ещё раз",
     );
   });
 });

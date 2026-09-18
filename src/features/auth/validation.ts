@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 export const authCredentialsSchema = z.object({
-  email: z.email("Введите корректный email."),
+  email: z.email("Введите корректный email"),
   password: z
     .string()
-    .min(12, "Пароль должен содержать минимум 12 символов.")
-    .max(128, "Пароль не должен превышать 128 символов."),
+    .min(12, "Пароль должен содержать минимум 12 символов")
+    .max(128, "Пароль не должен превышать 128 символов"),
 });
 
 export type AuthCredentials = z.infer<typeof authCredentialsSchema>;
