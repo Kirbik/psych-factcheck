@@ -10,7 +10,7 @@ export default async function AuthPreviewPage({
 }: AuthPreviewPageProps) {
   const { mode } = await searchParams;
   const view = mode === "signup" || mode === "reset" ? mode : "login";
-  const action = view === "signup" ? signUp : view === "login" ? signIn : undefined;
+  const actions = { login: signIn, signup: signUp };
 
-  return <AuthPreview action={action} mode={view} />;
+  return <AuthPreview actions={actions} mode={view} />;
 }

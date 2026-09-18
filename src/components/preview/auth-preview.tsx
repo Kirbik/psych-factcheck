@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { AuthActionState } from "@/features/auth/state";
 import { initialAuthActionState } from "@/features/auth/state";
 import styles from "./auth-preview.module.css";
@@ -10,7 +10,7 @@ import styles from "./auth-preview.module.css";
 type AuthPreviewMode = "login" | "signup" | "reset";
 
 type AuthPreviewProps = {
-  action?: AuthPreviewAction;
+  actions?: AuthPreviewActions;
   mode: AuthPreviewMode;
 };
 
@@ -18,6 +18,11 @@ type AuthPreviewAction = (
   state: AuthActionState,
   formData: FormData,
 ) => Promise<AuthActionState>;
+
+type AuthPreviewActions = {
+  login: AuthPreviewAction;
+  signup: AuthPreviewAction;
+};
 
 async function previewAction(): Promise<AuthActionState> {
   return {};
@@ -77,14 +82,24 @@ function ArrowIcon() {
   );
 }
 
-export function AuthPreview({ action, mode }: AuthPreviewProps) {
-  const [authState, formAction, pending] = useActionState(
-    action ?? previewAction,
-    initialAuthActionState,
-  );
-  const [remember, setRemember] = useState(true);
-  const screen = copy[mode];
-  const isReset = mode === "reset";
+export function AuthPreview({ actions, mode }: AuthPreviewProps) {
+  const [activeMode, setActiveMode] = useState(mode);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextMode = new URLSearchParams(window.location.search).get("mode");
+      setActiveMode(nextMode === "signup" || nextMode === "reset" ? nextMode : "login");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigateMode = (nextMode: AuthPreviewMode) => {
+    const href = nextMode === "login" ? "/" : `/?mode=${nextMode}`;
+    window.history.pushState(null, "", href);
+    setActiveMode(nextMode);
+  };
 
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
@@ -97,98 +112,157 @@ export function AuthPreview({ action, mode }: AuthPreviewProps) {
           <a href="#how">Как это работает</a>
           <a href="#about">О сервисе</a>
           <a href="#sources">Источники</a>
-          <Link className={styles.signIn} href="/">
+          <Link
+            className={styles.signIn}
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              navigateMode("login");
+            }}
+          >
             Войти
           </Link>
         </nav>
       </header>
 
       <section className={styles.stage} aria-labelledby="auth-preview-title">
-        <form
-          action={formAction}
-          aria-label={mode === "signup" ? "Регистрация" : mode === "reset" ? "Восстановление пароля" : "Авторизация"}
-          className={`${styles.card} ${isReset ? styles.resetCard : ""}`}
-          onSubmit={action ? undefined : (event) => event.preventDefault()}
-        >
-          {mode !== "reset" ? (
-            <div className={styles.tabs} role="tablist" aria-label="Способ доступа">
-              <Link
-                aria-selected={mode === "login"}
-                className={mode === "login" ? styles.tabActive : styles.tab}
-                href="/"
-                role="tab"
-              >
-                Войти
-              </Link>
-              <Link
-                aria-selected={mode === "signup"}
-                className={mode === "signup" ? styles.tabActive : styles.tab}
-                href="/?mode=signup"
-                role="tab"
-              >
-                Регистрация
-              </Link>
-            </div>
-          ) : null}
-          <h1 id="auth-preview-title">{screen.title}</h1>
-          <p className={styles.description}>{screen.description}</p>
-
-          <label className={styles.fieldLabel} htmlFor="preview-email">
-            Электронная почта
-          </label>
-          <div className={styles.fieldWrap}>
-            <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7 7.5 5.7L19.5 7" /></svg>
-            <input id="preview-email" name="email" type="email" placeholder="name@example.ru" />
-          </div>
-
-          {!isReset ? (
-            <>
-              <span className={styles.passwordRow}>
-                <label className={styles.fieldLabel} htmlFor="preview-password">Пароль</label>
-                {mode === "login" ? <Link href="/?mode=reset">Забыли пароль?</Link> : null}
-              </span>
-              <div className={styles.fieldWrap}>
-                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                <input id="preview-password" name="password" type="password" placeholder="Введите пароль" />
-              </div>
-              {mode === "signup" ? (
-                <>
-                  <label className={styles.fieldLabel} htmlFor="preview-password-repeat">
-                    Повторите пароль
-                  </label>
-                  <div className={styles.fieldWrap}>
-                    <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                    <input id="preview-password-repeat" name="passwordRepeat" type="password" placeholder="Повторите пароль" />
-                  </div>
-                </>
-              ) : null}
-              <label className={styles.remember}>
-                <input checked={remember} onChange={(event) => setRemember(event.target.checked)} type="checkbox" />
-                <span aria-hidden="true"><CheckIcon /></span>
-                Запомнить меня
-              </label>
-            </>
-          ) : null}
-
-          {authState.message ? (
-            <p className={styles.description} role="alert">
-              {authState.message}
-            </p>
-          ) : null}
-
-          <button className={styles.primary} disabled={pending} type="submit">
-            {pending ? "Пожалуйста, подождите…" : screen.submit}
-            <ArrowIcon />
-          </button>
-
-          {mode === "reset" ? (
-            <footer className={styles.footer}>
-              <p><Link href="/">Вернуться ко входу</Link></p>
-            </footer>
-          ) : null}
-        </form>
-
+        <AuthPreviewForm
+          action={activeMode === "reset" ? undefined : actions?.[activeMode]}
+          key={activeMode}
+          mode={activeMode}
+          onModeChange={navigateMode}
+        />
       </section>
     </main>
+  );
+}
+
+type AuthPreviewFormProps = {
+  action?: AuthPreviewAction;
+  mode: AuthPreviewMode;
+  onModeChange: (mode: AuthPreviewMode) => void;
+};
+
+function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
+  const [authState, formAction, pending] = useActionState(
+    action ?? previewAction,
+    initialAuthActionState,
+  );
+  const [remember, setRemember] = useState(true);
+  const screen = copy[mode];
+  const isReset = mode === "reset";
+
+  return (
+    <form
+      action={formAction}
+      aria-label={mode === "signup" ? "Регистрация" : mode === "reset" ? "Восстановление пароля" : "Авторизация"}
+      className={`${styles.card} ${isReset ? styles.resetCard : ""}`}
+      onSubmit={action ? undefined : (event) => event.preventDefault()}
+    >
+      {mode !== "reset" ? (
+        <div className={styles.tabs} role="tablist" aria-label="Способ доступа">
+          <Link
+            aria-selected={mode === "login"}
+            className={mode === "login" ? styles.tabActive : styles.tab}
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              onModeChange("login");
+            }}
+            role="tab"
+          >
+            Войти
+          </Link>
+          <Link
+            aria-selected={mode === "signup"}
+            className={mode === "signup" ? styles.tabActive : styles.tab}
+            href="/?mode=signup"
+            onClick={(event) => {
+              event.preventDefault();
+              onModeChange("signup");
+            }}
+            role="tab"
+          >
+            Регистрация
+          </Link>
+        </div>
+      ) : null}
+      <h1 id="auth-preview-title">{screen.title}</h1>
+      <p className={styles.description}>{screen.description}</p>
+
+      <label className={styles.fieldLabel} htmlFor="preview-email">
+        Электронная почта
+      </label>
+      <div className={styles.fieldWrap}>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7 7.5 5.7L19.5 7" /></svg>
+        <input id="preview-email" name="email" type="email" placeholder="name@example.ru" />
+      </div>
+
+      {!isReset ? (
+        <>
+          <span className={styles.passwordRow}>
+            <label className={styles.fieldLabel} htmlFor="preview-password">Пароль</label>
+            {mode === "login" ? (
+              <Link
+                href="/?mode=reset"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onModeChange("reset");
+                }}
+              >
+                Забыли пароль?
+              </Link>
+            ) : null}
+          </span>
+          <div className={styles.fieldWrap}>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+            <input id="preview-password" name="password" type="password" placeholder="Введите пароль" />
+          </div>
+          {mode === "signup" ? (
+            <>
+              <label className={styles.fieldLabel} htmlFor="preview-password-repeat">
+                Повторите пароль
+              </label>
+              <div className={styles.fieldWrap}>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
+                <input id="preview-password-repeat" name="passwordRepeat" type="password" placeholder="Повторите пароль" />
+              </div>
+            </>
+          ) : null}
+          <label className={styles.remember}>
+            <input checked={remember} onChange={(event) => setRemember(event.target.checked)} type="checkbox" />
+            <span aria-hidden="true"><CheckIcon /></span>
+            Запомнить меня
+          </label>
+        </>
+      ) : null}
+
+      {authState.message ? (
+        <p className={styles.description} role="alert">
+          {authState.message}
+        </p>
+      ) : null}
+
+      <button className={styles.primary} disabled={pending} type="submit">
+        {pending ? "Пожалуйста, подождите…" : screen.submit}
+        <ArrowIcon />
+      </button>
+
+      {mode === "reset" ? (
+        <footer className={styles.footer}>
+          <p>
+            <Link
+              href="/"
+              onClick={(event) => {
+                event.preventDefault();
+                onModeChange("login");
+              }}
+            >
+              Вернуться ко входу
+            </Link>
+          </p>
+        </footer>
+      ) : null}
+    </form>
   );
 }

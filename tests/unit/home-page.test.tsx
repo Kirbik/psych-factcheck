@@ -17,7 +17,10 @@ describe("HomePage", () => {
       expect.objectContaining({
         type: AuthPreview,
         props: expect.objectContaining({
-          action: expect.any(Function),
+          actions: expect.objectContaining({
+            login: expect.any(Function),
+            signup: expect.any(Function),
+          }),
           mode: "login",
         }),
       }),

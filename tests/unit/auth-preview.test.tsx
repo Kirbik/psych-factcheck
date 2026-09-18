@@ -34,7 +34,7 @@ describe("AuthPreview", () => {
     cleanup();
     const action = vi.fn(async () => ({ message: "Неверный email или пароль." }));
     const { getByLabelText, getByRole } = render(
-      <AuthPreview action={action} mode="login" />,
+      <AuthPreview actions={{ login: action, signup: action }} mode="login" />,
     );
 
     fireEvent.change(getByLabelText("Электронная почта"), {
