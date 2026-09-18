@@ -43,6 +43,14 @@
 .fieldWrap svg { fill: none; flex: none; height: 17px; stroke: var(--muted); stroke-linecap: round; stroke-width: 1.8; width: 17px; }
 .fieldWrap:focus-within svg { stroke: var(--accent); }
 .fieldWrap input { background: transparent; border: 0; caret-color: var(--accent); color: var(--ink); font: 400 14.5px/1.55 var(--auth-preview-inter), Arial, sans-serif; min-width: 0; outline: 0; width: 100%; }
+.fieldWrap input:-webkit-autofill,
+.fieldWrap input:-webkit-autofill:hover,
+.fieldWrap input:-webkit-autofill:focus,
+.fieldWrap input:-webkit-autofill:active { -webkit-box-shadow: 0 0 0 1000px var(--field) inset; -webkit-text-fill-color: var(--ink); caret-color: var(--accent); }
+.fieldWrap:focus-within input:-webkit-autofill,
+.fieldWrap:focus-within input:-webkit-autofill:hover,
+.fieldWrap:focus-within input:-webkit-autofill:focus,
+.fieldWrap:focus-within input:-webkit-autofill:active { -webkit-box-shadow: 0 0 0 1000px #fff inset; }
 .fieldWrap input::placeholder { color: #b0a79a; }
 .passwordRow { align-items: center; display: flex; justify-content: space-between; margin-top: 17px; }
 .passwordRow .fieldLabel { margin: 0; }
