@@ -18,13 +18,13 @@ async function signIn(page: import("@playwright/test").Page) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-test("routes the home page to the real login form", async ({ page }) => {
+test("opens the signup preview from the home page", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page).toHaveTitle(/Psych Factcheck/);
-  await expect(page).toHaveURL(/\/login/);
+  await expect(page).toHaveURL(/\/ui-preview\/auth\?mode=signup/);
   await expect(
-    page.getByRole("heading", { name: "Войдите в аккаунт" }),
+    page.getByRole("heading", { name: "Создайте аккаунт" }),
   ).toBeVisible();
 });
 
