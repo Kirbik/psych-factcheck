@@ -83,7 +83,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
           <a href="#how">Как это работает</a>
           <a href="#about">О сервисе</a>
           <a href="#sources">Источники</a>
-          <Link className={styles.signIn} href="/ui-preview/auth">
+          <Link className={styles.signIn} href="/?mode=login">
             Войти
           </Link>
         </nav>
@@ -107,7 +107,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
               <Link
                 aria-selected={mode === "login"}
                 className={mode === "login" ? styles.tabActive : styles.tab}
-                href="/ui-preview/auth"
+                href="/?mode=login"
                 role="tab"
               >
                 Войти
@@ -115,7 +115,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
               <Link
                 aria-selected={mode === "signup"}
                 className={mode === "signup" ? styles.tabActive : styles.tab}
-                href="/ui-preview/auth?mode=signup"
+                href="/"
                 role="tab"
               >
                 Регистрация
@@ -137,7 +137,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
             <>
               <span className={styles.passwordRow}>
                 <label className={styles.fieldLabel} htmlFor="preview-password">Пароль</label>
-                {mode === "login" ? <Link href="/ui-preview/auth?mode=reset">Забыли пароль?</Link> : null}
+                {mode === "login" ? <Link href="/?mode=reset">Забыли пароль?</Link> : null}
               </span>
               <div className={styles.fieldWrap}>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
@@ -169,7 +169,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
 
           {mode === "reset" ? (
             <footer className={styles.footer}>
-              <p><Link href="/ui-preview/auth">Вернуться ко входу</Link></p>
+              <p><Link href="/?mode=login">Вернуться ко входу</Link></p>
             </footer>
           ) : null}
         </form>

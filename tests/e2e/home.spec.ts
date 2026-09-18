@@ -22,7 +22,7 @@ test("opens the signup preview from the home page", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page).toHaveTitle(/Psych Factcheck/);
-  await expect(page).toHaveURL(/\/ui-preview\/auth\?mode=signup/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(
     page.getByRole("heading", { name: "Создайте аккаунт" }),
   ).toBeVisible();
@@ -37,14 +37,17 @@ test("keeps only the authentication and checks previews", async ({ page }) => {
 });
 
 test("navigates through the authentication preview", async ({ page }) => {
-  await page.goto("/ui-preview/auth");
+  await page.goto("/");
+  await page.getByRole("tab", { name: "Войти" }).click();
+  await expect(page).toHaveURL(/\/\?mode=login$/);
+  await expect(page.getByRole("heading", { name: "С возвращением" })).toBeVisible();
   await page.getByRole("tab", { name: "Регистрация" }).click();
-  await expect(page).toHaveURL(/\/ui-preview\/auth\?mode=signup/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "Создайте аккаунт" })).toBeVisible();
   await page.getByRole("tab", { name: "Войти" }).click();
-  await expect(page).toHaveURL(/\/ui-preview\/auth$/);
+  await expect(page).toHaveURL(/\/\?mode=login$/);
   await page.getByRole("link", { name: "Забыли пароль?" }).click();
-  await expect(page).toHaveURL(/\/ui-preview\/auth\?mode=reset/);
+  await expect(page).toHaveURL(/\/\?mode=reset$/);
   await expect(page.getByRole("heading", { name: "Восстановить пароль" })).toBeVisible();
 });
 

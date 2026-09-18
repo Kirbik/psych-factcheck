@@ -1,18 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import HomePage from "@/app/page";
-
-const { redirect } = vi.hoisted(() => ({ redirect: vi.fn() }));
-
-vi.mock("next/navigation", () => ({ redirect }));
+import { AuthPreview } from "@/components/preview/auth-preview";
 
 describe("HomePage", () => {
-  it("redirects to the signup preview route", () => {
-    const redirectSignal = new Error("redirect");
-    redirect.mockImplementation(() => {
-      throw redirectSignal;
-    });
+  it("renders the signup preview at the root route", async () => {
+    const page = await HomePage({ searchParams: Promise.resolve({}) });
 
-    expect(() => HomePage()).toThrow(redirectSignal);
-    expect(redirect).toHaveBeenCalledWith("/ui-preview/auth?mode=signup");
+    expect(page).toEqual(
+      expect.objectContaining({
+        type: AuthPreview,
+        props: { mode: "signup" },
+      }),
+    );
   });
 });

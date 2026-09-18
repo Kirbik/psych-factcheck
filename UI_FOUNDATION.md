@@ -74,7 +74,7 @@ Header содержит бренд и ссылки «Проверки» / «Пр
 
 ## Implemented screens
 
-- `/` и `/ui-preview/auth` — авторизация/регистрация/восстановление.
+- `/` (`?mode=login` и `?mode=reset`) — авторизация/регистрация/восстановление.
 - `/ui-preview/history` — список проверок, фильтры, pagination, context menu, clickable rows.
 - `/ui-preview/new-check` — новая проверка и выбор видеофайла.
 - `/ui-preview/processing` — вертикальный прогресс обработки.
