@@ -38,11 +38,20 @@ test("keeps only the authentication and checks previews", async ({ page }) => {
 
 test("navigates through the authentication preview", async ({ page }) => {
   await page.goto("/");
+  await page.getByLabel("Электронная почта").fill("person@example.com");
+  await page.getByLabel("Пароль").fill("safe-password-123");
   await page.getByRole("tab", { name: "Регистрация" }).click();
   await expect(page).toHaveURL(/\/\?mode=signup$/);
   await expect(page.getByRole("heading", { name: "Создайте аккаунт" })).toBeVisible();
+  await expect(page.getByLabel("Электронная почта")).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "Пароль", exact: true })).toHaveValue("");
   await page.getByRole("tab", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/$/);
+  await page.getByLabel("Электронная почта").fill("person@example.com");
+  await page.getByLabel("Пароль").fill("safe-password-123");
+  await page.reload();
+  await expect(page.getByLabel("Электронная почта")).toHaveValue("");
+  await expect(page.getByLabel("Пароль")).toHaveValue("");
   await page.getByRole("link", { name: "Забыли пароль?" }).click();
   await expect(page).toHaveURL(/\/\?mode=reset$/);
   await expect(page.getByRole("heading", { name: "Восстановить пароль" })).toBeVisible();

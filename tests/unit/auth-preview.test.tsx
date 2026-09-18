@@ -55,4 +55,21 @@ describe("AuthPreview", () => {
     expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
     expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
   });
+
+  it("does not carry login values into the signup tab", () => {
+    cleanup();
+    const { getByLabelText, getByRole } = render(<AuthPreview mode="login" />);
+
+    fireEvent.change(getByLabelText("Электронная почта"), {
+      target: { value: "person@example.com" },
+    });
+    fireEvent.change(getByLabelText("Пароль"), {
+      target: { value: "safe-password-123" },
+    });
+    fireEvent.click(getByRole("tab", { name: "Регистрация" }));
+
+    expect(getByLabelText("Электронная почта")).toHaveValue("");
+    expect(getByLabelText("Пароль")).toHaveValue("");
+    expect(getByLabelText("Повторите пароль")).toHaveValue("");
+  });
 });
