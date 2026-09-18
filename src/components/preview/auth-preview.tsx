@@ -161,6 +161,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
       aria-label={mode === "signup" ? "Регистрация" : mode === "reset" ? "Восстановление пароля" : "Авторизация"}
       className={`${styles.card} ${isReset ? styles.resetCard : ""}`}
       onSubmit={action ? undefined : (event) => event.preventDefault()}
+      onReset={(event) => event.preventDefault()}
     >
       {mode !== "reset" ? (
         <div className={styles.tabs} role="tablist" aria-label="Способ доступа">

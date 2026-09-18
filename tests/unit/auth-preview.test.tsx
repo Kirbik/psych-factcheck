@@ -51,5 +51,8 @@ describe("AuthPreview", () => {
     });
     expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
     expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
+    fireEvent.reset(getByRole("form", { name: "Авторизация" }));
+    expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
+    expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
   });
 });
