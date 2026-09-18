@@ -6,7 +6,7 @@ type HomePageProps = {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { mode } = await searchParams;
-  const view = mode === "login" || mode === "reset" ? mode : "signup";
+  const view = mode === "signup" || mode === "reset" ? mode : "login";
 
   return <AuthPreview mode={view} />;
 }

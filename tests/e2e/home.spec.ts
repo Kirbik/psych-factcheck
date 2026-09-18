@@ -18,13 +18,13 @@ async function signIn(page: import("@playwright/test").Page) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-test("opens the signup preview from the home page", async ({ page }) => {
+test("opens the login preview from the home page", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page).toHaveTitle(/Psych Factcheck/);
   await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole("heading", { name: "Создайте аккаунт" }),
+    page.getByRole("heading", { name: "С возвращением" }),
   ).toBeVisible();
 });
 
@@ -38,14 +38,11 @@ test("keeps only the authentication and checks previews", async ({ page }) => {
 
 test("navigates through the authentication preview", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("tab", { name: "Войти" }).click();
-  await expect(page).toHaveURL(/\/\?mode=login$/);
-  await expect(page.getByRole("heading", { name: "С возвращением" })).toBeVisible();
   await page.getByRole("tab", { name: "Регистрация" }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/\?mode=signup$/);
   await expect(page.getByRole("heading", { name: "Создайте аккаунт" })).toBeVisible();
   await page.getByRole("tab", { name: "Войти" }).click();
-  await expect(page).toHaveURL(/\/\?mode=login$/);
+  await expect(page).toHaveURL(/\/$/);
   await page.getByRole("link", { name: "Забыли пароль?" }).click();
   await expect(page).toHaveURL(/\/\?mode=reset$/);
   await expect(page.getByRole("heading", { name: "Восстановить пароль" })).toBeVisible();

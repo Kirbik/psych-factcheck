@@ -83,7 +83,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
           <a href="#how">Как это работает</a>
           <a href="#about">О сервисе</a>
           <a href="#sources">Источники</a>
-          <Link className={styles.signIn} href="/?mode=login">
+          <Link className={styles.signIn} href="/">
             Войти
           </Link>
         </nav>
@@ -107,7 +107,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
               <Link
                 aria-selected={mode === "login"}
                 className={mode === "login" ? styles.tabActive : styles.tab}
-                href="/?mode=login"
+                href="/"
                 role="tab"
               >
                 Войти
@@ -115,7 +115,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
               <Link
                 aria-selected={mode === "signup"}
                 className={mode === "signup" ? styles.tabActive : styles.tab}
-                href="/"
+                href="/?mode=signup"
                 role="tab"
               >
                 Регистрация
@@ -169,7 +169,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
 
           {mode === "reset" ? (
             <footer className={styles.footer}>
-              <p><Link href="/?mode=login">Вернуться ко входу</Link></p>
+              <p><Link href="/">Вернуться ко входу</Link></p>
             </footer>
           ) : null}
         </form>

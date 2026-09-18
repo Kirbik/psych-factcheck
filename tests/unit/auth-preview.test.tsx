@@ -9,7 +9,7 @@ describe("AuthPreview", () => {
     expect(screen.getByLabelText("Электронная почта")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Регистрация" })).toHaveAttribute(
       "href",
-      "/",
+      "/?mode=signup",
     );
   });
 
@@ -24,7 +24,7 @@ describe("AuthPreview", () => {
   it("keeps the login tab on the preview login route", () => {
     const { container } = render(<AuthPreview mode="signup" />);
     const loginTab = container.querySelector<HTMLAnchorElement>(
-      'a[role="tab"][href="/?mode=login"]',
+      'a[role="tab"][href="/"]',
     );
 
     expect(loginTab).toBeInTheDocument();
