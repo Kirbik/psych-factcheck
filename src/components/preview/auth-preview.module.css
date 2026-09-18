@@ -54,6 +54,7 @@
 .fieldWrap input::placeholder { color: #b0a79a; }
 .passwordRow { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; margin-top: 17px; }
 .passwordRow .fieldLabel { margin: 0; }
+.fieldWrap + .fieldLabel { margin-top: 17px; }
 .passwordRow a, .footer a { color: var(--accent); font-size: 12.5px; font-weight: 500; text-decoration: none; }
 .remember { align-items: center; color: var(--ink2); cursor: pointer; display: flex; font-size: 13px; font-weight: 400; gap: 9px; line-height: 1.5; margin: 20px 0; }
 .remember input { height: 1px; opacity: 0; position: absolute; width: 1px; }
