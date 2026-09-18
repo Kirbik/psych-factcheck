@@ -18,18 +18,22 @@ async function signIn(page: import("@playwright/test").Page) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-test("opens authorization on the home page", async ({ page }) => {
+test("routes the home page to the real login form", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page).toHaveTitle(/Psych Factcheck/);
-  await expect(page.getByRole("heading", { name: "С возвращением" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Регистрация" })).toBeVisible();
+  await expect(page).toHaveURL(/\/login/);
+  await expect(
+    page.getByRole("heading", { name: "Войдите в аккаунт" }),
+  ).toBeVisible();
 });
 
 test("keeps only the authentication and checks previews", async ({ page }) => {
   await page.goto("/ui-preview/history");
   await expect(page.getByRole("heading", { name: "Все проверки" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Проверки" })).toHaveAttribute("aria-current", "page");
+  await expect(
+    page.getByRole("link", { name: "Проверки", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 });
 
 test("navigates through the authentication preview", async ({ page }) => {

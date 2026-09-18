@@ -7,7 +7,7 @@ describe("AuthPreview", () => {
     render(<AuthPreview mode="login" />);
 
     expect(screen.getByLabelText("Электронная почта")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Создать аккаунт" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Регистрация" })).toHaveAttribute(
       "href",
       "/ui-preview/auth?mode=signup",
     );

@@ -1,5 +1,5 @@
-import { AuthPreview } from "@/components/preview/auth-preview";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <AuthPreview mode="login" />;
+  redirect("/login");
 }
