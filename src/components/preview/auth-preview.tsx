@@ -2,15 +2,26 @@
 
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import type { AuthActionState } from "@/features/auth/state";
+import { initialAuthActionState } from "@/features/auth/state";
 import styles from "./auth-preview.module.css";
 
 type AuthPreviewMode = "login" | "signup" | "reset";
 
 type AuthPreviewProps = {
+  action?: AuthPreviewAction;
   mode: AuthPreviewMode;
 };
+
+type AuthPreviewAction = (
+  state: AuthActionState,
+  formData: FormData,
+) => Promise<AuthActionState>;
+
+async function previewAction(): Promise<AuthActionState> {
+  return {};
+}
 
 const inter = Inter({
   display: "swap",
@@ -66,8 +77,11 @@ function ArrowIcon() {
   );
 }
 
-export function AuthPreview({ mode }: AuthPreviewProps) {
-  const router = useRouter();
+export function AuthPreview({ action, mode }: AuthPreviewProps) {
+  const [authState, formAction, pending] = useActionState(
+    action ?? previewAction,
+    initialAuthActionState,
+  );
   const [remember, setRemember] = useState(true);
   const screen = copy[mode];
   const isReset = mode === "reset";
@@ -91,16 +105,10 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
 
       <section className={styles.stage} aria-labelledby="auth-preview-title">
         <form
+          action={formAction}
           aria-label={mode === "signup" ? "Регистрация" : mode === "reset" ? "Восстановление пароля" : "Авторизация"}
           className={`${styles.card} ${isReset ? styles.resetCard : ""}`}
-          onSubmit={(event) => {
-            if (mode === "login") {
-              event.preventDefault();
-              router.push("/ui-preview/history");
-              return;
-            }
-            event.preventDefault();
-          }}
+          onSubmit={action ? undefined : (event) => event.preventDefault()}
         >
           {mode !== "reset" ? (
             <div className={styles.tabs} role="tablist" aria-label="Способ доступа">
@@ -162,8 +170,14 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
             </>
           ) : null}
 
-          <button className={styles.primary} type="submit">
-            {screen.submit}
+          {authState.message ? (
+            <p className={styles.description} role="alert">
+              {authState.message}
+            </p>
+          ) : null}
+
+          <button className={styles.primary} disabled={pending} type="submit">
+            {pending ? "Пожалуйста, подождите…" : screen.submit}
             <ArrowIcon />
           </button>
 

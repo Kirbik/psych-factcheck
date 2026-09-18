@@ -11,8 +11,8 @@ const loginEnvironmentIsConfigured = Boolean(
 );
 
 async function signIn(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.getByLabel("Эл. почта").fill(process.env.E2E_SUPABASE_EMAIL!);
+  await page.goto("/");
+  await page.getByLabel("Электронная почта").fill(process.env.E2E_SUPABASE_EMAIL!);
   await page.getByLabel("Пароль").fill(process.env.E2E_SUPABASE_PASSWORD!);
   await page.getByRole("button", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
@@ -68,8 +68,8 @@ test.describe("authentication", () => {
   test("allows a new user to sign up", async ({ page }) => {
     const email = `e2e-${crypto.randomUUID()}@example.test`;
 
-    await page.goto("/signup");
-    await page.getByLabel("Эл. почта").fill(email);
+    await page.goto("/?mode=signup");
+    await page.getByLabel("Электронная почта").fill(email);
     await page.getByLabel("Пароль").fill("e2e-auth-password");
     await page.getByRole("button", { name: "Зарегистрироваться" }).click();
 

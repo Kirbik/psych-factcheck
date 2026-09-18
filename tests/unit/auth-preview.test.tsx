@@ -1,9 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
 describe("AuthPreview", () => {
-  it("keeps the login preview accessible and explicitly non-production", () => {
+  it("keeps the login preview accessible", () => {
     render(<AuthPreview mode="login" />);
 
     expect(screen.getByLabelText("Электронная почта")).toBeInTheDocument();
@@ -28,5 +28,26 @@ describe("AuthPreview", () => {
     );
 
     expect(loginTab).toBeInTheDocument();
+  });
+
+  it("submits credentials through the supplied auth action", async () => {
+    cleanup();
+    const action = vi.fn(async () => ({ message: "Неверный email или пароль." }));
+    const { getByLabelText, getByRole } = render(
+      <AuthPreview action={action} mode="login" />,
+    );
+
+    fireEvent.change(getByLabelText("Электронная почта"), {
+      target: { value: "person@example.com" },
+    });
+    fireEvent.change(getByLabelText("Пароль"), {
+      target: { value: "safe-password-123" },
+    });
+    fireEvent.submit(getByRole("form", { name: "Авторизация" }));
+
+    await vi.waitFor(() => {
+      expect(action).toHaveBeenCalled();
+      expect(getByRole("alert")).toHaveTextContent("Неверный email или пароль.");
+    });
   });
 });
