@@ -9,6 +9,9 @@ export default defineConfig([
   prettier,
   globalIgnores([
     ".next/**",
+    "dist/**",
+    ".vinext/**",
+    ".wrangler/**",
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
