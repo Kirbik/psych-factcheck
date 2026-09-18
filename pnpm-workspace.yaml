@@ -1,7 +1,7 @@
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
   unrs-resolver: true
-  workerd: set this to true or false
+  workerd: true
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - "@next/env@16.3.5"
