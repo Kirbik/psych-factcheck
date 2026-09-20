@@ -56,7 +56,7 @@ describe("AuthPreview", () => {
     expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
   });
 
-  it("does not carry login values into the signup tab", () => {
+  it("keeps separate values for login and signup tabs", () => {
     cleanup();
     const { getByLabelText, getByRole } = render(<AuthPreview mode="login" />);
 
@@ -71,5 +71,23 @@ describe("AuthPreview", () => {
     expect(getByLabelText("Электронная почта")).toHaveValue("");
     expect(getByLabelText("Пароль")).toHaveValue("");
     expect(getByLabelText("Повторите пароль")).toHaveValue("");
+
+    fireEvent.change(getByLabelText("Электронная почта"), {
+      target: { value: "new-person@example.com" },
+    });
+    fireEvent.change(getByLabelText("Пароль", { exact: true }), {
+      target: { value: "new-password-123" },
+    });
+    fireEvent.change(getByLabelText("Повторите пароль"), {
+      target: { value: "new-password-123" },
+    });
+    fireEvent.click(getByRole("tab", { name: "Войти" }));
+
+    expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
+    expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
+    fireEvent.click(getByRole("tab", { name: "Регистрация" }));
+    expect(getByLabelText("Электронная почта")).toHaveValue("new-person@example.com");
+    expect(getByLabelText("Пароль", { exact: true })).toHaveValue("new-password-123");
+    expect(getByLabelText("Повторите пароль")).toHaveValue("new-password-123");
   });
 });

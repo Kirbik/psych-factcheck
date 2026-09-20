@@ -19,6 +19,15 @@ type AuthPreviewAction = (
   formData: FormData,
 ) => Promise<AuthActionState>;
 
+type AuthPreviewFormValues = {
+  email: string;
+  password: string;
+  passwordRepeat: string;
+  remember: boolean;
+};
+
+type AuthPreviewTextField = "email" | "password" | "passwordRepeat";
+
 type AuthPreviewActions = {
   login: AuthPreviewAction;
   signup: AuthPreviewAction;
@@ -84,6 +93,11 @@ function ArrowIcon() {
 
 export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
+  const [formValues, setFormValues] = useState<Record<AuthPreviewMode, AuthPreviewFormValues>>(() => ({
+    login: { email: "", password: "", passwordRepeat: "", remember: true },
+    signup: { email: "", password: "", passwordRepeat: "", remember: true },
+    reset: { email: "", password: "", passwordRepeat: "", remember: true },
+  }));
 
   useEffect(() => {
     const handlePopState = () => {
@@ -99,6 +113,24 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
     const href = nextMode === "login" ? "/" : `/?mode=${nextMode}`;
     window.history.pushState(null, "", href);
     setActiveMode(nextMode);
+  };
+
+  const updateTextValue = (
+    formMode: AuthPreviewMode,
+    field: AuthPreviewTextField,
+    value: string,
+  ) => {
+    setFormValues((current) => ({
+      ...current,
+      [formMode]: { ...current[formMode], [field]: value },
+    }));
+  };
+
+  const updateRememberValue = (formMode: AuthPreviewMode, value: boolean) => {
+    setFormValues((current) => ({
+      ...current,
+      [formMode]: { ...current[formMode], remember: value },
+    }));
   };
 
   return (
@@ -131,6 +163,9 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           key={activeMode}
           mode={activeMode}
           onModeChange={navigateMode}
+          onRememberChange={(value) => updateRememberValue(activeMode, value)}
+          onTextChange={(field, value) => updateTextValue(activeMode, field, value)}
+          values={formValues[activeMode]}
         />
       </section>
     </main>
@@ -141,17 +176,23 @@ type AuthPreviewFormProps = {
   action?: AuthPreviewAction;
   mode: AuthPreviewMode;
   onModeChange: (mode: AuthPreviewMode) => void;
+  onRememberChange: (value: boolean) => void;
+  onTextChange: (field: AuthPreviewTextField, value: string) => void;
+  values: AuthPreviewFormValues;
 };
 
-function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
+function AuthPreviewForm({
+  action,
+  mode,
+  onModeChange,
+  onRememberChange,
+  onTextChange,
+  values,
+}: AuthPreviewFormProps) {
   const [authState, formAction, pending] = useActionState(
     action ?? previewAction,
     initialAuthActionState,
   );
-  const [remember, setRemember] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordRepeat, setPasswordRepeat] = useState("");
   const screen = copy[mode];
   const isReset = mode === "reset";
 
@@ -200,7 +241,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
       </label>
       <div className={styles.fieldWrap}>
         <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7 7.5 5.7L19.5 7" /></svg>
-        <input autoComplete="off" id="preview-email" name="email" onChange={(event) => setEmail(event.target.value)} type="email" value={email} placeholder="name@example.ru" />
+        <input autoComplete="off" id="preview-email" name="email" onChange={(event) => onTextChange("email", event.target.value)} type="email" value={values.email} placeholder="name@example.ru" />
       </div>
 
       {!isReset ? (
@@ -221,7 +262,7 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
           </span>
           <div className={styles.fieldWrap}>
             <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-            <input autoComplete="new-password" id="preview-password" name="password" onChange={(event) => setPassword(event.target.value)} type="password" value={password} placeholder="Введите пароль" />
+            <input autoComplete="new-password" id="preview-password" name="password" onChange={(event) => onTextChange("password", event.target.value)} type="password" value={values.password} placeholder="Введите пароль" />
           </div>
           {mode === "signup" ? (
             <>
@@ -230,12 +271,12 @@ function AuthPreviewForm({ action, mode, onModeChange }: AuthPreviewFormProps) {
               </label>
               <div className={styles.fieldWrap}>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                <input autoComplete="new-password" id="preview-password-repeat" name="passwordRepeat" onChange={(event) => setPasswordRepeat(event.target.value)} type="password" value={passwordRepeat} placeholder="Повторите пароль" />
+                <input autoComplete="new-password" id="preview-password-repeat" name="passwordRepeat" onChange={(event) => onTextChange("passwordRepeat", event.target.value)} type="password" value={values.passwordRepeat} placeholder="Повторите пароль" />
               </div>
             </>
           ) : null}
           <label className={styles.remember}>
-            <input checked={remember} onChange={(event) => setRemember(event.target.checked)} type="checkbox" />
+            <input checked={values.remember} onChange={(event) => onRememberChange(event.target.checked)} type="checkbox" />
             <span aria-hidden="true"><CheckIcon /></span>
             Запомнить меня
           </label>
