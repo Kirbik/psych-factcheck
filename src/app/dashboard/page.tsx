@@ -7,6 +7,23 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
 import { VideoUploadForm } from "@/features/analysis/video-upload-form";
+import { contentItemsRepository } from "@/server/db/content-items-repository";
+import type { Database } from "@/types/database";
+
+type ContentItemStatus = Database["public"]["Enums"]["content_item_status"];
+
+const contentItemStatusLabels: Record<ContentItemStatus, string> = {
+  pending: "В обработке",
+  ready: "Готово",
+  failed: "Не удалось завершить",
+};
+
+function formatCheckDate(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 function emailFromClaims(claims: Record<string, unknown> | undefined) {
   return typeof claims?.email === "string" ? claims.email : undefined;
@@ -24,6 +41,9 @@ export default async function DashboardPage() {
   }
 
   const email = emailFromClaims(claims);
+  const { data: checks, error: checksError } = await contentItemsRepository
+    .listOwned(supabase, claims.sub)
+    .order("created_at", { ascending: false });
 
   return (
     <>
@@ -31,6 +51,30 @@ export default async function DashboardPage() {
       <main className="page dashboard-page">
         <PageHeader title="Ваши проверки" description="Здесь появятся ваши текущие и завершённые проверки." />
         <Container>
+          <Card className="dashboard-history" aria-labelledby="checks-title">
+            <h2 id="checks-title">Список проверок</h2>
+            {checksError ? (
+              <p role="status">Не удалось загрузить список проверок</p>
+            ) : checks.length === 0 ? (
+              <p className="muted-text">У вас пока нет сохранённых проверок.</p>
+            ) : (
+              <ul className="dashboard-history__list">
+                {checks.map((check) => (
+                  <li className="dashboard-history__item" key={check.id}>
+                    <div>
+                      <strong>
+                        {check.original_file_name ?? "Проверка видео"}
+                      </strong>
+                      <span>{formatCheckDate(check.created_at)}</span>
+                    </div>
+                    <span className="dashboard-history__status">
+                      {contentItemStatusLabels[check.status]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
           <Card className="dashboard-upload" aria-labelledby="video-upload-title">
             <h2 id="video-upload-title">Новая проверка</h2>
             <VideoUploadForm />

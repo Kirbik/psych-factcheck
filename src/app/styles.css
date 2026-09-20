@@ -75,6 +75,15 @@ h3 { font-size: 1rem; line-height: 1.25; }
 .upload-dropzone p { color: var(--muted); margin-bottom: 1rem; max-width: 35rem; }
 .dashboard-upload { margin-bottom: 1rem; }
 .dashboard-upload h2 { margin-bottom: 1rem; }
+.dashboard-history { margin-bottom: 1rem; }
+.dashboard-history h2 { margin-bottom: 1rem; }
+.dashboard-history__list { list-style: none; margin: 0; padding: 0; }
+.dashboard-history__item { align-items: center; border-top: 1px solid var(--line); display: flex; gap: 1rem; justify-content: space-between; padding: 1rem 0; }
+.dashboard-history__item:first-child { border-top: 0; padding-top: 0; }
+.dashboard-history__item:last-child { padding-bottom: 0; }
+.dashboard-history__item div { display: grid; gap: 0.25rem; min-width: 0; }
+.dashboard-history__item span { color: var(--muted); font-size: 0.9rem; }
+.dashboard-history__status { border: 1px solid var(--line); border-radius: 999px; flex: 0 0 auto; padding: 0.35rem 0.65rem; }
 .upload-file-input { height: 1px; opacity: 0; overflow: hidden; position: absolute; width: 1px; }
 .upload-dropzone form { align-items: center; display: flex; flex-direction: column; gap: 0.75rem; }
 .upload-dropzone .muted-text { margin: 0; }
@@ -95,6 +104,7 @@ h3 { font-size: 1rem; line-height: 1.25; }
   .app-nav { align-items: flex-start; flex-direction: column; gap: 0.75rem; padding-block: 1rem; }
   .app-nav__links { gap: 1rem; overflow-x: auto; padding-bottom: 0.2rem; width: 100%; }
   .claim-card__header { align-items: flex-start; flex-direction: column; }
+  .dashboard-history__item { align-items: flex-start; flex-direction: column; }
 }
 
 /* Snow UI Kit (Figma: Zjxyvm5bHWKNbf7xR4Gkgg) — light theme tokens. */
