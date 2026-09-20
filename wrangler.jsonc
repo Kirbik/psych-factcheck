@@ -6,6 +6,10 @@
     "nodejs_compat",
     "nodejs_compat_populate_process_env"
   ],
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://iqqaglkueheksfyvwjpw.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ZpYc_qkrhaap5d-QYUVT-g_rCWL17vq"
+  },
   "main": "worker/index.ts",
   "assets": {
     "directory": "dist/client",
