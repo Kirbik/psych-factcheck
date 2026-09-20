@@ -56,7 +56,7 @@ export async function signUp(
 
   const { data, error } = result.value;
   if (error) {
-    return { message: toSafeAuthError(error.message) };
+    return { message: toSafeAuthError(error.message, error.code) };
   }
 
   if (data.session) {
@@ -89,7 +89,7 @@ export async function signIn(
 
   const { error } = result.value;
   if (error) {
-    return { message: toSafeAuthError(error.message) };
+    return { message: toSafeAuthError(error.message, error.code) };
   }
 
   redirect("/dashboard");
