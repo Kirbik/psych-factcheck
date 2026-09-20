@@ -6,7 +6,7 @@
     "nodejs_compat",
     "nodejs_compat_populate_process_env"
   ],
-  "main": "vinext/server/fetch-handler",
+  "main": "worker/index.ts",
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",
