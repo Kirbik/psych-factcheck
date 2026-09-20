@@ -1,7 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { genericAuthError, toSafeAuthError } from "@/features/auth/errors";
+import {
+  authServiceError,
+  toSafeAuthError,
+} from "@/features/auth/errors";
 import type { AuthActionState } from "@/features/auth/state";
 import {
   parseAuthCredentials,
@@ -11,12 +14,36 @@ import { createServerAuthClient } from "@/server/supabase/auth";
 
 async function tryAuthRequest<T>(
   request: () => Promise<T>,
+  operation: "sign-in" | "sign-up" | "sign-out",
 ): Promise<{ ok: true; value: T } | { ok: false }> {
   try {
     return { ok: true, value: await request() };
-  } catch {
+  } catch (error) {
+    const details = getAuthErrorDetails(error);
+    console.error("[auth] Supabase request failed", {
+      operation,
+      ...details,
+    });
     return { ok: false };
   }
+}
+
+function getAuthErrorDetails(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return { name: "UnknownError" };
+  }
+
+  const candidate = error as {
+    name?: unknown;
+    code?: unknown;
+    status?: unknown;
+  };
+
+  return {
+    name: typeof candidate.name === "string" ? candidate.name : "UnknownError",
+    ...(typeof candidate.code === "string" ? { code: candidate.code } : {}),
+    ...(typeof candidate.status === "number" ? { status: candidate.status } : {}),
+  };
 }
 
 function validationState(
@@ -49,9 +76,9 @@ export async function signUp(
   const result = await tryAuthRequest(async () => {
     const supabase = await createServerAuthClient();
     return supabase.auth.signUp({ email, password });
-  });
+  }, "sign-up");
   if (!result.ok) {
-    return { message: genericAuthError };
+    return { message: authServiceError };
   }
 
   const { data, error } = result.value;
@@ -82,14 +109,16 @@ export async function signIn(
   const result = await tryAuthRequest(async () => {
     const supabase = await createServerAuthClient();
     return supabase.auth.signInWithPassword(credentials.data);
-  });
+  }, "sign-in");
   if (!result.ok) {
-    return { message: genericAuthError };
+    return { message: authServiceError };
   }
 
   const { error } = result.value;
   if (error) {
-    return { message: toSafeAuthError(error.message, error.code) };
+    return {
+      message: toSafeAuthError(error.message, error.code, error.status),
+    };
   }
 
   redirect("/dashboard");
@@ -99,7 +128,7 @@ export async function signOut() {
   const result = await tryAuthRequest(async () => {
     const supabase = await createServerAuthClient();
     return supabase.auth.signOut();
-  });
+  }, "sign-out");
 
   if (!result.ok || result.value.error) {
     redirect("/login?logout=failed");

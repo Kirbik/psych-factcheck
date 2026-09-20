@@ -1,9 +1,13 @@
 export const genericAuthError =
   "Не удалось выполнить действие. Попробуйте ещё раз";
 
+export const authServiceError =
+  "Сервис авторизации временно недоступен";
+
 export function toSafeAuthError(
   message: string | undefined,
   code?: string,
+  status?: number,
 ) {
   const normalized = message?.toLowerCase() ?? "";
   const normalizedCode = code?.toLowerCase() ?? "";
@@ -29,6 +33,10 @@ export function toSafeAuthError(
     normalized.includes("already been registered")
   ) {
     return "Проверьте почту, чтобы продолжить регистрацию или войти";
+  }
+
+  if (status === 400) {
+    return "Почта или пароль введены некорректно";
   }
 
   return genericAuthError;

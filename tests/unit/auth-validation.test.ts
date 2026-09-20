@@ -62,14 +62,18 @@ describe("provider auth errors", () => {
       "Почта или пароль введены некорректно",
     );
 
-    expect(toSafeAuthError("Email not confirmed", "email_not_confirmed")).toBe(
-      "Подтвердите почту перед входом",
-    );
+    expect(
+      toSafeAuthError("Email not confirmed", "email_not_confirmed", 400),
+    ).toBe("Подтвердите почту перед входом");
   });
 
   it("maps unknown provider failures to a generic message", () => {
     expect(toSafeAuthError("unexpected internal diagnostic")).toBe(
       "Не удалось выполнить действие. Попробуйте ещё раз",
+    );
+
+    expect(toSafeAuthError(undefined, undefined, 400)).toBe(
+      "Почта или пароль введены некорректно",
     );
   });
 });

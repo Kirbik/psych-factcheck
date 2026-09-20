@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { genericAuthError } from "@/features/auth/errors";
+import { authServiceError } from "@/features/auth/errors";
 import { initialAuthActionState } from "@/features/auth/state";
 
 const { createServerAuthClient, redirect } = vi.hoisted(() => ({
@@ -34,6 +34,6 @@ describe("auth actions", () => {
           password: "safe-password-123",
         }),
       ),
-    ).resolves.toEqual({ message: genericAuthError });
+    ).resolves.toEqual({ message: authServiceError });
   });
 });
