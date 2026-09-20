@@ -55,7 +55,7 @@ describe("auth credential validation", () => {
 describe("provider auth errors", () => {
   it("maps invalid credentials without exposing provider details", () => {
     expect(toSafeAuthError("Invalid login credentials")).toBe(
-      "Неверный email или пароль",
+      "Почта или пароль введены некорректно",
     );
   });
 

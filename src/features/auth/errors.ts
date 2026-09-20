@@ -6,9 +6,10 @@ export function toSafeAuthError(message: string | undefined) {
 
   if (
     normalized.includes("invalid login credentials") ||
-    normalized.includes("invalid credentials")
+    normalized.includes("invalid credentials") ||
+    normalized.includes("invalid_credentials")
   ) {
-    return "Неверный email или пароль";
+    return "Почта или пароль введены некорректно";
   }
 
   if (
