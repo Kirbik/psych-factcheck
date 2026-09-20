@@ -90,4 +90,39 @@ describe("AuthPreview", () => {
     expect(getByLabelText("Пароль", { exact: true })).toHaveValue("new-password-123");
     expect(getByLabelText("Повторите пароль")).toHaveValue("new-password-123");
   });
+
+  it("shows signup field validation errors without clearing values", async () => {
+    cleanup();
+    const action = vi.fn(async () => ({
+      fieldErrors: {
+        email: ["Введите корректный email"],
+        password: ["Пароль должен содержать минимум 12 символов"],
+        passwordRepeat: ["Пароли не совпадают"],
+      },
+    }));
+    const { getByLabelText, getByRole, getByText } = render(
+      <AuthPreview actions={{ login: action, signup: action }} mode="signup" />,
+    );
+
+    fireEvent.change(getByLabelText("Электронная почта"), {
+      target: { value: "invalid" },
+    });
+    fireEvent.change(getByLabelText("Пароль", { exact: true }), {
+      target: { value: "short" },
+    });
+    fireEvent.change(getByLabelText("Повторите пароль"), {
+      target: { value: "different" },
+    });
+    fireEvent.submit(getByRole("form", { name: "Регистрация" }));
+
+    await vi.waitFor(() => {
+      expect(action).toHaveBeenCalled();
+      expect(getByText("Введите корректный email")).toBeInTheDocument();
+      expect(getByText("Пароль должен содержать минимум 12 символов")).toBeInTheDocument();
+      expect(getByText("Пароли не совпадают")).toBeInTheDocument();
+    });
+    expect(getByLabelText("Электронная почта")).toHaveValue("invalid");
+    expect(getByLabelText("Пароль", { exact: true })).toHaveValue("short");
+    expect(getByLabelText("Повторите пароль")).toHaveValue("different");
+  });
 });

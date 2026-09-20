@@ -195,6 +195,10 @@ function AuthPreviewForm({
   );
   const screen = copy[mode];
   const isReset = mode === "reset";
+  const emailError = authState.fieldErrors?.email?.[0];
+  const passwordError = authState.fieldErrors?.password?.[0];
+  const passwordRepeatError = authState.fieldErrors?.passwordRepeat?.[0];
+  const hasFieldErrors = Boolean(emailError || passwordError || passwordRepeatError);
 
   return (
     <form
@@ -202,6 +206,7 @@ function AuthPreviewForm({
       action={formAction}
       aria-label={mode === "signup" ? "Регистрация" : mode === "reset" ? "Восстановление пароля" : "Авторизация"}
       className={`${styles.card} ${isReset ? styles.resetCard : ""}`}
+      noValidate
       onSubmit={action ? undefined : (event) => event.preventDefault()}
       onReset={(event) => event.preventDefault()}
     >
@@ -241,8 +246,9 @@ function AuthPreviewForm({
       </label>
       <div className={styles.fieldWrap}>
         <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7 7.5 5.7L19.5 7" /></svg>
-        <input autoComplete="off" id="preview-email" name="email" onChange={(event) => onTextChange("email", event.target.value)} type="email" value={values.email} placeholder="name@example.ru" />
+        <input aria-describedby={emailError ? "preview-email-error" : undefined} aria-invalid={emailError ? true : undefined} autoComplete="off" id="preview-email" name="email" onChange={(event) => onTextChange("email", event.target.value)} required type="email" value={values.email} placeholder="name@example.ru" />
       </div>
+      {emailError ? <p className={styles.fieldError} id="preview-email-error" role="alert">{emailError}</p> : null}
 
       {!isReset ? (
         <>
@@ -262,8 +268,9 @@ function AuthPreviewForm({
           </span>
           <div className={styles.fieldWrap}>
             <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-            <input autoComplete="new-password" id="preview-password" name="password" onChange={(event) => onTextChange("password", event.target.value)} type="password" value={values.password} placeholder="Введите пароль" />
+            <input aria-describedby={passwordError ? "preview-password-error" : undefined} aria-invalid={passwordError ? true : undefined} autoComplete="new-password" id="preview-password" name="password" onChange={(event) => onTextChange("password", event.target.value)} required type="password" value={values.password} placeholder="Введите пароль" />
           </div>
+          {passwordError ? <p className={styles.fieldError} id="preview-password-error" role="alert">{passwordError}</p> : null}
           {mode === "signup" ? (
             <>
               <label className={styles.fieldLabel} htmlFor="preview-password-repeat">
@@ -271,8 +278,9 @@ function AuthPreviewForm({
               </label>
               <div className={styles.fieldWrap}>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                <input autoComplete="new-password" id="preview-password-repeat" name="passwordRepeat" onChange={(event) => onTextChange("passwordRepeat", event.target.value)} type="password" value={values.passwordRepeat} placeholder="Повторите пароль" />
+                <input aria-describedby={passwordRepeatError ? "preview-password-repeat-error" : undefined} aria-invalid={passwordRepeatError ? true : undefined} autoComplete="new-password" id="preview-password-repeat" name="passwordRepeat" onChange={(event) => onTextChange("passwordRepeat", event.target.value)} required type="password" value={values.passwordRepeat} placeholder="Повторите пароль" />
               </div>
+              {passwordRepeatError ? <p className={styles.fieldError} id="preview-password-repeat-error" role="alert">{passwordRepeatError}</p> : null}
             </>
           ) : null}
           <label className={styles.remember}>
@@ -283,7 +291,7 @@ function AuthPreviewForm({
         </>
       ) : null}
 
-      {authState.message ? (
+      {authState.message && !hasFieldErrors ? (
         <p className={`${styles.description} ${styles.authError}`} role="alert">
           {authState.message}
         </p>

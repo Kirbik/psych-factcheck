@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { toSafeAuthError } from "@/features/auth/errors";
-import { parseAuthCredentials } from "@/features/auth/validation";
+import {
+  parseAuthCredentials,
+  parseSignUpCredentials,
+} from "@/features/auth/validation";
 
 function credentials(values: Record<string, string>) {
   const formData = new FormData();
@@ -27,6 +30,23 @@ describe("auth credential validation", () => {
       expect(result.error.flatten().fieldErrors).toMatchObject({
         email: [expect.any(String)],
         password: [expect.any(String)],
+      });
+    }
+  });
+
+  it("requires a matching password confirmation for signup", () => {
+    const result = parseSignUpCredentials(
+      credentials({
+        email: "person@example.com",
+        password: "safe-password-123",
+        passwordRepeat: "different-password-123",
+      }),
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors).toMatchObject({
+        passwordRepeat: ["Пароли не совпадают"],
       });
     }
   });

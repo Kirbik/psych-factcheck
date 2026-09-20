@@ -36,6 +36,7 @@
 .card h1 { font-family: var(--auth-preview-lora), Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 8px; }
 .description { color: var(--muted); font-size: 14.5px; font-weight: 400; line-height: 1.55; margin: 0 0 20px; }
 .authError { color: var(--danger); }
+.fieldError { color: var(--danger); font-size: 12.5px; line-height: 1.5; margin: 8px 0 0; }
 .fieldLabel { color: var(--ink2); display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
 .fieldWrap { align-items: center; background: var(--field); border: 1px solid var(--line); border-radius: 12px; display: flex; gap: 11px; height: 52px; padding: 0 15px; }
 .fieldWrap:focus-within { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(23, 96, 76, 0.13); }
@@ -54,7 +55,7 @@
 .fieldWrap input::placeholder { color: #b0a79a; }
 .passwordRow { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; margin-top: 17px; }
 .passwordRow .fieldLabel { margin: 0; }
-.fieldWrap + .fieldLabel { margin-top: 17px; }
+.fieldWrap + .fieldLabel, .fieldError + .fieldLabel { margin-top: 17px; }
 .passwordRow a, .footer a { color: var(--accent); font-size: 12.5px; font-weight: 500; text-decoration: none; }
 .remember { align-items: center; color: var(--ink2); cursor: pointer; display: flex; font-size: 13px; font-weight: 400; gap: 9px; line-height: 1.5; margin: 20px 0; }
 .remember input { height: 1px; opacity: 0; position: absolute; width: 1px; }

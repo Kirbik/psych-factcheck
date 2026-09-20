@@ -3,6 +3,7 @@ export type AuthActionState = {
   fieldErrors?: {
     email?: string[];
     password?: string[];
+    passwordRepeat?: string[];
   };
 };
 
