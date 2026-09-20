@@ -96,7 +96,7 @@ export async function signUp(
   }
 
   if (data.session) {
-    redirect("/dashboard");
+    redirect("/ui-preview/history");
   }
 
   return {
@@ -135,7 +135,7 @@ export async function signIn(
     };
   }
 
-  redirect("/dashboard");
+  redirect("/ui-preview/history");
 }
 
 export async function signOut() {

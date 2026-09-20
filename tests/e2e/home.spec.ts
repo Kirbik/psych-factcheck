@@ -15,7 +15,7 @@ async function signIn(page: import("@playwright/test").Page) {
   await page.getByLabel("Электронная почта").fill(process.env.E2E_SUPABASE_EMAIL!);
   await page.getByLabel("Пароль").fill(process.env.E2E_SUPABASE_PASSWORD!);
   await page.getByRole("button", { name: "Войти" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/ui-preview\/history/);
 }
 
 test("opens the login preview from the home page", async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe("authentication", () => {
 
     await expect(
       page
-        .getByRole("heading", { name: "Вы вошли в систему." })
+        .getByRole("heading", { name: "Все проверки" })
         .or(
           page.getByText(
             "Проверьте почту, чтобы подтвердить регистрацию и войти.",
@@ -109,7 +109,7 @@ test.describe("authentication", () => {
 
     await signIn(page);
     await expect(
-      page.getByRole("heading", { name: "Вы вошли в систему." }),
+      page.getByRole("heading", { name: "Все проверки" }),
     ).toBeVisible();
   });
 
