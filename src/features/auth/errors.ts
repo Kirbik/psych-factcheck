@@ -4,6 +4,9 @@ export const genericAuthError =
 export const authServiceError =
   "Сервис авторизации временно недоступен";
 
+export const authConfigurationError =
+  "Сервис авторизации не настроен";
+
 export function toSafeAuthError(
   message: string | undefined,
   code?: string,

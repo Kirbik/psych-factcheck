@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { authServiceError } from "@/features/auth/errors";
+import {
+  authConfigurationError,
+  authServiceError,
+} from "@/features/auth/errors";
 import { initialAuthActionState } from "@/features/auth/state";
 
 const { createServerAuthClient, redirect } = vi.hoisted(() => ({
@@ -35,5 +38,21 @@ describe("auth actions", () => {
         }),
       ),
     ).resolves.toEqual({ message: authServiceError });
+  });
+
+  it("identifies invalid Supabase configuration without exposing details", async () => {
+    const configurationError = new Error("invalid configuration");
+    configurationError.name = "ZodError";
+    createServerAuthClient.mockRejectedValue(configurationError);
+
+    await expect(
+      signIn(
+        initialAuthActionState,
+        credentials({
+          email: "person@example.com",
+          password: "safe-password-123",
+        }),
+      ),
+    ).resolves.toEqual({ message: authConfigurationError });
   });
 });

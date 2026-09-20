@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import {
+  authConfigurationError,
   authServiceError,
   toSafeAuthError,
 } from "@/features/auth/errors";
@@ -15,7 +16,10 @@ import { createServerAuthClient } from "@/server/supabase/auth";
 async function tryAuthRequest<T>(
   request: () => Promise<T>,
   operation: "sign-in" | "sign-up" | "sign-out",
-): Promise<{ ok: true; value: T } | { ok: false }> {
+): Promise<
+  | { ok: true; value: T }
+  | { ok: false; errorName: string }
+> {
   try {
     return { ok: true, value: await request() };
   } catch (error) {
@@ -24,7 +28,7 @@ async function tryAuthRequest<T>(
       operation,
       ...details,
     });
-    return { ok: false };
+    return { ok: false, errorName: details.name };
   }
 }
 
@@ -78,7 +82,12 @@ export async function signUp(
     return supabase.auth.signUp({ email, password });
   }, "sign-up");
   if (!result.ok) {
-    return { message: authServiceError };
+    return {
+      message:
+        result.errorName === "ZodError"
+          ? authConfigurationError
+          : authServiceError,
+    };
   }
 
   const { data, error } = result.value;
@@ -111,7 +120,12 @@ export async function signIn(
     return supabase.auth.signInWithPassword(credentials.data);
   }, "sign-in");
   if (!result.ok) {
-    return { message: authServiceError };
+    return {
+      message:
+        result.errorName === "ZodError"
+          ? authConfigurationError
+          : authServiceError,
+    };
   }
 
   const { error } = result.value;
