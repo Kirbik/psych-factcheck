@@ -25,8 +25,8 @@ The current code implements only part of this flow:
 
 - `/` provides the token-based sign-in, registration, and recovery-code presentation UI.
 - Server Actions generate a one-time registration token, create a token-backed Supabase Auth account, authenticate with an access token, and sign out.
-- `/dashboard` validates the session server-side, lists the authenticated user's `content_items`, and provides a single-video upload form. `/new-check` also submits its selected video through the same authenticated upload endpoint and continues only after the upload and `content_items` record succeed.
-- `POST /api/uploads/video` validates MP4, WebM, or MOV files up to 100 MiB, uploads to the private `videos` bucket, and creates an owned content row with upload idempotency.
+- `/dashboard` validates the session server-side, lists the authenticated user's `content_items`, and provides a single-video upload form. `/new-check` also uploads its selected video and continues only after the object is validated and its `content_items` record succeeds.
+- The authenticated upload endpoints prepare a single signed TUS upload to the private `videos` bucket and finalize it only after server-side validation of object ownership, actual size, and container signature. A root-layout upload manager keeps an in-flight upload running across in-app navigation; a full page reload or closing the tab interrupts it.
 - `/history`, `/processing`, `/report`, and `/profile` contain interface prototypes not connected to the corresponding persisted product workflows. On `/new-check`, only video upload is connected; `/processing` remains a prototype and does not represent a running analysis job.
 
 The upload creates a `pending` content item. It does not create an `analysis_jobs` row or start processing. Transcription, claim extraction/normalization/classification, Evidence Base, embeddings, retrieval, reranking, judgment, report persistence, history pagination, usage enforcement, and recovery are not implemented. The complete flow above remains the product target, not a claim about current behavior.

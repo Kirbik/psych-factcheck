@@ -24,9 +24,10 @@ flowchart TD
   WEB --> AUTH[Token registration and cookie session]
   AUTH --> DB[(Supabase Auth and PostgreSQL)]
   WEB --> DASH[Protected dashboard]
-  DASH --> UP[Validated video upload route]
-  UP --> STORAGE[Private Supabase Storage]
-  UP --> CONTENT[Owned content_items row]
+  DASH --> UP[Authenticated upload preparation]
+  UP -->|signed upload token| STORAGE[Private Supabase Storage via TUS]
+  STORAGE --> VERIFY[Server verifies object owner, size, and container]
+  VERIFY --> CONTENT[Owned content_items row]
   CONTENT --> HISTORY[Dashboard history/status]
   STORAGE -. future .-> JOB[Background analysis]
   JOB -. future .-> TRANS[Transcription and claim extraction]
@@ -37,7 +38,7 @@ flowchart TD
 
 ## Frontend and server boundaries
 
-`src/app` owns routes, layouts, server actions/route handlers, and rendering. `src/components` contains shared presentation components. `src/features` groups feature-specific UI and orchestration. Browser code receives only the minimum public data and never imports privileged clients or secrets. Current routes include auth at `/` and `/auth`, the protected persisted dashboard at `/dashboard`, `/api/uploads/video`, and UI prototype sections at `/history`, `/new-check`, `/processing`, `/report`, and `/profile`. The `/new-check` prototype now uses the authenticated upload route to persist a selected video; its follow-on `/processing` screen remains a prototype and does not indicate that an analysis job is running. Other prototype pages do not constitute the persisted report/analysis workflow; legacy `/ui-preview/*` URLs redirect to the corresponding clean paths.
+`src/app` owns routes, layouts, server actions/route handlers, and rendering. `src/components` contains shared presentation components. `src/features` groups feature-specific UI and orchestration. Browser code receives only the minimum public data and never imports privileged clients or secrets. Current routes include auth at `/` and `/auth`, the protected persisted dashboard at `/dashboard`, `/api/uploads/video` and its completion handler, and UI prototype sections at `/history`, `/new-check`, `/processing`, `/report`, and `/profile`. Video bytes travel directly from the browser to private Supabase Storage using TUS; a root-layout upload provider keeps the in-flight task alive across client-side route navigation. Server handlers prepare a constrained signed upload and validate the completed object before creating `content_items`. The analysis stages after upload remain a prototype and do not indicate that an analysis job is running. Other prototype pages do not constitute the persisted report/analysis workflow; legacy `/ui-preview/*` URLs redirect to the corresponding clean paths.
 
 `src/server` owns provider adapters, repositories, evidence retrieval, storage operations, billing authorization, and workflows. Business logic depends on domain contracts rather than vendor SDKs. `src/lib` is reserved for genuinely shared utilities; `src/types` holds stable cross-cutting domain types. `src/lib/supabase/browser.ts` is the sole browser client entry point. Authentication uses a server-generated access token with Supabase Auth cookie sessions through `@supabase/ssr`; a server-only token-digest mapping resolves the token to its Auth identity. `src/proxy.ts` refreshes dashboard sessions, while each protected page independently validates claims on the server. `src/server/supabase/server.ts` retains the explicit bearer-token client for non-browser user-context operations, while `src/server/supabase/admin.ts` is `server-only` and reserved for explicitly privileged operations.
 
@@ -55,7 +56,7 @@ Composition belongs in a server-only application boundary. UI and domain service
 
 ## Supabase boundary
 
-Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrations create `profiles`, `content_items`, `analysis_jobs`, token-digest tables, and the `videos` bucket with ownership policies. The app includes generated-token registration/login, cookie sessions, a private upload route, and owner-filtered dashboard listing. No analysis job is currently created by the upload path; `analysis_jobs` is schema-only. RLS, admin/client boundaries, local setup, and tests are documented in [Supabase foundation](docs/architecture/SUPABASE.md) and [Authentication](docs/architecture/AUTH.md).
+Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrations create `profiles`, `content_items`, `analysis_jobs`, token-digest tables, and the `videos` bucket with ownership policies. The app includes generated-token registration/login, cookie sessions, signed TUS upload preparation/finalization, and owner-filtered dashboard listing. No analysis job is currently created by the upload path; `analysis_jobs` is schema-only. RLS, admin/client boundaries, local setup, and tests are documented in [Supabase foundation](docs/architecture/SUPABASE.md) and [Authentication](docs/architecture/AUTH.md).
 
 ## Workflow boundary
 

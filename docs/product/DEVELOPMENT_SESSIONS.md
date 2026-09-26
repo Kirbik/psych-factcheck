@@ -79,7 +79,7 @@ The repository contains implementation work through Session 4: foundation/toolin
 - **QA requirements:** Security-oriented Reviewer and failure-case Test Engineer.
 - **Definition of Done:** One private untrusted video can be uploaded safely.
 
-**Status:** Implemented. The authenticated upload route validates type/container/size, writes to the private `videos` bucket, persists an owner-scoped content row, and uses a per-user upload ID for idempotency. It does not start analysis or create an `analysis_jobs` record.
+**Status:** Implemented. The authenticated upload preparation route issues a signed, owner-scoped TUS upload to the private `videos` bucket. A separate finalizer verifies actual object ownership, size, and container signature before persisting the owner-scoped content row, using a per-user upload ID for idempotency. An app-root upload manager preserves active transfers across client-side navigation. It does not start analysis or create an `analysis_jobs` record.
 
 ## Session 5 — Background Workflow
 

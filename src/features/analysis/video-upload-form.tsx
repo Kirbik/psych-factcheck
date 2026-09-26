@@ -1,43 +1,51 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { UploadDropzone } from "@/components/product/upload-dropzone";
-import { uploadVideoFile } from "@/features/analysis/video-upload-client";
-
-type UploadState = "idle" | "uploading" | "success" | "error";
+import { useVideoUpload } from "@/features/analysis/video-upload-provider";
 
 export function VideoUploadForm() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<UploadState>("idle");
-  const [message, setMessage] = useState("");
   const [fileName, setFileName] = useState("");
+  const [fileError, setFileError] = useState("");
   const [uploadId, setUploadId] = useState(() => crypto.randomUUID());
+  const { task, startUpload, clearTask } = useVideoUpload();
+  const refreshedUploadId = useRef<string | null>(null);
 
-  async function submit() {
+  useEffect(() => {
+    if (
+      task?.status === "completed" &&
+      refreshedUploadId.current !== task.uploadId
+    ) {
+      refreshedUploadId.current = task.uploadId;
+      router.refresh();
+    }
+  }, [router, task]);
+
+  function submit() {
     const file = inputRef.current?.files?.[0];
     if (!file) {
-      setState("error");
-      setMessage("Выберите видеофайл.");
+      setFileError("Выберите видеофайл.");
       return;
     }
-
-    setState("uploading");
-    setMessage("");
-    try {
-      await uploadVideoFile(file, uploadId);
-      setState("success");
-      setMessage("Видео загружено. Запись проверки сохранена.");
-      router.refresh();
-    } catch (error) {
-      setState("error");
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось загрузить видео.",
-      );
-    }
+    setFileError("");
+    clearTask();
+    startUpload(file, uploadId);
   }
+
+  const isUploading = task?.status === "processing";
+  const status = task?.status;
+  const message = fileError || (isUploading
+    ? "Загрузка видео выполняется."
+    : status === "completed"
+      ? "Видео загружено. Запись проверки сохранена."
+      : status === "failed"
+        ? task?.error ?? "Не удалось загрузить видео."
+        : "");
+  const displayedFileName = isUploading ? task.fileName : fileName;
 
   return (
     <form
@@ -57,33 +65,34 @@ export function VideoUploadForm() {
             accept="video/mp4,video/webm,video/quicktime"
             aria-describedby="video-upload-help"
             className="upload-file-input"
+            disabled={isUploading}
             id="video-upload-file"
             onChange={(event) => {
               setFileName(event.target.files?.[0]?.name ?? "");
               setUploadId(crypto.randomUUID());
-              setState("idle");
-              setMessage("");
+              setFileError("");
+              clearTask();
             }}
             ref={inputRef}
             type="file"
           />
         </label>
         <p id="video-upload-help" className="muted-text">
-          {fileName || "Файл ещё не выбран"}
+          {displayedFileName || "Файл ещё не выбран"}
         </p>
-        <Button loading={state === "uploading"} type="submit">
-          {state === "uploading" ? "Загружаем…" : "Загрузить видео"}
+        <Button disabled={isUploading} loading={isUploading} type="submit">
+          {isUploading ? "Загружаем…" : "Загрузить видео"}
         </Button>
       </UploadDropzone>
       {message ? (
         <p
           className={
-            state === "error"
+            status === "failed" || fileError
               ? "validation-error validation-error--summary"
               : "upload-status"
           }
           id="video-upload-status"
-          role={state === "error" ? "alert" : "status"}
+          role={status === "failed" || fileError ? "alert" : "status"}
         >
           {message}
         </p>

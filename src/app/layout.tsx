@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { VideoUploadProvider } from "@/features/analysis/video-upload-provider";
 import "./styles.css";
 
 export const metadata: Metadata = {
@@ -11,7 +12,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <VideoUploadProvider>{children}</VideoUploadProvider>
+      </body>
     </html>
   );
 }

@@ -105,7 +105,7 @@ test("requires token generation before registration and clears registration stat
   ).toBeVisible();
 });
 
-test("uploads the selected video before continuing", async ({ page }) => {
+test("keeps the upload running while navigating away and back", async ({ page }) => {
   let uploadRequestBody = "";
   let notifyRequestStarted: () => void = () => undefined;
   let finishUpload: () => void = () => undefined;
@@ -121,9 +121,9 @@ test("uploads the selected video before continuing", async ({ page }) => {
     notifyRequestStarted();
     await uploadResponseAllowed;
     await route.fulfill({
-      status: 201,
+      status: 400,
       contentType: "application/json",
-      body: JSON.stringify({ contentItemId: "content-item-id", duplicate: false }),
+      body: JSON.stringify({ error: "Проверка завершена для теста." }),
     });
   });
 
@@ -139,19 +139,25 @@ test("uploads the selected video before continuing", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Загружаем видео" }),
   ).toBeVisible();
+  expect(uploadRequestBody).toContain('"fileName":"e2e-video.mp4"');
+  expect(uploadRequestBody).toContain('"fileSizeBytes":12');
+
+  await page.getByRole("link", { name: "Проверки", exact: true }).click();
+  await expect(page).toHaveURL(/\/history$/);
+  await page.getByRole("button", { name: /Новая проверка/ }).click();
+  await expect(page).toHaveURL(/\/new-check$/);
   const uploadStep = page.locator("li").filter({ hasText: "Загрузка видео" });
   await expect(uploadStep).toContainText("Выполняется");
-  expect(uploadRequestBody).toContain('name="video"');
-  expect(uploadRequestBody).toContain('name="upload_id"');
+
   finishUpload();
-  await expect(uploadStep).toContainText("Готово");
-  await expect(
-    page.locator("li").filter({ hasText: "Создание транскрипта" }),
-  ).toContainText("Ожидает");
+  await expect(page.locator("p[role='alert']")).toContainText(
+    "Проверка завершена для теста.",
+  );
+  await expect(uploadStep).toContainText("Ошибка");
   await expect(page).toHaveURL(/\/new-check$/);
 });
 
-test("marks the upload stage as failed when the server rejects the video", async ({
+test("shows a server validation error from upload preparation", async ({
   page,
 }) => {
   await page.route("**/api/uploads/video", (route) =>

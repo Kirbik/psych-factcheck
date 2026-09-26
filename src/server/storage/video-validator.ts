@@ -14,6 +14,11 @@ const fileNameSchema = z
   );
 
 const extensionSchema = z.enum([".mp4", ".webm", ".mov"]);
+const mimeTypes = {
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+} as const;
 
 export class VideoValidationError extends Error {
   constructor(message: string) {
@@ -49,34 +54,46 @@ async function readFileBytes(file: Blob) {
   });
 }
 
-export async function validateVideoFile(file: File) {
-  const fileName = fileNameSchema.safeParse(file.name);
-  if (!fileName.success)
+export function validateVideoMetadata(fileName: string, fileSizeBytes: number) {
+  const fileNameResult = fileNameSchema.safeParse(fileName);
+  if (!fileNameResult.success)
     throw new VideoValidationError("Недопустимое имя файла.");
 
-  const extension = extensionOf(file.name);
-  if (!extensionSchema.safeParse(extension).success) {
+  const parsedExtension = extensionSchema.safeParse(extensionOf(fileName));
+  if (!parsedExtension.success) {
     throw new VideoValidationError("Поддерживаются только MP4, WebM и MOV.");
   }
-  if (file.size <= 0 || file.size > MAX_VIDEO_SIZE_BYTES) {
+  if (
+    !Number.isSafeInteger(fileSizeBytes) ||
+    fileSizeBytes <= 0 ||
+    fileSizeBytes > MAX_VIDEO_SIZE_BYTES
+  ) {
     throw new VideoValidationError("Размер видео не должен превышать 100 МБ.");
   }
 
-  const bytes = await readFileBytes(file.slice(0, 16));
-  const mimeMatches =
-    (extension === ".webm" && file.type === "video/webm") ||
-    (extension === ".mov" && file.type === "video/quicktime") ||
-    (extension === ".mp4" && file.type === "video/mp4");
-  if (!mimeMatches || !isSupportedContainer(bytes, extension)) {
+  return {
+    fileName,
+    fileSizeBytes,
+    fileMimeType: mimeTypes[parsedExtension.data],
+    extension: parsedExtension.data,
+  } as const;
+}
+
+export function validateVideoBytes(bytes: Uint8Array, extension: string) {
+  const parsedExtension = extensionSchema.safeParse(extension);
+  if (!parsedExtension.success || !isSupportedContainer(bytes, parsedExtension.data)) {
     throw new VideoValidationError(
       "Тип файла не соответствует содержимому видео.",
     );
   }
+}
+
+export async function validateVideoFile(file: File) {
+  const metadata = validateVideoMetadata(file.name, file.size);
+  const bytes = await readFileBytes(file.slice(0, 16));
+  validateVideoBytes(bytes, metadata.extension);
 
   return {
-    fileName: file.name,
-    fileSizeBytes: file.size,
-    fileMimeType: file.type,
-    extension,
+    ...metadata,
   } as const;
 }

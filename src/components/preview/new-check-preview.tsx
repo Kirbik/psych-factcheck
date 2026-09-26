@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
 import { useRef, useState } from "react";
-import {
-  ProcessingPreview,
-  type UploadProgressStatus,
-} from "@/components/preview/processing-preview";
-import { uploadVideoFile } from "@/features/analysis/video-upload-client";
+import { ProcessingPreview } from "@/components/preview/processing-preview";
+import { useVideoUpload } from "@/features/analysis/video-upload-provider";
 import styles from "./history-preview.module.css";
 import newStyles from "./new-check-preview.module.css";
 
@@ -18,42 +15,23 @@ export function NewCheckPreview() {
   const [activeTab, setActiveTab] = useState("video");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
   const [uploadId, setUploadId] = useState(() => crypto.randomUUID());
-  const [showProgress, setShowProgress] = useState(false);
-  const [uploadStatus, setUploadStatus] =
-    useState<UploadProgressStatus>("pending");
+  const { task, startUpload, clearTask } = useVideoUpload();
 
-  async function submitUpload() {
-    if (!videoFile || isUploading) return;
-
-    setShowProgress(true);
-    setIsUploading(true);
-    setUploadStatus("processing");
-    setUploadError("");
-    try {
-      await uploadVideoFile(videoFile, uploadId);
-      setUploadStatus("completed");
-    } catch (error) {
-      setUploadError(
-        error instanceof Error ? error.message : "Не удалось загрузить видео.",
-      );
-      setUploadStatus("failed");
-    } finally {
-      setIsUploading(false);
-    }
+  function submitUpload() {
+    if (!videoFile) return;
+    clearTask();
+    startUpload(videoFile, uploadId);
   }
 
-  if (showProgress) {
+  if (task) {
     return (
       <ProcessingPreview
         onBack={() => {
-          setShowProgress(false);
-          setUploadError("");
+          if (task.status !== "processing") clearTask();
         }}
-        uploadError={uploadError}
-        uploadStatus={uploadStatus}
+        uploadError={task.error}
+        uploadStatus={task.status === "processing" ? "processing" : task.status}
       />
     );
   }
@@ -71,10 +49,10 @@ export function NewCheckPreview() {
         <button className={newStyles.tab} disabled role="tab" aria-selected="false" type="button">Проверка рилса</button>
         <button className={newStyles.tab} disabled role="tab" aria-selected="false" type="button">Проверка аккаунта в инстаграмм</button>
       </div>
-      {activeTab === "video" ? <form className={newStyles.card} onSubmit={(event) => { event.preventDefault(); void submitUpload(); }}>
+      {activeTab === "video" ? <form className={newStyles.card} onSubmit={(event) => { event.preventDefault(); submitUpload(); }}>
         <div><h2>Загрузите видеофайл</h2><p className={newStyles.help}>Выберите видеофайл для проверки утверждений.</p></div>
-        {videoFile ? <div className={newStyles.fileRow}><div className={newStyles.fileInfo}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5zM15 4v5h4" /></svg><div><strong>{videoFile.name}</strong><small>{Math.max(1, Math.round(videoFile.size / 1024))} КБ</small></div></div><button disabled={isUploading} className={newStyles.removeFile} onClick={() => { setVideoFile(null); setUploadId(crypto.randomUUID()); setUploadError(""); if (fileInputRef.current) fileInputRef.current.value = ""; }} type="button">Удалить файл</button></div> : <label className={newStyles.dropzone} htmlFor="video-file"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 16v3h14v-3" /></svg><span>Перетащите файл сюда или выберите его</span><small>Поддерживаемые форматы: .mp4, .webm и .mov</small><input ref={fileInputRef} id="video-file" name="video-file" onChange={(event) => { setVideoFile(event.target.files?.[0] ?? null); setUploadId(crypto.randomUUID()); setUploadError(""); }} type="file" accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" /></label>}
-        <button className={newStyles.submit} disabled={!videoFile || isUploading} type="submit">{isUploading ? "Загружаем…" : "Продолжить"}</button>{uploadError ? <p className={newStyles.help} role="alert">{uploadError}</p> : null}
+        {videoFile ? <div className={newStyles.fileRow}><div className={newStyles.fileInfo}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5zM15 4v5h4" /></svg><div><strong>{videoFile.name}</strong><small>{Math.max(1, Math.round(videoFile.size / 1024))} КБ</small></div></div><button className={newStyles.removeFile} onClick={() => { setVideoFile(null); setUploadId(crypto.randomUUID()); if (fileInputRef.current) fileInputRef.current.value = ""; }} type="button">Удалить файл</button></div> : <label className={newStyles.dropzone} htmlFor="video-file"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 16v3h14v-3" /></svg><span>Перетащите файл сюда или выберите его</span><small>Поддерживаемые форматы: .mp4, .webm и .mov</small><input ref={fileInputRef} id="video-file" name="video-file" onChange={(event) => { setVideoFile(event.target.files?.[0] ?? null); setUploadId(crypto.randomUUID()); }} type="file" accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" /></label>}
+        <button className={newStyles.submit} disabled={!videoFile} type="submit">Продолжить</button>
       </form> : null}
     </section>
   </main>;
