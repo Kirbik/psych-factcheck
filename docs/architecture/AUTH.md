@@ -2,11 +2,11 @@
 
 ## Scope
 
-Authentication uses a server-generated access token instead of personal
-credentials. Registration creates a token-backed Supabase Auth identity and
+Authentication uses a server-generated access token instead of user-chosen
+email/password credentials. Registration creates a token-backed Supabase Auth identity and
 returns a separate random recovery code once. The raw recovery code is never
 persisted; only its digest is stored for a future support-assisted recovery
-flow. No public recovery flow or support token-rotation interface is currently
+flow. No public recovery flow or support token-rotation interface is
 implemented.
 
 ## Session flow
@@ -23,7 +23,9 @@ implemented.
    without valid claims.
 5. Protected pages independently call `auth.getClaims()` server-side before
    rendering. The Proxy is not the authorization boundary.
-6. Logout calls `auth.signOut()` through the server cookie client.
+6. Logout calls `auth.signOut()` through the server cookie client. Login
+   currently redirects to `/ui-preview/history`; that is a preview route,
+   while the persisted content list and upload are on `/dashboard`.
 
 ## Client and server boundaries
 
@@ -52,15 +54,18 @@ and cannot read another user's rows.
 `pfr_...` code. Because the value has high entropy, digest lookup does not rely
 on a user-chosen secret. RLS is enabled and direct grants to `anon` and
 `authenticated` are revoked; only the server-side service-role client can
-access this table. The registration response shows the raw recovery code once,
-alongside the access token. A separately protected support process must be
-implemented before the code can be used to recover an account.
+access this table. The registration UI shows the raw recovery code once after
+account creation. A separately protected support process must be implemented
+before the code can be used to recover an account. The `/?mode=reset` screen
+is a UI preview and does not currently perform recovery.
 
 ## Test requirements
 
-E2E protected-route and signup coverage requires the normal public
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` values. Login
-and logout coverage additionally require a test token in `E2E_SUPABASE_TOKEN`.
-The database integration suite requires `SUPABASE_TEST_DB_URL`; without it,
-Vitest marks this environment-dependent suite skipped. Cloud-only deployment
-does not require starting a local Supabase stack.
+The Supabase Auth integration suite requires `SUPABASE_TEST_URL` and
+`SUPABASE_TEST_ANON_KEY`. E2E registration/protected-route/upload coverage
+requires `NEXT_PUBLIC_SUPABASE_URL`, a public key (`NEXT_PUBLIC_SUPABASE_ANON_KEY`
+or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`), and `SUPABASE_SERVICE_ROLE_KEY`.
+Login/logout and authenticated upload additionally require a valid
+`E2E_SUPABASE_TOKEN` for a confirmed test user. The PostgreSQL/RLS integration
+suite requires `SUPABASE_TEST_DB_URL`. When those values are absent, the
+corresponding tests are skipped; skipped tests do not verify the service.

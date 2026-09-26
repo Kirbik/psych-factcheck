@@ -6,6 +6,8 @@ Every development session has one bounded objective with Goal, Scope, Out of sco
 
 The Builder reads `AGENTS.md`, architecture, and task-specific docs; inspects current code/tests and `git status`; writes a short plan; implements only the scoped feature; adds necessary tests; runs required checks; and reports a diff summary, results, risks, and manual actions.
 
+For UI work, read the root `UI_FOUNDATION.md` and any approved Figma/screen reference before changing components. Current design images and preview routes are catalogued in `docs/design/README.md`; do not assume a preview route is a production-backed flow.
+
 ## Reviewer
 
 Use a separate independent Codex session with this prompt:

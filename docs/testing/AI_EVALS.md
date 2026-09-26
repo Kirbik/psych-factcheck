@@ -1,5 +1,9 @@
 # AI Evaluation Plan
 
+## Current status
+
+There is no AI pipeline or golden-set runner yet. `pnpm evals` runs a single Zod shape check for `evals/fixtures/synthetic-cases.json`; this confirms only that the demonstration fixture matches its schema. It does not measure model quality or scientific correctness.
+
 ## Golden dataset
 
 The future golden dataset will contain human-reviewed transcripts, expected claim spans and normalized claims, claim types, query/evidence relevance judgments, allowed and forbidden verdicts, required qualifications, and citation constraints. Cases should cover common topics, ambiguity, causal language, conflicting evidence, missing evidence, historical theories, adversarial retrieved text, and distribution slices such as language/audio quality.
@@ -15,7 +19,7 @@ Example:
 }
 ```
 
-The repository initially contains at most a few fixtures demonstrating schema and runner wiring. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
+The repository currently contains one synthetic fixture demonstrating the expected case shape. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
 
 ## Metrics
 

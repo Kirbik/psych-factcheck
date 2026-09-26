@@ -2,6 +2,8 @@
 
 > **We check the claim, not the person.** The product never infers intent and never says that an author is lying.
 
+These are product and AI behavior requirements. The application does not yet run transcription, claim extraction, retrieval, or fact-check judgment; the rules below describe required future behavior and do not imply that any verdict is currently generated.
+
 ## Checkable claims
 
 A checkable claim is a sufficiently specific assertion about the world that relevant empirical, systematic, or authoritative evidence could support, qualify, contradict, or fail to resolve. It should preserve the speaker's material meaning and context.

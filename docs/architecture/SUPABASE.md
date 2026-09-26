@@ -1,6 +1,10 @@
 # Supabase Foundation
 
-Session 2 introduces only PostgreSQL/Auth schema readiness and typed clients. It does not implement authentication UI, file uploads or Storage, background work, AI, billing, or external integrations.
+## Current implementation status
+
+Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated video upload route backed by private Storage. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
+
+The upload path does not yet enqueue or update an analysis job. Transcription, AI, evidence retrieval, report persistence, and Trigger.dev remain future scope. See [Authentication](AUTH.md) for the token flow and current limits.
 
 ## Dependencies
 
@@ -34,7 +38,7 @@ All schema changes live in `supabase/migrations`. The initial migration creates:
 
 It also adds foreign keys, query indexes, UTC timestamps, `updated_at` triggers, and an idempotent `auth.users` trigger that creates a profile. The profile trigger's `security definer` function lives in the private `app_private` schema, never in the exposed `public` schema. Run local migrations from a clean local stack:
 
-The later `20260926000000_token_auth.sql` migration adds `auth_access_tokens`, a server-only lookup of token digests to Auth identities. `20260926120000_pending_access_tokens.sql` stores digests of not-yet-used registration tokens with expiration. `20260926130000_auth_recovery_codes.sql` stores recovery-code digests. RLS is enabled for these tables; privileges are revoked from `anon` and `authenticated`, and only the server's service-role client can access them.
+The token-auth migrations add `auth_access_tokens`, `auth_pending_access_tokens`, and `auth_recovery_codes`. They store SHA-256 digests, never raw access or recovery tokens. RLS is enabled, client grants are revoked, and only the server's service-role client may access them. Pending registration tokens expire after 24 hours and are consumed once.
 
 ```bash
 pnpm dlx supabase@latest start
@@ -52,7 +56,7 @@ Never place credentials in migrations. Use local development for RLS changes fir
 
 ## Types
 
-`src/types/database.ts` is the checked-in generated-contract file for the initial migration. After every migration, regenerate it and review the diff:
+`src/types/database.ts` is the checked-in generated-contract file for the current public schema. After every migration, regenerate it and review the diff:
 
 ```bash
 pnpm dlx supabase@latest gen types typescript --local --schema public > src/types/database.ts
@@ -79,13 +83,17 @@ The test connects to real local PostgreSQL, temporarily assumes Supabase `authen
 
 ## Video upload
 
-Session 4 adds the private `videos` Storage bucket through
+The private `videos` Storage bucket is created by
 `20260913000000_video_upload.sql`. Objects use the server-generated path
 `<auth-user-id>/<random-id>.<extension>`; Storage policies allow only that
 user to insert, read, update, or delete objects. The upload route verifies the
 file container and metadata server-side before inserting `content_items`, and
-removes an uploaded object if the database insert fails.
+attempts to remove an uploaded object if the database insert fails.
 
-The implementation accepts MP4, WebM, and MOV files up to 100 MiB. Apply the
-migration with the reviewed local/hosted workflow above and regenerate
-`src/types/database.ts` with the Supabase CLI after schema changes.
+The implementation accepts MP4, WebM, and MOV files up to 100 MiB, validates
+the extension, declared MIME type, and container signature, stores objects
+under `<auth-user-id>/<random-id>.<extension>`, and inserts an owned
+`content_items` row using an idempotency key. On success, the row remains
+`pending`: no analysis workflow currently advances it. Apply migrations with
+the reviewed local/hosted workflow above and regenerate
+`src/types/database.ts` after schema changes.

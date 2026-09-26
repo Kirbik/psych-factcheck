@@ -1,5 +1,9 @@
 # AI Pipeline
 
+## Current status
+
+The codebase currently defines TypeScript provider contracts and the verdict union only. No video transcription, claim extraction/normalization/classification, embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, or explanation runtime is wired into the application. The `pnpm evals` command currently validates a synthetic fixture's shape; it is not an AI quality evaluation. The sections below describe the intended future design.
+
 ## Contract
 
 ```text

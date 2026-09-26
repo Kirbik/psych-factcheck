@@ -1,6 +1,6 @@
 # Data Model
 
-This is a deliberately small conceptual model for future migrations. IDs are UUIDs, timestamps are UTC, mutable tables have `created_at`/`updated_at`, and user-owned data uses RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `auth_access_tokens`, and the private video bucket. Other entities are future design, not current schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, three token-auth tables, and a private video bucket. Transcript, claim, evidence, fact-check, and billing entities below remain future schema.
 
 ## Identity and content
 
@@ -19,12 +19,26 @@ This is a deliberately small conceptual model for future migrations. IDs are UUI
 - **Security:** RLS is enabled, no client role has table privileges, and only the server-only service-role client accesses it. Raw tokens are never stored in this table.
 - **Lifecycle:** created with a new account; token is returned to the user once. Losing it means creating a new account, with no transfer of the previous history.
 
+### `auth_pending_access_tokens`
+
+- **Purpose:** hold the digest of a generated registration token until signup consumes it.
+- **Implemented fields:** `token_hash` (SHA-256 hex, primary key), `created_at`, and `expires_at` (24 hours after creation).
+- **Relations/ownership:** no user relation until the token is consumed; server-only table.
+- **Security/lifecycle:** RLS is enabled and only the service role has access. The registration action returns the raw token once; registration atomically removes the pending row before creating the account. Expired entries are cleaned up when another registration token is generated.
+
+### `auth_recovery_codes`
+
+- **Purpose:** store a lookup digest for the one-time recovery code shown after registration.
+- **Implemented fields:** `user_id` (primary key/FK to `auth.users`), `code_hash` (SHA-256 hex), `created_at`.
+- **Relations/ownership:** one recovery-code digest per Auth user; server-only table.
+- **Security/lifecycle:** RLS is enabled and client grants are revoked. The raw recovery code is not stored. No public recovery/rotation flow currently uses this table.
+
 ### `content_items`
 
 - **Purpose:** one uploaded or future provider-sourced media item.
-- **Implemented fields:** `id`, `user_id`, `type`, `status`, `created_at`, `updated_at`. `type` is currently the `video` enum; `status` is constrained to `pending`, `ready`, or `failed`.
+- **Implemented fields:** `id`, `user_id`, `type`, `status`, `storage_path`, `original_file_name`, `file_size_bytes`, `file_mime_type`, `upload_id`, `created_at`, `updated_at`. `type` is currently the `video` enum; `status` is constrained to `pending`, `ready`, or `failed`; maximum file size is 100 MiB; `(user_id, upload_id)` is unique; storage paths must begin with the owner UUID.
 - **Relations/ownership:** belongs to profile; has transcripts and analysis jobs. User-owned.
-- **Lifecycle:** created before upload finalization, processed, then retained or deleted with its media.
+- **Lifecycle:** created after a successful Storage upload. The upload API is idempotent per user/upload ID and attempts storage cleanup if DB creation fails. New records remain `pending`; no pipeline currently advances them to `ready` or `failed`.
 
 ### `transcripts`
 
@@ -76,8 +90,8 @@ This is a deliberately small conceptual model for future migrations. IDs are UUI
 
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`; workflow metadata remains future scope.
-- **Relations/ownership:** belongs to user and content item; coordinates downstream records. User can read their status; server controls writes.
-- **Lifecycle:** queued, running, completed, failed, or cancelled; terminal records retained for history/operations.
+- **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
+- **Lifecycle:** schema allows queued, running, completed, failed, and cancelled states. No current app path creates or advances these jobs; workflow integration remains future scope.
 
 ## Commercial access
 
@@ -119,6 +133,8 @@ This is a deliberately small conceptual model for future migrations. IDs are UUI
 ## Implemented integrity baseline
 
 `profiles.id` references `auth.users.id`. New Auth users receive a profile through a minimal idempotent database trigger. `content_items.user_id` references `profiles.id`. `analysis_jobs` references the same `(content_item_id, user_id)` pair, preventing a job from claiming a different owner than its content item. The initial migration uses not-null fields, enum constraints, foreign keys, indexes for owner history queries, automatic `updated_at`, and RLS.
+
+`auth_access_tokens`, `auth_pending_access_tokens`, and `auth_recovery_codes` have RLS enabled with direct `anon`/`authenticated` access revoked; server-side privileged code stores only SHA-256 digests. The `videos` bucket is private, with object policies scoped to the first path segment matching `auth.uid()`.
 
 ## Future integrity baseline
 

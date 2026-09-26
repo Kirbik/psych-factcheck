@@ -2,6 +2,10 @@
 
 Payments are post-MVP. The MVP introduces access concepts without connecting Stripe or another real billing service.
 
+## Current status
+
+Only TypeScript interfaces for `BillingProvider`, `EntitlementService`, and `UsageService` exist in `src/server/billing/contracts.ts`. There are no billing migrations, adapters, checkout/webhook routes, entitlement implementation, or usage enforcement. The interfaces are architecture seams, not working billing behavior.
+
 ## Responsibilities
 
 - `BillingProvider` translates provider checkout, customer, subscription, cancellation, and webhook operations into stable application events.

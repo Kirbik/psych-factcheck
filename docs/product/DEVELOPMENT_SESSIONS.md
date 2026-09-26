@@ -2,7 +2,13 @@
 
 Use one session per bounded objective. Do not begin a later session until the user accepts the current one. Every session starts with `AGENTS.md`, `ARCHITECTURE.md`, relevant documents, tests, and `git status`, and ends with actual check results plus `git diff --stat`.
 
+## Repository progress (2026-09-26)
+
+The repository contains implementation work through Session 4: foundation/tooling, Supabase schema and clients, token-based authentication, and validated private video upload. These sessions have implementation artifacts in the current tree; this status is not a claim that every environment-gated test passed or that the MVP is release-ready. Session 5 is the next planned development goal. No analysis workflow, transcription, AI, Evidence Base, or report persistence is connected.
+
 ## Session 0 — Foundation
+
+**Status:** Implemented. The project has the Next.js/TypeScript/pnpm tooling, documentation, provider contracts, tests, and initial smoke coverage. This records implementation status, not a release audit.
 
 - **Goal:** Establish architecture, documentation, project rules, and executable quality tooling.
 - **Why:** Future Codex sessions need a safe, shared operating baseline.
@@ -17,6 +23,8 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 ## Session 1 — Project Skeleton
 
+**Status:** Implemented. App Router structure, lint/format/typecheck, Vitest, Playwright, smoke coverage, and package scripts are present. Recheck current toolchain compatibility as part of future maintenance.
+
 - **Goal:** Audit and refine the executable application skeleton without adding features.
 - **Why:** Confirm current Next.js/tooling conventions and developer ergonomics before infrastructure work.
 - **Scope:** Route/layout conventions, config cleanup, CI-ready scripts, test organization, baseline accessibility/metadata.
@@ -29,6 +37,8 @@ Use one session per bounded objective. Do not begin a later session until the us
 - **Definition of Done:** Release-like skeleton passes all gates and Session 2 inputs are explicit.
 
 ## Session 2 — Supabase Foundation
+
+**Status:** Implemented. Supabase client boundaries, migrations, generated DB contract, initial RLS policies, and environment-gated Auth/real-PostgreSQL tests exist. Current schema has subsequently expanded with video and token-auth migrations.
 
 - **Goal:** Add typed Supabase connections, migrations, initial schema, and RLS foundations.
 - **Why:** Persistence and ownership precede user features.
@@ -45,14 +55,16 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 - **Goal:** Implement signup, login, logout, sessions, and protected routes.
 - **Why:** Ownership requires a reliable identity boundary.
-- **Scope:** Supabase Auth flows, validation, server-side session checks, minimal auth UI.
-- **Out of scope:** Social auth, account recovery polish, upload, AI.
+- **Scope:** Supabase Auth flows, validation, server-side session checks, minimal auth UI. The implemented product uses generated high-entropy access tokens and one-time recovery codes rather than user-chosen email/password credentials.
+- **Out of scope:** Social auth, public/support-assisted recovery, token rotation, upload, AI.
 - **Expected files:** `src/features/auth`, auth routes/actions, middleware if justified, E2E tests.
-- **Acceptance criteria:** Unauthorized access is blocked; errors do not leak sensitive details.
+- **Acceptance criteria:** Unauthorized access is blocked; errors do not leak sensitive details; raw access/recovery codes are not stored in the token lookup tables.
 - **Required tests:** lint, typecheck, unit/integration, auth E2E, build.
 - **Suggested Codex model:** Terra.
 - **QA requirements:** Reviewer and authorization-focused Test Engineer.
 - **Definition of Done:** Critical auth flows work and ownership context is available server-side.
+
+**Status:** Implemented. Token generation, signup, sign-in, sign-out, cookie session refresh, server claim validation, and one-time recovery code display exist. The recovery screen is preview-only; no recovery operation exists.
 
 ## Session 4 — Video Upload
 
@@ -61,13 +73,17 @@ Use one session per bounded objective. Do not begin a later session until the us
 - **Scope:** Private Storage bucket/policies, type/size validation, upload state, ownership checks.
 - **Out of scope:** Transcription, job orchestration, multi-upload, external content.
 - **Expected files:** `src/features/analysis`, `src/server/storage`, migrations/policies, tests.
-- **Acceptance criteria:** Invalid/unowned files are rejected and valid uploads create one owned record.
+- **Acceptance criteria:** Invalid/unowned files are rejected and valid uploads create one owned record. Current supported types are MP4, WebM, and MOV up to 100 MiB; successful items remain `pending` until a future workflow updates them.
 - **Required tests:** validator unit, Storage/RLS integration, upload E2E, build.
 - **Suggested Codex model:** Terra.
 - **QA requirements:** Security-oriented Reviewer and failure-case Test Engineer.
 - **Definition of Done:** One private untrusted video can be uploaded safely.
 
+**Status:** Implemented. The authenticated upload route validates type/container/size, writes to the private `videos` bucket, persists an owner-scoped content row, and uses a per-user upload ID for idempotency. It does not start analysis or create an `analysis_jobs` record.
+
 ## Session 5 — Background Workflow
+
+**Status:** Planned; next session. Start only after the user approves this development goal.
 
 - **Goal:** Add an idempotent Trigger.dev analysis workflow without AI.
 - **Why:** Long-running work must not depend on an HTTP request.

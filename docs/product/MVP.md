@@ -19,10 +19,23 @@ The initial user is a research-minded consumer, creator, educator, or psychology
 7. The user receives original/normalized claims, timestamps, verdicts, confidence, explanations, evidence, and sources.
 8. The user can revisit prior analyses.
 
+## Current implementation status
+
+The current code implements only part of this flow:
+
+- `/` provides the token-based sign-in, registration, and recovery-code presentation UI.
+- Server Actions generate a one-time registration token, create a token-backed Supabase Auth account, authenticate with an access token, and sign out.
+- `/dashboard` validates the session server-side, lists the authenticated user's `content_items`, and provides a single-video upload form.
+- `POST /api/uploads/video` validates MP4, WebM, or MOV files up to 100 MiB, uploads to the private `videos` bucket, and creates an owned content row with upload idempotency.
+- `/ui-preview/*` contains interface prototypes for history, upload, processing, report, and profile. These screens are not connected to the corresponding persisted product workflows.
+
+The upload creates a `pending` content item. It does not create an `analysis_jobs` row or start processing. Transcription, claim extraction/normalization/classification, Evidence Base, embeddings, retrieval, reranking, judgment, report persistence, history pagination, usage enforcement, and recovery are not implemented. The complete flow above remains the product target, not a claim about current behavior.
+
 ## MVP scope
 
-- Authentication and protected user data
-- One video per analysis, private storage, validation, and status tracking
+- Token-based authentication and protected user data (implemented foundation)
+- One video upload to private storage with validation and idempotency (implemented foundation)
+- Analysis job execution and live status tracking (future implementation)
 - Transcription, claim extraction, normalization, and classification
 - A small curated Evidence Base with embeddings, retrieval, metadata filters, and reranking
 - Evidence-grounded fact-check judgments and structured reports
@@ -45,6 +58,8 @@ Instagram scraping/profile analysis, batch Reel analysis, payments/subscriptions
 ## Constraints
 
 One developer builds through Codex. The architecture is a TypeScript modular monolith. External services must be replaceable. Long-running work must be resumable, structured AI output must be validated, and every citation must trace to a real Evidence Base source.
+
+The current authentication model uses generated access tokens rather than user-chosen email/password credentials. Recovery codes are displayed once, but no recovery endpoint exists yet. Review [Authentication](../architecture/AUTH.md) before changing this model.
 
 ## Definition of Done
 

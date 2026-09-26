@@ -50,7 +50,7 @@ This repository is developed through focused Codex sessions. Read [ARCHITECTURE.
 
 1. Утверждённый макет Figma
 2. Компоненты и стили Preline UI Figma
-3. `docs/product/UI_FOUNDATION.md`
+3. `UI_FOUNDATION.md` at the repository root
 4. Существующие компоненты проекта
 5. Только если ни один источник не определяет решение – остановись и явно укажи, что дизайн не определён.
 
@@ -58,7 +58,7 @@ This repository is developed through focused Codex sessions. Read [ARCHITECTURE.
 
 Если код противоречит Figma – Figma имеет приоритет.
 
-Если `UI_FOUNDATION.md` противоречит Figma – Figma имеет приоритет.
+Если `UI_FOUNDATION.md` противоречит утверждённому продуктовому макету Figma – макет имеет приоритет.
 
 ---
 
@@ -199,7 +199,7 @@ Responsive-поведение должно основываться только
 
 1. responsive-вариантах Figma;
 2. правилах Preline;
-3. правилах, явно описанных в `UI_FOUNDATION.md`.
+3. правилах, явно описанных в корневом `UI_FOUNDATION.md`.
 
 Не придумывай самостоятельно mobile/tablet layouts.
 
@@ -209,7 +209,7 @@ Responsive-поведение должно основываться только
 
 ## Icons
 
-Используй только набор иконок, определённый в `UI_FOUNDATION.md` или Preline.
+Используй только набор иконок, определённый в корневом `UI_FOUNDATION.md` или Preline.
 
 Не смешивай разные icon libraries.
 
@@ -253,7 +253,7 @@ Responsive-поведение должно основываться только
 
 ## Missing design decision
 
-Если для элемента нет решения в Figma, Preline или `UI_FOUNDATION.md`, не импровизируй.
+Если для элемента нет решения в Figma, Preline или корневом `UI_FOUNDATION.md`, не импровизируй.
 
 Используй сообщение:
 
@@ -376,6 +376,7 @@ Run `git status` before changes and `git diff --stat` afterward. Never use `git 
 
 - Product and scope: `docs/product/MVP.md`, `docs/product/DEVELOPMENT_SESSIONS.md`
 - Fact-check policy: `docs/product/FACT_CHECKING_RULES.md`
+- UI foundation: `UI_FOUNDATION.md`; screen reference images: `docs/design/README.md`
 - System design: `docs/architecture/AI_PIPELINE.md`, `DATA_MODEL.md`, `BILLING.md`
 - Quality: `docs/testing/TEST_STRATEGY.md`, `AI_EVALS.md`, `CODEX_QA_WORKFLOW.md`
 
