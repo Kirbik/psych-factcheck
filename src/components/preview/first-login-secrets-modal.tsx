@@ -84,7 +84,6 @@ export function FirstLoginSecretsModal() {
         <input
           className={styles.generatedToken}
           id="first-login-token"
-          onFocus={(event) => event.currentTarget.select()}
           readOnly
           value={visibleSecrets.token}
         />
@@ -112,7 +111,6 @@ export function FirstLoginSecretsModal() {
         <input
           className={styles.generatedToken}
           id="first-login-recovery-code"
-          onFocus={(event) => event.currentTarget.select()}
           readOnly
           value={visibleSecrets.recoveryCode}
         />

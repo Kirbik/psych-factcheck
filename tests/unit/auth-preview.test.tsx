@@ -163,6 +163,13 @@ describe("AuthPreview", () => {
       expect(generateToken).toHaveBeenCalledOnce();
       expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
     });
+    const tokenInput = screen.getByLabelText(
+      "Токен регистрации",
+    ) as HTMLInputElement;
+    tokenInput.setSelectionRange(2, 3);
+    fireEvent.focus(tokenInput);
+    expect(tokenInput.selectionStart).toBe(2);
+    expect(tokenInput.selectionEnd).toBe(3);
     const tokenNotice = screen.getByRole("status");
     expect(tokenNotice).toHaveTextContent(
       "Сохраните токен: повторно показать его будет невозможно.",

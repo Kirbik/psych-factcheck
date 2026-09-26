@@ -64,12 +64,22 @@ describe("FirstLoginSecretsModal", () => {
 
     render(<FirstLoginSecretsModal />);
 
-    expect(await screen.findByLabelText("Токен авторизации")).toHaveValue(
-      secrets.token,
-    );
-    expect(screen.getByLabelText("Код восстановления")).toHaveValue(
-      secrets.recoveryCode,
-    );
+    const tokenInput = (await screen.findByLabelText(
+      "Токен авторизации",
+    )) as HTMLInputElement;
+    const recoveryCodeInput = screen.getByLabelText(
+      "Код восстановления",
+    ) as HTMLInputElement;
+    expect(tokenInput).toHaveValue(secrets.token);
+    expect(recoveryCodeInput).toHaveValue(secrets.recoveryCode);
+    tokenInput.setSelectionRange(2, 3);
+    recoveryCodeInput.setSelectionRange(2, 3);
+    fireEvent.focus(tokenInput);
+    fireEvent.focus(recoveryCodeInput);
+    expect(tokenInput.selectionStart).toBe(2);
+    expect(tokenInput.selectionEnd).toBe(3);
+    expect(recoveryCodeInput.selectionStart).toBe(2);
+    expect(recoveryCodeInput.selectionEnd).toBe(3);
     fireEvent.click(screen.getByRole("button", { name: "Понятно" }));
 
     expect(window.sessionStorage.getItem(firstLoginSecretsStorageKey)).toBeNull();

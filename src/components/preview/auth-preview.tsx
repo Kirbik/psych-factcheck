@@ -189,7 +189,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
         <input
           className={styles.generatedToken}
           id={id}
-          onFocus={(event) => event.currentTarget.select()}
           readOnly
           value={value ?? ""}
         />
@@ -371,7 +370,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       <input
                         className={styles.generatedToken}
                         id="registration-token"
-                        onFocus={(event) => event.currentTarget.select()}
                         placeholder="Появится после создания"
                         readOnly
                         value={
@@ -452,7 +450,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                         className={styles.generatedToken}
                         id="registration-token"
                         name="token"
-                        onFocus={(event) => event.currentTarget.select()}
                         placeholder="Появится после создания"
                         readOnly
                         value={generatedToken ?? ""}
