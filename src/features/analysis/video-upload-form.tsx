@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { UploadDropzone } from "@/components/product/upload-dropzone";
+import { uploadVideoFile } from "@/features/analysis/video-upload-client";
 
 type UploadState = "idle" | "uploading" | "success" | "error";
 
@@ -25,17 +26,8 @@ export function VideoUploadForm() {
 
     setState("uploading");
     setMessage("");
-    const formData = new FormData();
-    formData.set("video", file);
-    formData.set("upload_id", uploadId);
     try {
-      const response = await fetch("/api/uploads/video", {
-        method: "POST",
-        body: formData,
-      });
-      const result = (await response.json()) as { error?: string };
-      if (!response.ok)
-        throw new Error(result.error ?? "Не удалось загрузить видео.");
+      await uploadVideoFile(file, uploadId);
       setState("success");
       setMessage("Видео загружено. Запись проверки сохранена.");
       router.refresh();

@@ -7,6 +7,7 @@ import {
   ProcessingPreview,
   type UploadProgressStatus,
 } from "@/components/preview/processing-preview";
+import { uploadVideoFile } from "@/features/analysis/video-upload-client";
 import styles from "./history-preview.module.css";
 import newStyles from "./new-check-preview.module.css";
 
@@ -31,19 +32,8 @@ export function NewCheckPreview() {
     setIsUploading(true);
     setUploadStatus("processing");
     setUploadError("");
-    const formData = new FormData();
-    formData.set("video", videoFile);
-    formData.set("upload_id", uploadId);
-
     try {
-      const response = await fetch("/api/uploads/video", {
-        method: "POST",
-        body: formData,
-      });
-      const result = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(result.error ?? "Не удалось загрузить видео.");
-      }
+      await uploadVideoFile(videoFile, uploadId);
       setUploadStatus("completed");
     } catch (error) {
       setUploadError(

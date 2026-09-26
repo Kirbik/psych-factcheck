@@ -182,6 +182,33 @@ test("marks the upload stage as failed when the server rejects the video", async
   await expect(page).toHaveURL(/\/new-check$/);
 });
 
+test("shows a readable error when the upload endpoint returns HTML", async ({
+  page,
+}) => {
+  await page.route("**/api/uploads/video", (route) =>
+    route.fulfill({
+      status: 502,
+      contentType: "text/html",
+      body: "<html><h1>Bad Gateway</h1></html>",
+    }),
+  );
+
+  await page.goto("/new-check");
+  await page.setInputFiles("#video-file", {
+    name: "e2e-video.mp4",
+    mimeType: "video/mp4",
+    buffer: Buffer.from([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0, 0, 0, 0]),
+  });
+  await page.getByRole("button", { name: "Продолжить" }).click();
+
+  await expect(page.locator("p[role='alert']")).toContainText(
+    "Не удалось загрузить видео. Попробуйте ещё раз.",
+  );
+  await expect(page.locator("p[role='alert']")).not.toContainText(
+    "Unexpected token",
+  );
+});
+
 test.describe("authentication", () => {
   test.skip(
     !authEnvironmentIsConfigured,
