@@ -20,7 +20,7 @@ The same image set is also present in the root `design-prototypes/` folder and i
 
 ## Preview routes
 
-These root-level pages are UI prototypes, not database-backed product flows:
+These root-level pages are UI prototypes, not fully database-backed product flows:
 
 - `/auth`
 - `/history`
@@ -28,6 +28,8 @@ These root-level pages are UI prototypes, not database-backed product flows:
 - `/processing`
 - `/report`
 - `/profile`
+
+`/new-check` submits the selected video through the authenticated upload API and displays the real upload status. Transcription and later analysis stages are not implemented; `/processing` remains a visual prototype and must not imply that those stages are running.
 
 The actual `/` route hosts token login/registration UI. `/dashboard` is the currently persisted checks list and single-video upload entry. Login redirects to `/history`; legacy `/ui-preview/*` URLs redirect to the corresponding root-level paths.
 

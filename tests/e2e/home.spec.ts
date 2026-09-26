@@ -107,9 +107,19 @@ test("requires token generation before registration and clears registration stat
 
 test("uploads the selected video before continuing", async ({ page }) => {
   let uploadRequestBody = "";
+  let notifyRequestStarted: () => void = () => undefined;
+  let finishUpload: () => void = () => undefined;
+  const requestStarted = new Promise<void>((resolve) => {
+    notifyRequestStarted = resolve;
+  });
+  const uploadResponseAllowed = new Promise<void>((resolve) => {
+    finishUpload = resolve;
+  });
   await page.route("**/api/uploads/video", async (route) => {
     expect(route.request().method()).toBe("POST");
     uploadRequestBody = route.request().postDataBuffer()?.toString() ?? "";
+    notifyRequestStarted();
+    await uploadResponseAllowed;
     await route.fulfill({
       status: 201,
       contentType: "application/json",
@@ -125,12 +135,23 @@ test("uploads the selected video before continuing", async ({ page }) => {
   });
   await page.getByRole("button", { name: "Продолжить" }).click();
 
-  await expect(page).toHaveURL(/\/processing$/);
+  await requestStarted;
+  await expect(
+    page.getByRole("heading", { name: "Загружаем видео" }),
+  ).toBeVisible();
+  const uploadStep = page.locator("li").filter({ hasText: "Загрузка видео" });
+  await expect(uploadStep).toContainText("Выполняется");
   expect(uploadRequestBody).toContain('name="video"');
   expect(uploadRequestBody).toContain('name="upload_id"');
+  finishUpload();
+  await expect(uploadStep).toContainText("Готово");
+  await expect(
+    page.locator("li").filter({ hasText: "Создание транскрипта" }),
+  ).toContainText("Ожидает");
+  await expect(page).toHaveURL(/\/new-check$/);
 });
 
-test("stays on the upload screen when the server rejects the video", async ({
+test("marks the upload stage as failed when the server rejects the video", async ({
   page,
 }) => {
   await page.route("**/api/uploads/video", (route) =>
@@ -152,6 +173,12 @@ test("stays on the upload screen when the server rejects the video", async ({
   await expect(page.locator("p[role='alert']")).toContainText(
     "Размер запроса превышает допустимый предел.",
   );
+  await expect(
+    page.getByRole("heading", { name: "Не удалось загрузить видео" }),
+  ).toBeVisible();
+  await expect(
+    page.locator("li").filter({ hasText: "Загрузка видео" }),
+  ).toContainText("Ошибка");
   await expect(page).toHaveURL(/\/new-check$/);
 });
 

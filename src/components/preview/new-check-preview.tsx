@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Inter, Lora } from "next/font/google";
 import { useRef, useState } from "react";
+import {
+  ProcessingPreview,
+  type UploadProgressStatus,
+} from "@/components/preview/processing-preview";
 import styles from "./history-preview.module.css";
 import newStyles from "./new-check-preview.module.css";
 
@@ -11,18 +14,22 @@ const inter = Inter({ display: "swap", subsets: ["cyrillic", "latin"], variable:
 const lora = Lora({ display: "swap", subsets: ["cyrillic", "latin"], variable: "--history-preview-lora", weight: ["600"] });
 
 export function NewCheckPreview() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState("video");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploadId, setUploadId] = useState(() => crypto.randomUUID());
+  const [showProgress, setShowProgress] = useState(false);
+  const [uploadStatus, setUploadStatus] =
+    useState<UploadProgressStatus>("pending");
 
   async function submitUpload() {
     if (!videoFile || isUploading) return;
 
+    setShowProgress(true);
     setIsUploading(true);
+    setUploadStatus("processing");
     setUploadError("");
     const formData = new FormData();
     formData.set("video", videoFile);
@@ -37,14 +44,28 @@ export function NewCheckPreview() {
       if (!response.ok) {
         throw new Error(result.error ?? "Не удалось загрузить видео.");
       }
-      router.push("/processing");
+      setUploadStatus("completed");
     } catch (error) {
       setUploadError(
         error instanceof Error ? error.message : "Не удалось загрузить видео.",
       );
+      setUploadStatus("failed");
     } finally {
       setIsUploading(false);
     }
+  }
+
+  if (showProgress) {
+    return (
+      <ProcessingPreview
+        onBack={() => {
+          setShowProgress(false);
+          setUploadError("");
+        }}
+        uploadError={uploadError}
+        uploadStatus={uploadStatus}
+      />
+    );
   }
 
   return <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
