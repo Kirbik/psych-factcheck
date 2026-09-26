@@ -105,6 +105,56 @@ test("requires token generation before registration and clears registration stat
   ).toBeVisible();
 });
 
+test("uploads the selected video before continuing", async ({ page }) => {
+  let uploadRequestBody = "";
+  await page.route("**/api/uploads/video", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    uploadRequestBody = route.request().postDataBuffer()?.toString() ?? "";
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({ contentItemId: "content-item-id", duplicate: false }),
+    });
+  });
+
+  await page.goto("/new-check");
+  await page.setInputFiles("#video-file", {
+    name: "e2e-video.mp4",
+    mimeType: "video/mp4",
+    buffer: Buffer.from([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0, 0, 0, 0]),
+  });
+  await page.getByRole("button", { name: "Продолжить" }).click();
+
+  await expect(page).toHaveURL(/\/processing$/);
+  expect(uploadRequestBody).toContain('name="video"');
+  expect(uploadRequestBody).toContain('name="upload_id"');
+});
+
+test("stays on the upload screen when the server rejects the video", async ({
+  page,
+}) => {
+  await page.route("**/api/uploads/video", (route) =>
+    route.fulfill({
+      status: 413,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Размер запроса превышает допустимый предел." }),
+    }),
+  );
+
+  await page.goto("/new-check");
+  await page.setInputFiles("#video-file", {
+    name: "too-large.mp4",
+    mimeType: "video/mp4",
+    buffer: Buffer.from([0, 0, 0, 0, 0x66, 0x74, 0x79, 0x70, 0, 0, 0, 0]),
+  });
+  await page.getByRole("button", { name: "Продолжить" }).click();
+
+  await expect(page.locator("p[role='alert']")).toContainText(
+    "Размер запроса превышает допустимый предел.",
+  );
+  await expect(page).toHaveURL(/\/new-check$/);
+});
+
 test.describe("authentication", () => {
   test.skip(
     !authEnvironmentIsConfigured,
