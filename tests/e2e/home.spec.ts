@@ -120,6 +120,23 @@ test.describe("authentication", () => {
       name: "Сохраните код восстановления",
     });
     await expect(recoveryDialog).toBeVisible();
+    for (const viewport of [
+      { width: 1280, height: 800 },
+      { width: 800, height: 600 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const bounds = await recoveryDialog.boundingBox();
+      const viewportCenter = await page.evaluate(() => ({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      }));
+      if (!bounds) {
+        throw new Error("Recovery dialog must have visible bounds");
+      }
+      expect(Math.abs(bounds.x + bounds.width / 2 - viewportCenter.x)).toBeLessThan(2);
+      expect(Math.abs(bounds.y + bounds.height / 2 - viewportCenter.y)).toBeLessThan(2);
+    }
     await expect(recoveryDialog).toContainText(
       "Сохраните этот код: без него восстановить утерянный токен не получится.",
     );
