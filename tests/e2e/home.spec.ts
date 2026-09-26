@@ -92,8 +92,8 @@ test.describe("authentication", () => {
   }) => {
     await page.goto("/?mode=signup");
     await page.getByLabel("Кодовое слово").fill("e2e-secret-word");
-    await page.getByRole("button", { name: "Зарегистрироваться" }).click();
-    await expect(page.getByLabel("Токен авторизации")).toHaveValue(
+    await page.getByRole("button", { name: "Создать токен" }).click();
+    await expect(page.getByLabel("Токен регистрации")).toHaveValue(
       /^pfc_[a-f0-9]{64}$/,
     );
   });

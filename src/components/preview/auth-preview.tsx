@@ -191,33 +191,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                 сохраните его для следующих входов.
               </p>
 
-              {registrationState.generatedToken ? (
-                <>
-                  <label
-                    className={styles.fieldLabel}
-                    htmlFor="generated-token"
-                  >
-                    Токен авторизации
-                  </label>
-                  <div className={styles.fieldWrap}>
-                    <input
-                      className={styles.generatedToken}
-                      id="generated-token"
-                      onFocus={(event) => event.currentTarget.select()}
-                      readOnly
-                      value={registrationState.generatedToken}
-                    />
-                  </div>
-                  <p className={styles.description} role="status">
-                    {registrationState.message}
-                  </p>
-                  <Link className={styles.primary} href="/ui-preview/history">
-                    Перейти к проверкам
-                    <ArrowIcon />
-                  </Link>
-                </>
-              ) : null}
-
               {!registrationState.generatedToken ? (
                 <>
                   <label className={styles.fieldLabel} htmlFor="secret-word">
@@ -254,23 +227,63 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       {registrationState.fieldErrors.secretWord[0]}
                     </p>
                   ) : null}
+                  <label
+                    className={styles.fieldLabel}
+                    htmlFor="registration-token"
+                  >
+                    Токен регистрации
+                  </label>
+                  <div className={styles.tokenRow}>
+                    <div className={styles.fieldWrap}>
+                      <input
+                        className={styles.generatedToken}
+                        id="registration-token"
+                        placeholder="Появится после создания"
+                        readOnly
+                        value=""
+                      />
+                    </div>
+                    <button
+                      className={`${styles.primary} ${styles.tokenCreateButton}`}
+                      disabled={registrationPending}
+                      type="submit"
+                    >
+                      {registrationPending ? "Создаём…" : "Создать токен"}
+                      <ArrowIcon />
+                    </button>
+                  </div>
                   {registrationState.message ? (
                     <p className={styles.authError} role="alert">
                       {registrationState.message}
                     </p>
                   ) : null}
-                  <button
-                    className={styles.primary}
-                    disabled={registrationPending}
-                    type="submit"
-                  >
-                    {registrationPending
-                      ? "Регистрируем…"
-                      : "Зарегистрироваться"}
-                    <ArrowIcon />
-                  </button>
                 </>
-              ) : null}
+              ) : (
+                <>
+                  <label
+                    className={styles.fieldLabel}
+                    htmlFor="registration-token"
+                  >
+                    Токен регистрации
+                  </label>
+                  <div className={styles.fieldWrap}>
+                    <input
+                      className={styles.generatedToken}
+                      id="registration-token"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      value={registrationState.generatedToken}
+                    />
+                  </div>
+                  <p className={styles.description} role="status">
+                    {registrationState.message}
+                  </p>
+                  <Link className={styles.primary} href="/ui-preview/history">
+                    Перейти к проверкам
+                    <ArrowIcon />
+                  </Link>
+                </>
+              )}
             </>
           ) : (
             <>

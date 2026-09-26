@@ -81,14 +81,15 @@ describe("AuthPreview", () => {
       <AuthPreview actions={createActions(undefined, signup)} mode="signup" />,
     );
 
+    expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
     fireEvent.change(screen.getByLabelText("Кодовое слово"), {
       target: { value: "secret phrase" },
     });
-    fireEvent.submit(screen.getByRole("form", { name: "Регистрация" }));
+    fireEvent.click(screen.getByRole("button", { name: "Создать токен" }));
 
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalled();
-      expect(screen.getByLabelText("Токен авторизации")).toHaveValue(token);
+      expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
     });
     expect(
       screen.getByRole("link", { name: "Перейти к проверкам" }),
