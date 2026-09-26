@@ -366,26 +366,26 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   >
                     Токен регистрации
                   </label>
-                  <div className={styles.fieldWrap}>
-                    <input
-                      className={styles.generatedToken}
-                      id="registration-token"
-                      onFocus={(event) => event.currentTarget.select()}
-                      readOnly
-                      value={
-                        registrationTokenCleared ? "" : generatedToken ?? ""
-                      }
-                    />
-                    {!registrationTokenCleared ? (
-                      <button
-                        aria-label="Скопировать токен"
-                        className={styles.tokenCopyButton}
-                        onClick={() => copySecret(generatedToken, "token")}
-                        type="button"
-                      >
-                        <CopyIcon />
-                      </button>
-                    ) : null}
+                  <div className={styles.tokenRow}>
+                    <div className={styles.fieldWrap}>
+                      <input
+                        className={styles.generatedToken}
+                        id="registration-token"
+                        onFocus={(event) => event.currentTarget.select()}
+                        placeholder="Появится после создания"
+                        readOnly
+                        value={
+                          registrationTokenCleared ? "" : generatedToken ?? ""
+                        }
+                      />
+                    </div>
+                    <button
+                      className={`${styles.primary} ${styles.tokenCreateButton}`}
+                      disabled
+                      type="button"
+                    >
+                      Сгенерировать
+                    </button>
                   </div>
                   {loginState.message ? (
                     <p className={styles.authError} role="alert">

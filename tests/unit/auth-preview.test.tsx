@@ -179,6 +179,13 @@ describe("AuthPreview", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
+    expect(screen.getByLabelText("Токен регистрации")).toHaveAttribute(
+      "placeholder",
+      "Появится после создания",
+    );
+    expect(
+      screen.getByRole("button", { name: "Сгенерировать" }),
+    ).toBeDisabled();
     expect(window.sessionStorage.getItem(firstLoginSecretsStorageKey)).toBe(
       JSON.stringify({
         token,

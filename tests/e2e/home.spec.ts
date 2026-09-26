@@ -121,6 +121,13 @@ test.describe("authentication", () => {
     });
     await expect(registrationDialog).toBeVisible();
     await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
+    await expect(page.getByLabel("Токен регистрации")).toHaveAttribute(
+      "placeholder",
+      "Появится после создания",
+    );
+    await expect(
+      page.getByRole("button", { name: "Сгенерировать" }),
+    ).toBeDisabled();
     await expect(registrationDialog).not.toContainText(/^pfc_[a-f0-9]{64}$/);
     await registrationDialog.getByRole("button", { name: "Понятно" }).click();
     await expect(registrationDialog).not.toBeVisible();
