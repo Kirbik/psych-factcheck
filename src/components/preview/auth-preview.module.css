@@ -82,7 +82,7 @@
 .generatedToken { font-family: ui-monospace, Consolas, monospace !important; font-size: 12px !important; letter-spacing: 0 !important; }
 .authError { color: var(--danger); font-size: 13px; line-height: 1.5; margin: 16px 0 0; }
 .primary:disabled { cursor: not-allowed; opacity: 0.55; }
-.fieldWrap + .primary, .authError + .primary { margin-top: 20px; }
+.fieldWrap + .primary, .tokenRow + .primary, .authError + .primary { margin-top: 20px; }
 .fieldWrap:has(.generatedToken) { margin-bottom: 0; }
 .card > h1 + .description { margin-bottom: 20px; }
 

@@ -51,9 +51,23 @@ test("requires token generation before registration and clears registration stat
     page.getByRole("heading", { name: "Создайте аккаунт" }),
   ).toBeVisible();
   await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
+  const registrationButton = page.getByRole("button", {
+    name: "Регистрация",
+  });
   await expect(
-    page.getByRole("button", { name: "Регистрация" }),
+    registrationButton,
   ).toBeDisabled();
+  const tokenRowBox = await page
+    .getByLabel("Токен регистрации")
+    .locator("xpath=../..")
+    .boundingBox();
+  const registrationButtonBox = await registrationButton.boundingBox();
+  if (!tokenRowBox || !registrationButtonBox) {
+    throw new Error("Registration controls must be visible");
+  }
+  expect(
+    registrationButtonBox.y - (tokenRowBox.y + tokenRowBox.height),
+  ).toBeGreaterThanOrEqual(20);
 
   await page.getByRole("tab", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/$/);
