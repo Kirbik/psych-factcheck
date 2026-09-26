@@ -960,3 +960,35 @@ body h3 {
   .auth-page.auth-page--product .auth-page__statement { margin-top: 2.5rem; }
   .auth-page.auth-page--product .auth-page__form-surface { padding: 2.25rem 1.25rem 3rem; }
 }
+
+/* Validation feedback uses the product's semantic danger palette and typography. */
+.validation-error {
+  color: var(--danger, #b4551f);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0.25rem 0 0;
+}
+.validation-error--summary {
+  background: var(--danger-soft, #fbe5df);
+  border: 1px solid color-mix(in srgb, var(--danger, #b4551f) 24%, transparent);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+.input[aria-invalid="true"],
+.auth-form .input[aria-invalid="true"] {
+  border-color: var(--danger, #b4551f);
+}
+.input[aria-invalid="true"]:focus-visible,
+.auth-form .input[aria-invalid="true"]:focus-visible {
+  outline-color: color-mix(in srgb, var(--danger, #b4551f) 28%, transparent);
+}
+.upload-status {
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0.75rem 0 0;
+}
+.auth-page.auth-page--product .auth-form .validation-error { color: var(--danger, #b4551f); font-size: 0.8125rem; font-weight: 500; margin: 0.25rem 0 0; }
+.auth-page.auth-page--product .auth-form .input[aria-invalid="true"] { border-color: var(--danger, #b4551f); }
+.auth-page.auth-page--product .auth-form .input[aria-invalid="true"]:focus-visible { outline: 3px solid color-mix(in srgb, var(--danger, #b4551f) 28%, transparent); }

@@ -58,6 +58,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
   const [authToken, setAuthToken] = useState("");
   const [registrationToken, setRegistrationToken] = useState("");
   const [secretWord, setSecretWord] = useState("");
+  const [secretWordError, setSecretWordError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -111,6 +112,15 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
           className={styles.card}
           onSubmit={(event) => {
             event.preventDefault();
+            if (isSignup) {
+              const significantCharacterCount = Array.from(secretWord.replace(/\s/g, "")).length;
+              if (significantCharacterCount < 3 || significantCharacterCount > 100) {
+                setSecretWordError("Введите от 3 до 100 символов, не считая пробелы.");
+                setMessage("");
+                return;
+              }
+            }
+            setSecretWordError("");
             setMessage(
               isSignup
                 ? "Регистрация по токену пока не подключена к серверу."
@@ -203,14 +213,24 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
               <div className={styles.fieldWrap}>
                 <input
                   autoComplete="off"
+                  aria-describedby={secretWordError ? "secret-word-error" : undefined}
+                  aria-invalid={secretWordError ? true : undefined}
                   id="secret-word"
-                  onChange={(event) => setSecretWord(event.target.value)}
+                  onChange={(event) => {
+                    setSecretWord(event.target.value);
+                    setSecretWordError("");
+                  }}
                   required
                   type="password"
                   value={secretWord}
                   placeholder="Придумайте секретное слово"
                 />
               </div>
+              {secretWordError ? (
+                <p className={styles.fieldError} id="secret-word-error" role="alert">
+                  {secretWordError}
+                </p>
+              ) : null}
 
               {message ? <p className={styles.authError} role="status">{message}</p> : null}
               <button className={styles.primary} disabled={!registrationToken} type="submit">

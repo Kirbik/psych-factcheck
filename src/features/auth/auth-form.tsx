@@ -35,7 +35,7 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
         type="email"
       />
       {state.fieldErrors?.email ? (
-        <p id="email-error" role="alert">
+        <p className="validation-error" id="email-error" role="alert">
           {state.fieldErrors.email[0]}
         </p>
       ) : null}
@@ -53,7 +53,7 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
         type="password"
       />
       {state.fieldErrors?.password ? (
-        <p id="password-error" role="alert">
+        <p className="validation-error" id="password-error" role="alert">
           {state.fieldErrors.password[0]}
         </p>
       ) : null}
@@ -75,14 +75,14 @@ export function AuthForm({ action, submitLabel }: AuthFormProps) {
             type="password"
           />
           {state.fieldErrors?.passwordRepeat ? (
-            <p id="password-repeat-error" role="alert">
+            <p className="validation-error" id="password-repeat-error" role="alert">
               {state.fieldErrors.passwordRepeat[0]}
             </p>
           ) : null}
         </>
       ) : null}
 
-      {state.message ? <p role="alert">{state.message}</p> : null}
+      {state.message ? <p className="validation-error validation-error--summary" role="alert">{state.message}</p> : null}
       <Button loading={pending} type="submit">
         {pending ? "Пожалуйста, подождите…" : submitLabel}
       </Button>

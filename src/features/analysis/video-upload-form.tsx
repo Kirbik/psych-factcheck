@@ -64,7 +64,15 @@ export function VideoUploadForm() {
           {state === "uploading" ? "Загружаем…" : "Загрузить видео"}
         </Button>
       </UploadDropzone>
-      {message ? <p id="video-upload-status" role={state === "error" ? "alert" : "status"}>{message}</p> : null}
+      {message ? (
+        <p
+          className={state === "error" ? "validation-error validation-error--summary" : "upload-status"}
+          id="video-upload-status"
+          role={state === "error" ? "alert" : "status"}
+        >
+          {message}
+        </p>
+      ) : null}
     </form>
   );
 }
