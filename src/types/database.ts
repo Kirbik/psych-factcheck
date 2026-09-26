@@ -1,5 +1,5 @@
-// Generated-contract shape for the Session 2 migration. Regenerate with the
-// documented Supabase CLI command after every migration.
+// Generated-contract shape for the checked-in Supabase migrations. Regenerate
+// with the documented Supabase CLI command after every migration.
 export type Json =
   | string
   | number
@@ -11,6 +11,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      auth_access_tokens: {
+        Row: {
+          created_at: string;
+          revoked_at: string | null;
+          token_hash: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          revoked_at?: string | null;
+          token_hash: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          revoked_at?: string | null;
+          token_hash?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       analysis_jobs: {
         Row: {
           content_item_id: string;

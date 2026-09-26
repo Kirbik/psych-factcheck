@@ -4,35 +4,17 @@ import { redirect } from "next/navigation";
 import {
   authConfigurationError,
   authServiceError,
-  toSafeAuthError,
 } from "@/features/auth/errors";
 import type { AuthActionState } from "@/features/auth/state";
+import { parseSignIn, parseSignUp } from "@/features/auth/validation";
 import {
-  parseAuthCredentials,
-  parseSignUpCredentials,
-} from "@/features/auth/validation";
+  authenticateWithAccessToken,
+  InvalidAccessTokenError,
+  registerAccessTokenAccount,
+} from "@/server/supabase/access-token-auth";
 import { createServerAuthClient } from "@/server/supabase/auth";
 
-async function tryAuthRequest<T>(
-  request: () => Promise<T>,
-  operation: "sign-in" | "sign-up" | "sign-out",
-): Promise<
-  | { ok: true; value: T }
-  | { ok: false; errorName: string }
-> {
-  try {
-    return { ok: true, value: await request() };
-  } catch (error) {
-    const details = getAuthErrorDetails(error);
-    console.error("[auth] Supabase request failed", {
-      operation,
-      ...details,
-    });
-    return { ok: false, errorName: details.name };
-  }
-}
-
-function getAuthErrorDetails(error: unknown) {
+function getSafeErrorDetails(error: unknown) {
   if (typeof error !== "object" || error === null) {
     return { name: "UnknownError" };
   }
@@ -46,105 +28,83 @@ function getAuthErrorDetails(error: unknown) {
   return {
     name: typeof candidate.name === "string" ? candidate.name : "UnknownError",
     ...(typeof candidate.code === "string" ? { code: candidate.code } : {}),
-    ...(typeof candidate.status === "number" ? { status: candidate.status } : {}),
+    ...(typeof candidate.status === "number"
+      ? { status: candidate.status }
+      : {}),
   };
 }
 
-function validationState(
-  parsed:
-    | ReturnType<typeof parseAuthCredentials>
-    | ReturnType<typeof parseSignUpCredentials>,
-): AuthActionState | undefined {
-  if (parsed.success) {
-    return undefined;
+function safeFailure(error: unknown, operation: "register" | "sign-in") {
+  const details = getSafeErrorDetails(error);
+  console.error("[auth] Token authentication failed", {
+    operation,
+    ...details,
+  });
+
+  if (error instanceof InvalidAccessTokenError) {
+    return { message: "Токен авторизации введён неверно" };
   }
 
   return {
-    message: "Проверьте введённые данные",
-    fieldErrors: parsed.error.flatten().fieldErrors,
+    message:
+      details.name === "ZodError" ? authConfigurationError : authServiceError,
   };
 }
 
-export async function signUp(
+export async function registerWithToken(
   _: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const credentials = parseSignUpCredentials(formData);
-  if (!credentials.success) {
-    return validationState(credentials) ?? {
-      message: "Проверьте введённые данные",
-    };
-  }
-
-  const { email, password } = credentials.data;
-  const result = await tryAuthRequest(async () => {
-    const supabase = await createServerAuthClient();
-    return supabase.auth.signUp({ email, password });
-  }, "sign-up");
-  if (!result.ok) {
+  const parsed = parseSignUp(formData);
+  if (!parsed.success) {
     return {
-      message:
-        result.errorName === "ZodError"
-          ? authConfigurationError
-          : authServiceError,
+      message: "Проверьте введённые данные",
+      fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
 
-  const { data, error } = result.value;
-  if (error) {
-    return { message: toSafeAuthError(error.message, error.code) };
+  try {
+    const generatedToken = await registerAccessTokenAccount();
+    return {
+      generatedToken,
+      message: "Сохраните токен. Повторно показать его будет невозможно.",
+    };
+  } catch (error) {
+    return safeFailure(error, "register");
   }
-
-  if (data.session) {
-    redirect("/ui-preview/history");
-  }
-
-  return {
-    message: "Проверьте почту, чтобы подтвердить регистрацию и войти.",
-  };
 }
 
-export async function signIn(
+export async function signInWithToken(
   _: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  const credentials = parseAuthCredentials(formData);
-  if (!credentials.success) {
-    return validationState(credentials) ?? {
-      message: "Проверьте введённые данные",
+  const parsed = parseSignIn(formData);
+  if (!parsed.success) {
+    return {
+      message: "Проверьте введённый токен",
+      fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
 
-  const result = await tryAuthRequest(async () => {
-    const supabase = await createServerAuthClient();
-    return supabase.auth.signInWithPassword(credentials.data);
-  }, "sign-in");
-  if (!result.ok) {
-    return {
-      message:
-        result.errorName === "ZodError"
-          ? authConfigurationError
-          : authServiceError,
-    };
-  }
-
-  const { error } = result.value;
-  if (error) {
-    return {
-      message: toSafeAuthError(error.message, error.code, error.status),
-    };
+  try {
+    await authenticateWithAccessToken(parsed.data.token);
+  } catch (error) {
+    return safeFailure(error, "sign-in");
   }
 
   redirect("/ui-preview/history");
 }
 
 export async function signOut() {
-  const result = await tryAuthRequest(async () => {
+  try {
     const supabase = await createServerAuthClient();
-    return supabase.auth.signOut();
-  }, "sign-out");
-
-  if (!result.ok || result.value.error) {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    const details = getSafeErrorDetails(error);
+    console.error("[auth] Sign-out failed", details);
     redirect("/login?logout=failed");
   }
 

@@ -2,17 +2,23 @@
 
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { AuthActionState } from "@/features/auth/state";
+import { initialAuthActionState } from "@/features/auth/state";
 import styles from "./auth-preview.module.css";
 
 type AuthPreviewMode = "login" | "signup" | "reset";
 
 type AuthPreviewProps = {
-  /** Kept temporarily for call-site compatibility; token authentication is not wired to the existing backend. */
-  actions?: {
-    login: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
-    signup: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
+  actions: {
+    login: (
+      state: AuthActionState,
+      formData: FormData,
+    ) => Promise<AuthActionState>;
+    signup: (
+      state: AuthActionState,
+      formData: FormData,
+    ) => Promise<AuthActionState>;
   };
   mode: AuthPreviewMode;
 };
@@ -47,24 +53,28 @@ function ArrowIcon() {
   );
 }
 
-function createRegistrationToken() {
-  const bytes = window.crypto.getRandomValues(new Uint8Array(24));
-  const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `pfc_${token}`;
-}
-
-export function AuthPreview({ mode }: AuthPreviewProps) {
+export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
   const [authToken, setAuthToken] = useState("");
-  const [registrationToken, setRegistrationToken] = useState("");
   const [secretWord, setSecretWord] = useState("");
-  const [secretWordError, setSecretWordError] = useState("");
+  const [loginState, loginAction, loginPending] = useActionState(
+    actions.login,
+    initialAuthActionState,
+  );
+  const [registrationState, registrationAction, registrationPending] =
+    useActionState(actions.signup, initialAuthActionState);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     const handlePopState = () => {
       const nextMode = new URLSearchParams(window.location.search).get("mode");
-      setActiveMode(nextMode === "signup" ? "signup" : nextMode === "reset" ? "reset" : "login");
+      setActiveMode(
+        nextMode === "signup"
+          ? "signup"
+          : nextMode === "reset"
+            ? "reset"
+            : "login",
+      );
       setMessage("");
     };
 
@@ -85,8 +95,14 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
       <header className={styles.header}>
-        <Link className={styles.brand} href="/" aria-label="Псих Фактчек — вход">
-          <span className={styles.mark}><CheckIcon /></span>
+        <Link
+          className={styles.brand}
+          href="/"
+          aria-label="Псих Фактчек — вход"
+        >
+          <span className={styles.mark}>
+            <CheckIcon />
+          </span>
           <span>Псих Фактчек</span>
         </Link>
         <nav className={styles.nav} aria-label="Навигация макета">
@@ -96,7 +112,7 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
           <Link
             className={styles.signIn}
             href="/"
-            onClick={(event) => {
+            onNavigate={(event) => {
               event.preventDefault();
               navigateMode("login");
             }}
@@ -108,65 +124,62 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
 
       <section className={styles.stage} aria-labelledby="auth-preview-title">
         <form
-          aria-label={isSignup ? "Регистрация" : isRecovery ? "Восстановление доступа" : "Авторизация"}
+          aria-label={
+            isSignup
+              ? "Регистрация"
+              : isRecovery
+                ? "Восстановление доступа"
+                : "Авторизация"
+          }
+          action={isSignup ? registrationAction : loginAction}
           className={styles.card}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (isSignup) {
-              const significantCharacterCount = Array.from(secretWord.replace(/\s/g, "")).length;
-              if (significantCharacterCount < 3 || significantCharacterCount > 100) {
-                setSecretWordError("Введите от 3 до 100 символов, не считая пробелы.");
-                setMessage("");
-                return;
-              }
-            }
-            setSecretWordError("");
-            setMessage(
-              isSignup
-                ? "Регистрация по токену пока не подключена к серверу."
-                : "Вход по токену пока не подключён к серверу.",
-            );
-          }}
         >
           {!isRecovery ? (
-            <div className={styles.tabs} role="tablist" aria-label="Режим входа">
-              <Link
+            <div
+              className={styles.tabs}
+              role="tablist"
+              aria-label="Режим входа"
+            >
+              <button
                 aria-selected={!isSignup}
                 className={!isSignup ? styles.tabActive : styles.tab}
-                href="/"
-                onClick={(event) => {
-                  event.preventDefault();
-                  navigateMode("login");
-                }}
+                onClick={() => navigateMode("login")}
                 role="tab"
+                type="button"
               >
                 Войти
-              </Link>
-              <Link
+              </button>
+              <button
                 aria-selected={isSignup}
                 className={isSignup ? styles.tabActive : styles.tab}
-                href="/?mode=signup"
-                onClick={(event) => {
-                  event.preventDefault();
-                  navigateMode("signup");
-                }}
+                onClick={() => navigateMode("signup")}
                 role="tab"
+                type="button"
               >
                 Регистрация
-              </Link>
+              </button>
             </div>
           ) : null}
 
           <h1 id="auth-preview-title">
-            {isRecovery ? "Восстановление доступа" : isSignup ? "Создайте аккаунт" : "Вход в аккаунт"}
+            {isRecovery
+              ? "Восстановление доступа"
+              : isSignup
+                ? "Создайте аккаунт"
+                : "Вход в аккаунт"}
           </h1>
 
           {isRecovery ? (
             <>
               <p className={styles.description}>
-                Если вы забыли токен, восстановить доступ можно только через службу поддержки.
+                Если токен утерян, создайте новый аккаунт. История прежнего
+                аккаунта не переносится.
               </p>
-              <button className={styles.primary} onClick={() => navigateMode("login")} type="button">
+              <button
+                className={styles.primary}
+                onClick={() => navigateMode("login")}
+                type="button"
+              >
                 Вернуться ко входу
                 <ArrowIcon />
               </button>
@@ -174,82 +187,107 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
           ) : isSignup ? (
             <>
               <p className={styles.description}>
-                Добро пожаловать! Создайте токен регистрации и сохраните его. Все дальнейшие авторизации будут происходить через этот токен. Если вы его забудете, восстановить токен можно только через службу поддержки.
+                Введите кодовое слово. После регистрации сервер создаст токен —
+                сохраните его для следующих входов.
               </p>
 
-              {!registrationToken ? (
-                <button
-                  className={styles.generateToken}
-                  onClick={() => {
-                    setRegistrationToken(createRegistrationToken());
-                    setMessage("");
-                  }}
-                  type="button"
-                >
-                  Создать токен регистрации
-                </button>
-              ) : null}
-
-              {registrationToken ? (
+              {registrationState.generatedToken ? (
                 <>
-                  <label className={styles.fieldLabel} htmlFor="registration-token">
-                    Токен регистрации
+                  <label
+                    className={styles.fieldLabel}
+                    htmlFor="generated-token"
+                  >
+                    Токен авторизации
                   </label>
                   <div className={styles.fieldWrap}>
                     <input
                       className={styles.generatedToken}
-                      id="registration-token"
+                      id="generated-token"
                       onFocus={(event) => event.currentTarget.select()}
                       readOnly
-                      value={registrationToken}
+                      value={registrationState.generatedToken}
                     />
                   </div>
+                  <p className={styles.description} role="status">
+                    {registrationState.message}
+                  </p>
+                  <Link className={styles.primary} href="/ui-preview/history">
+                    Перейти к проверкам
+                    <ArrowIcon />
+                  </Link>
                 </>
               ) : null}
 
-              <label className={styles.fieldLabel} htmlFor="secret-word">
-                Секретное слово
-              </label>
-              <div className={styles.fieldWrap}>
-                <input
-                  autoComplete="off"
-                  aria-describedby={secretWordError ? "secret-word-error" : undefined}
-                  aria-invalid={secretWordError ? true : undefined}
-                  id="secret-word"
-                  onChange={(event) => {
-                    setSecretWord(event.target.value);
-                    setSecretWordError("");
-                  }}
-                  required
-                  type="password"
-                  value={secretWord}
-                  placeholder="Придумайте секретное слово"
-                />
-              </div>
-              {secretWordError ? (
-                <p className={styles.fieldError} id="secret-word-error" role="alert">
-                  {secretWordError}
-                </p>
+              {!registrationState.generatedToken ? (
+                <>
+                  <label className={styles.fieldLabel} htmlFor="secret-word">
+                    Кодовое слово
+                  </label>
+                  <div className={styles.fieldWrap}>
+                    <input
+                      autoComplete="off"
+                      aria-describedby={
+                        registrationState.fieldErrors?.secretWord
+                          ? "secret-word-error"
+                          : undefined
+                      }
+                      aria-invalid={
+                        registrationState.fieldErrors?.secretWord
+                          ? true
+                          : undefined
+                      }
+                      id="secret-word"
+                      name="secretWord"
+                      onChange={(event) => setSecretWord(event.target.value)}
+                      required
+                      type="password"
+                      value={secretWord}
+                      placeholder="Введите кодовое слово"
+                    />
+                  </div>
+                  {registrationState.fieldErrors?.secretWord ? (
+                    <p
+                      className={styles.fieldError}
+                      id="secret-word-error"
+                      role="alert"
+                    >
+                      {registrationState.fieldErrors.secretWord[0]}
+                    </p>
+                  ) : null}
+                  {registrationState.message ? (
+                    <p className={styles.authError} role="alert">
+                      {registrationState.message}
+                    </p>
+                  ) : null}
+                  <button
+                    className={styles.primary}
+                    disabled={registrationPending}
+                    type="submit"
+                  >
+                    {registrationPending
+                      ? "Регистрируем…"
+                      : "Зарегистрироваться"}
+                    <ArrowIcon />
+                  </button>
+                </>
               ) : null}
-
-              {message ? <p className={styles.authError} role="status">{message}</p> : null}
-              <button className={styles.primary} disabled={!registrationToken} type="submit">
-                Зарегистрироваться
-                <ArrowIcon />
-              </button>
             </>
           ) : (
             <>
               <p className={styles.description}>
                 Введите токен авторизации, сохранённый при регистрации.
               </p>
-              <label className={styles.fieldLabel} htmlFor="authorization-token">
+              <label
+                className={styles.fieldLabel}
+                htmlFor="authorization-token"
+              >
                 Токен авторизации
               </label>
               <div className={styles.fieldWrap}>
                 <input
                   autoComplete="off"
                   id="authorization-token"
+                  name="token"
                   onChange={(event) => setAuthToken(event.target.value)}
                   required
                   type="password"
@@ -257,8 +295,22 @@ export function AuthPreview({ mode }: AuthPreviewProps) {
                   placeholder="Введите токен авторизации"
                 />
               </div>
-              {message ? <p className={styles.authError} role="status">{message}</p> : null}
-              <button className={styles.primary} type="submit">
+              {loginState.message ? (
+                <p className={styles.authError} role="alert">
+                  {loginState.message}
+                </p>
+              ) : null}
+              {message ? (
+                <p className={styles.authError} role="status">
+                  {message}
+                </p>
+              ) : null}
+              <button
+                className={styles.primary}
+                disabled={loginPending}
+                type="submit"
+              >
+                {loginPending ? "Входим…" : null}
                 Войти
                 <ArrowIcon />
               </button>

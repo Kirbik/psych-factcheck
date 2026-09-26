@@ -2,109 +2,106 @@ import { expect, test } from "@playwright/test";
 
 const authEnvironmentIsConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 const loginEnvironmentIsConfigured = Boolean(
-  authEnvironmentIsConfigured &&
-    process.env.E2E_SUPABASE_EMAIL &&
-    process.env.E2E_SUPABASE_PASSWORD,
+  authEnvironmentIsConfigured && process.env.E2E_SUPABASE_TOKEN,
 );
 
 async function signIn(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByLabel("Электронная почта").fill(process.env.E2E_SUPABASE_EMAIL!);
-  await page.getByLabel("Пароль").fill(process.env.E2E_SUPABASE_PASSWORD!);
+  await page
+    .getByLabel("Токен авторизации")
+    .fill(process.env.E2E_SUPABASE_TOKEN!);
   await page.getByRole("button", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/ui-preview\/history/);
 }
 
-test("opens the login preview from the home page", async ({ page }) => {
+test("opens token login from the home page", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(page).toHaveTitle(/Psych Factcheck/);
   await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole("heading", { name: "С возвращением" }),
+    page.getByRole("heading", { name: "Вход в аккаунт" }),
   ).toBeVisible();
+  await expect(page.getByLabel("Токен авторизации")).toBeVisible();
 });
 
-test("keeps only the authentication and checks previews", async ({ page }) => {
+test("keeps the checks preview available", async ({ page }) => {
   await page.goto("/ui-preview/history");
-  await expect(page.getByRole("heading", { name: "Все проверки" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Все проверки" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Проверки", exact: true }),
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("navigates through the authentication preview", async ({ page }) => {
+test("keeps codeword and token values separate across tabs and clears them on reload", async ({
+  page,
+}) => {
   await page.goto("/");
-  await page.getByLabel("Электронная почта").fill("person@example.com");
-  await page.getByLabel("Пароль").fill("safe-password-123");
+  await page.getByLabel("Токен авторизации").fill(`pfc_${"a".repeat(64)}`);
   await page.getByRole("tab", { name: "Регистрация" }).click();
-  await expect(page).toHaveURL(/\/\?mode=signup$/);
-  await expect(page.getByRole("heading", { name: "Создайте аккаунт" })).toBeVisible();
-  await expect(page.getByLabel("Электронная почта")).toHaveValue("");
-  await expect(page.getByRole("textbox", { name: "Пароль", exact: true })).toHaveValue("");
-  await page.getByLabel("Электронная почта").fill("new-person@example.com");
-  await page.getByRole("textbox", { name: "Пароль", exact: true }).fill("new-password-123");
-  await page.getByLabel("Повторите пароль").fill("new-password-123");
+  await expect(page).toHaveURL(/\/?mode=signup$/);
+  await expect(
+    page.getByRole("heading", { name: "Создайте аккаунт" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Кодовое слово")).toHaveValue("");
+  await page.getByLabel("Кодовое слово").fill("some secret word");
+
   await page.getByRole("tab", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByLabel("Электронная почта")).toHaveValue("person@example.com");
-  await expect(page.getByLabel("Пароль")).toHaveValue("safe-password-123");
+  await expect(page.getByLabel("Токен авторизации")).toHaveValue(
+    `pfc_${"a".repeat(64)}`,
+  );
   await page.getByRole("tab", { name: "Регистрация" }).click();
-  await expect(page.getByLabel("Электронная почта")).toHaveValue("new-person@example.com");
-  await expect(page.getByRole("textbox", { name: "Пароль", exact: true })).toHaveValue("new-password-123");
-  await expect(page.getByLabel("Повторите пароль")).toHaveValue("new-password-123");
-  await page.getByRole("tab", { name: "Войти" }).click();
+  await expect(page.getByLabel("Кодовое слово")).toHaveValue(
+    "some secret word",
+  );
+
   await page.reload();
-  await expect(page.getByLabel("Электронная почта")).toHaveValue("");
-  await expect(page.getByLabel("Пароль")).toHaveValue("");
-  await page.getByRole("link", { name: "Забыли пароль?" }).click();
-  await expect(page).toHaveURL(/\/\?mode=reset$/);
-  await expect(page.getByRole("heading", { name: "Восстановить пароль" })).toBeVisible();
+  await expect(page.getByLabel("Кодовое слово")).toHaveValue("");
+  await page.goto("/");
+  await expect(page.getByLabel("Токен авторизации")).toHaveValue("");
+  await page.goto("/?mode=reset");
+  await expect(
+    page.getByRole("heading", { name: "Восстановление доступа" }),
+  ).toBeVisible();
 });
 
 test.describe("authentication", () => {
   test.skip(
     !authEnvironmentIsConfigured,
-    "Requires a local Supabase Auth environment configured for E2E.",
+    "Requires Supabase URL, public key, and server-only service-role key.",
   );
 
   test("redirects an unauthenticated visitor away from the dashboard", async ({
     page,
   }) => {
     await page.goto("/dashboard");
-
-    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard/);
-    await expect(
-      page.getByRole("heading", { name: "Войдите в аккаунт" }),
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByLabel("Токен авторизации")).toBeVisible();
   });
 
-  test("allows a new user to sign up", async ({ page }) => {
-    const email = `e2e-${crypto.randomUUID()}@example.test`;
-
+  test("creates a server-generated token during registration", async ({
+    page,
+  }) => {
     await page.goto("/?mode=signup");
-    await page.getByLabel("Электронная почта").fill(email);
-    await page.getByLabel("Пароль").fill("e2e-auth-password");
+    await page.getByLabel("Кодовое слово").fill("e2e-secret-word");
     await page.getByRole("button", { name: "Зарегистрироваться" }).click();
-
-    await expect(
-      page
-        .getByRole("heading", { name: "Все проверки" })
-        .or(
-          page.getByText(
-            "Проверьте почту, чтобы подтвердить регистрацию и войти.",
-          ),
-        ),
-    ).toBeVisible();
+    await expect(page.getByLabel("Токен авторизации")).toHaveValue(
+      /^pfc_[a-f0-9]{64}$/,
+    );
   });
 
   test("allows an existing user to log in", async ({ page }) => {
     test.skip(
       !loginEnvironmentIsConfigured,
-      "Requires credentials for a confirmed local Supabase test user.",
+      "Requires a valid E2E_SUPABASE_TOKEN for a confirmed test user.",
     );
 
     await signIn(page);
@@ -116,21 +113,20 @@ test.describe("authentication", () => {
   test("ends the session on logout", async ({ page }) => {
     test.skip(
       !loginEnvironmentIsConfigured,
-      "Requires credentials for a confirmed local Supabase test user.",
+      "Requires a valid E2E_SUPABASE_TOKEN for a confirmed test user.",
     );
 
     await signIn(page);
     await page.getByRole("button", { name: "Выйти" }).click();
-    await expect(page).toHaveURL(/\/login\?logout=success/);
-
+    await expect(page).toHaveURL(/\/$/);
     await page.goto("/dashboard");
-    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard/);
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("uploads one valid video and shows completion", async ({ page }) => {
     test.skip(
       !loginEnvironmentIsConfigured,
-      "Requires credentials and a local Supabase Storage environment.",
+      "Requires a valid token and Supabase Storage test environment.",
     );
 
     await signIn(page);

@@ -1,35 +1,27 @@
 import { z } from "zod";
 
-export const authCredentialsSchema = z.object({
-  email: z.email("Введите корректный email"),
-  password: z
+const secretWordSchema = z.object({
+  secretWord: z
     .string()
-    .min(12, "Пароль должен содержать минимум 12 символов")
-    .max(128, "Пароль не должен превышать 128 символов"),
+    .max(200, "Кодовое слово слишком длинное")
+    .refine((value) => {
+      const length = Array.from(value.replace(/\s/g, "")).length;
+      return length >= 3 && length <= 100;
+    }, "Введите от 3 до 100 символов, не считая пробелы"),
 });
 
-export const signUpCredentialsSchema = authCredentialsSchema
-  .extend({
-    passwordRepeat: z.string().min(1, "Повторите пароль"),
-  })
-  .refine((values) => values.password === values.passwordRepeat, {
-    message: "Пароли не совпадают",
-    path: ["passwordRepeat"],
-  });
+const accessTokenSchema = z.object({
+  token: z
+    .string()
+    .regex(/^pfc_[a-f0-9]{64}$/, "Введите корректный токен авторизации"),
+});
 
-export type AuthCredentials = z.infer<typeof authCredentialsSchema>;
-
-export function parseAuthCredentials(formData: FormData) {
-  return authCredentialsSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+export function parseSignUp(formData: FormData) {
+  return secretWordSchema.safeParse({ secretWord: formData.get("secretWord") });
 }
 
-export function parseSignUpCredentials(formData: FormData) {
-  return signUpCredentialsSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-    passwordRepeat: formData.get("passwordRepeat"),
-  });
+export function parseSignIn(formData: FormData) {
+  return accessTokenSchema.safeParse({ token: formData.get("token") });
 }
+
+export const authTokenPattern = accessTokenSchema;

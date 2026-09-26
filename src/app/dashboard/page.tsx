@@ -25,10 +25,6 @@ function formatCheckDate(value: string) {
   }).format(new Date(value));
 }
 
-function emailFromClaims(claims: Record<string, unknown> | undefined) {
-  return typeof claims?.email === "string" ? claims.email : undefined;
-}
-
 export default async function DashboardPage() {
   await connection();
   const supabase = await createServerAuthClient();
@@ -40,7 +36,6 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const email = emailFromClaims(claims);
   const { data: checks, error: checksError } = await contentItemsRepository
     .listOwned(supabase, claims.sub)
     .order("created_at", { ascending: false });
@@ -49,7 +44,10 @@ export default async function DashboardPage() {
     <>
       <AppHeader current="checks" />
       <main className="page dashboard-page">
-        <PageHeader title="Ваши проверки" description="Здесь появятся ваши текущие и завершённые проверки." />
+        <PageHeader
+          title="Ваши проверки"
+          description="Здесь появятся ваши текущие и завершённые проверки."
+        />
         <Container>
           <Card className="dashboard-history" aria-labelledby="checks-title">
             <h2 id="checks-title">Список проверок</h2>
@@ -75,16 +73,23 @@ export default async function DashboardPage() {
               </ul>
             )}
           </Card>
-          <Card className="dashboard-upload" aria-labelledby="video-upload-title">
+          <Card
+            className="dashboard-upload"
+            aria-labelledby="video-upload-title"
+          >
             <h2 id="video-upload-title">Новая проверка</h2>
             <VideoUploadForm />
           </Card>
           <Card className="dashboard-welcome" aria-labelledby="dashboard-title">
-            <div className="dashboard-welcome__icon" aria-hidden="true">⌁</div>
+            <div className="dashboard-welcome__icon" aria-hidden="true">
+              ⌁
+            </div>
             <div>
               <h2 id="dashboard-title">Вы вошли в систему.</h2>
-              <p>{email ? `Аккаунт: ${email}` : "Ваш аккаунт готов к первой проверке."}</p>
-              <p className="muted-text">Здесь будут отображаться сохранённые проверки.</p>
+              <p>Ваш аккаунт готов к первой проверке.</p>
+              <p className="muted-text">
+                Здесь будут отображаться сохранённые проверки.
+              </p>
             </div>
             <LogoutButton />
           </Card>

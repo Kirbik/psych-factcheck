@@ -1,6 +1,6 @@
 # Data Model
 
-This is a deliberately small conceptual model for future migrations. IDs are UUIDs, timestamps are UTC, mutable tables have `created_at`/`updated_at`, and user-owned data uses RLS plus server-side ownership checks. Session 2 implements only `profiles`, `content_items`, and `analysis_jobs` in `supabase/migrations/20260912000000_initial_foundation.sql`; remaining entities are future design, not current schema.
+This is a deliberately small conceptual model for future migrations. IDs are UUIDs, timestamps are UTC, mutable tables have `created_at`/`updated_at`, and user-owned data uses RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `auth_access_tokens`, and the private video bucket. Other entities are future design, not current schema.
 
 ## Identity and content
 
@@ -10,6 +10,14 @@ This is a deliberately small conceptual model for future migrations. IDs are UUI
 - **Implemented fields:** `id` (Auth user ID), `created_at`, `updated_at`.
 - **Relations/ownership:** one Auth user; owns content and billing state. The user can read/update their own safe fields.
 - **Lifecycle:** created on signup, retained/deleted according to account policy.
+
+### `auth_access_tokens`
+
+- **Purpose:** map a server-generated access-token digest to its Supabase Auth user.
+- **Implemented fields:** `user_id`, `token_hash` (SHA-256 hex), `created_at`, and nullable `revoked_at`.
+- **Relations/ownership:** one token credential per Auth user; the FK cascades on Auth user deletion.
+- **Security:** RLS is enabled, no client role has table privileges, and only the server-only service-role client accesses it. Raw tokens are never stored in this table.
+- **Lifecycle:** created with a new account; token is returned to the user once. Losing it means creating a new account, with no transfer of the previous history.
 
 ### `content_items`
 

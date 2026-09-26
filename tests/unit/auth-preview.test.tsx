@@ -1,132 +1,116 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AuthActionState } from "@/features/auth/state";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
-describe("AuthPreview", () => {
-  it("keeps the login preview accessible", () => {
-    render(<AuthPreview mode="login" />);
+function createActions(
+  login: (
+    state: AuthActionState,
+    formData: FormData,
+  ) => Promise<AuthActionState> = async () => ({}),
+  signup: (
+    state: AuthActionState,
+    formData: FormData,
+  ) => Promise<AuthActionState> = async () => ({}),
+) {
+  return { login, signup };
+}
 
-    expect(screen.getByLabelText("Электронная почта")).toBeInTheDocument();
+describe("AuthPreview", () => {
+  afterEach(() => cleanup());
+
+  it("renders token login and registration tabs", () => {
+    render(<AuthPreview actions={createActions()} mode="login" />);
+
+    expect(screen.getByLabelText("Токен авторизации")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Регистрация" })).toHaveAttribute(
-      "href",
-      "/?mode=signup",
+      "aria-selected",
+      "false",
     );
   });
 
-  it("renders a recovery preview without a password field", () => {
-    const { container } = render(<AuthPreview mode="reset" />);
+  it("renders recovery information without an input", () => {
+    const { container } = render(
+      <AuthPreview actions={createActions()} mode="reset" />,
+    );
     const preview = within(container);
 
-    expect(preview.getByRole("heading", { name: "Восстановить пароль" })).toBeInTheDocument();
-    expect(preview.queryByLabelText("Пароль")).not.toBeInTheDocument();
+    expect(
+      preview.getByRole("heading", { name: "Восстановление доступа" }),
+    ).toBeInTheDocument();
+    expect(
+      preview.queryByLabelText("Токен авторизации"),
+    ).not.toBeInTheDocument();
   });
 
-  it("keeps the login tab on the preview login route", () => {
-    const { container } = render(<AuthPreview mode="signup" />);
-    const loginTab = container.querySelector<HTMLAnchorElement>(
-      'a[role="tab"][href="/"]',
-    );
-
-    expect(loginTab).toBeInTheDocument();
-  });
-
-  it("submits credentials through the supplied auth action", async () => {
-    cleanup();
-    const action = vi.fn(async () => ({
-      message: "Почта или пароль введены некорректно",
+  it("uses the server action for token login and preserves the entered token on error", async () => {
+    const login = vi.fn(async () => ({
+      message: "Токен авторизации введён неверно",
     }));
-    const { getByLabelText, getByRole } = render(
-      <AuthPreview actions={{ login: action, signup: action }} mode="login" />,
-    );
+    render(<AuthPreview actions={createActions(login)} mode="login" />);
 
-    fireEvent.change(getByLabelText("Электронная почта"), {
-      target: { value: "person@example.com" },
+    fireEvent.change(screen.getByLabelText("Токен авторизации"), {
+      target: { value: "pfc_invalid" },
     });
-    fireEvent.change(getByLabelText("Пароль"), {
-      target: { value: "safe-password-123" },
-    });
-    fireEvent.submit(getByRole("form", { name: "Авторизация" }));
+    fireEvent.submit(screen.getByRole("form", { name: "Авторизация" }));
 
     await vi.waitFor(() => {
-      expect(action).toHaveBeenCalled();
-      expect(getByRole("alert")).toHaveTextContent(
-        "Почта или пароль введены некорректно",
+      expect(login).toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Токен авторизации введён неверно",
       );
     });
-    expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
-    expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
-    fireEvent.reset(getByRole("form", { name: "Авторизация" }));
-    expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
-    expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
+    expect(screen.getByLabelText("Токен авторизации")).toHaveValue(
+      "pfc_invalid",
+    );
   });
 
-  it("keeps separate values for login and signup tabs", () => {
-    cleanup();
-    const { getByLabelText, getByRole } = render(<AuthPreview mode="login" />);
+  it("submits the codeword and shows the token returned by the server", async () => {
+    const token = `pfc_${"a".repeat(64)}`;
+    const signup = vi.fn(async () => ({
+      generatedToken: token,
+      message: "Сохраните токен. Повторно показать его будет невозможно.",
+    }));
+    render(
+      <AuthPreview actions={createActions(undefined, signup)} mode="signup" />,
+    );
 
-    fireEvent.change(getByLabelText("Электронная почта"), {
-      target: { value: "person@example.com" },
+    fireEvent.change(screen.getByLabelText("Кодовое слово"), {
+      target: { value: "secret phrase" },
     });
-    fireEvent.change(getByLabelText("Пароль"), {
-      target: { value: "safe-password-123" },
+    fireEvent.submit(screen.getByRole("form", { name: "Регистрация" }));
+
+    await vi.waitFor(() => {
+      expect(signup).toHaveBeenCalled();
+      expect(screen.getByLabelText("Токен авторизации")).toHaveValue(token);
+    });
+    expect(
+      screen.getByRole("link", { name: "Перейти к проверкам" }),
+    ).toHaveAttribute("href", "/ui-preview/history");
+  });
+
+  it("keeps login token and registration codeword separate across tabs", () => {
+    const { getByLabelText, getByRole } = render(
+      <AuthPreview actions={createActions()} mode="login" />,
+    );
+
+    fireEvent.change(getByLabelText("Токен авторизации"), {
+      target: { value: "login-token" },
     });
     fireEvent.click(getByRole("tab", { name: "Регистрация" }));
-
-    expect(getByLabelText("Электронная почта")).toHaveValue("");
-    expect(getByLabelText("Пароль")).toHaveValue("");
-    expect(getByLabelText("Повторите пароль")).toHaveValue("");
-
-    fireEvent.change(getByLabelText("Электронная почта"), {
-      target: { value: "new-person@example.com" },
-    });
-    fireEvent.change(getByLabelText("Пароль", { exact: true }), {
-      target: { value: "new-password-123" },
-    });
-    fireEvent.change(getByLabelText("Повторите пароль"), {
-      target: { value: "new-password-123" },
+    fireEvent.change(getByLabelText("Кодовое слово"), {
+      target: { value: "registration-word" },
     });
     fireEvent.click(getByRole("tab", { name: "Войти" }));
 
-    expect(getByLabelText("Электронная почта")).toHaveValue("person@example.com");
-    expect(getByLabelText("Пароль")).toHaveValue("safe-password-123");
+    expect(getByLabelText("Токен авторизации")).toHaveValue("login-token");
     fireEvent.click(getByRole("tab", { name: "Регистрация" }));
-    expect(getByLabelText("Электронная почта")).toHaveValue("new-person@example.com");
-    expect(getByLabelText("Пароль", { exact: true })).toHaveValue("new-password-123");
-    expect(getByLabelText("Повторите пароль")).toHaveValue("new-password-123");
-  });
-
-  it("shows signup field validation errors without clearing values", async () => {
-    cleanup();
-    const action = vi.fn(async () => ({
-      fieldErrors: {
-        email: ["Введите корректный email"],
-        password: ["Пароль должен содержать минимум 12 символов"],
-        passwordRepeat: ["Пароли не совпадают"],
-      },
-    }));
-    const { getByLabelText, getByRole, getByText } = render(
-      <AuthPreview actions={{ login: action, signup: action }} mode="signup" />,
-    );
-
-    fireEvent.change(getByLabelText("Электронная почта"), {
-      target: { value: "invalid" },
-    });
-    fireEvent.change(getByLabelText("Пароль", { exact: true }), {
-      target: { value: "short" },
-    });
-    fireEvent.change(getByLabelText("Повторите пароль"), {
-      target: { value: "different" },
-    });
-    fireEvent.submit(getByRole("form", { name: "Регистрация" }));
-
-    await vi.waitFor(() => {
-      expect(action).toHaveBeenCalled();
-      expect(getByText("Введите корректный email")).toBeInTheDocument();
-      expect(getByText("Пароль должен содержать минимум 12 символов")).toBeInTheDocument();
-      expect(getByText("Пароли не совпадают")).toBeInTheDocument();
-    });
-    expect(getByLabelText("Электронная почта")).toHaveValue("invalid");
-    expect(getByLabelText("Пароль", { exact: true })).toHaveValue("short");
-    expect(getByLabelText("Повторите пароль")).toHaveValue("different");
+    expect(getByLabelText("Кодовое слово")).toHaveValue("registration-word");
   });
 });

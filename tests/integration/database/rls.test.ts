@@ -47,10 +47,21 @@ describeDatabase("Supabase initial schema and RLS", () => {
          from pg_class c
          join pg_namespace n on n.oid = c.relnamespace
          where n.nspname = 'public'
-           and c.relname in ('profiles', 'content_items', 'analysis_jobs')`,
+           and c.relname in ('profiles', 'content_items', 'analysis_jobs', 'auth_access_tokens')`,
       );
-      expect(schema.rows).toHaveLength(3);
+      expect(schema.rows).toHaveLength(4);
       expect(schema.rows.every((row) => row.relrowsecurity)).toBe(true);
+
+      const tokenTablePrivileges = await client.query<{
+        authenticated_can_read: boolean;
+        anon_can_read: boolean;
+      }>(
+        `select has_table_privilege('authenticated', 'public.auth_access_tokens', 'select') as authenticated_can_read,
+                has_table_privilege('anon', 'public.auth_access_tokens', 'select') as anon_can_read`,
+      );
+      expect(tokenTablePrivileges.rows).toEqual([
+        { authenticated_can_read: false, anon_can_read: false },
+      ]);
 
       const bucket = await client.query<{ id: string; public: boolean }>(
         "select id, public from storage.buckets where id = 'videos'",

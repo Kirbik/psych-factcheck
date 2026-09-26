@@ -1,79 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { toSafeAuthError } from "@/features/auth/errors";
-import {
-  parseAuthCredentials,
-  parseSignUpCredentials,
-} from "@/features/auth/validation";
+import { parseSignIn, parseSignUp } from "@/features/auth/validation";
 
-function credentials(values: Record<string, string>) {
-  const formData = new FormData();
-  Object.entries(values).forEach(([name, value]) => formData.set(name, value));
-  return formData;
+function formData(values: Record<string, string>) {
+  const data = new FormData();
+  Object.entries(values).forEach(([name, value]) => data.set(name, value));
+  return data;
 }
 
-describe("auth credential validation", () => {
-  it("accepts an email and a sufficiently long password", () => {
+describe("token authentication validation", () => {
+  it("accepts a registration codeword with 3 to 100 non-whitespace characters", () => {
+    expect(parseSignUp(formData({ secretWord: "one two three" })).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects a codeword that is too short or too long", () => {
+    expect(parseSignUp(formData({ secretWord: "a b" })).success).toBe(false);
+    expect(parseSignUp(formData({ secretWord: "x".repeat(101) })).success).toBe(
+      false,
+    );
+  });
+
+  it("accepts only a server-generated token format on login", () => {
     expect(
-      parseAuthCredentials(
-        credentials({ email: "person@example.com", password: "safe-password-123" }),
-      ).success,
+      parseSignIn(formData({ token: `pfc_${"a".repeat(64)}` })).success,
     ).toBe(true);
-  });
-
-  it("rejects empty, malformed, and short values", () => {
-    const result = parseAuthCredentials(
-      credentials({ email: "not-an-email", password: "short" }),
-    );
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.flatten().fieldErrors).toMatchObject({
-        email: [expect.any(String)],
-        password: [expect.any(String)],
-      });
-    }
-  });
-
-  it("requires a matching password confirmation for signup", () => {
-    const result = parseSignUpCredentials(
-      credentials({
-        email: "person@example.com",
-        password: "safe-password-123",
-        passwordRepeat: "different-password-123",
-      }),
-    );
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.flatten().fieldErrors).toMatchObject({
-        passwordRepeat: ["Пароли не совпадают"],
-      });
-    }
-  });
-});
-
-describe("provider auth errors", () => {
-  it("maps invalid credentials without exposing provider details", () => {
-    expect(toSafeAuthError("Invalid login credentials", "invalid_credentials")).toBe(
-      "Почта или пароль введены некорректно",
-    );
-
-    expect(toSafeAuthError("Unexpected provider message", "user_not_found")).toBe(
-      "Почта или пароль введены некорректно",
-    );
-
-    expect(
-      toSafeAuthError("Email not confirmed", "email_not_confirmed", 400),
-    ).toBe("Подтвердите почту перед входом");
-  });
-
-  it("maps unknown provider failures to a generic message", () => {
-    expect(toSafeAuthError("unexpected internal diagnostic")).toBe(
-      "Не удалось выполнить действие. Попробуйте ещё раз",
-    );
-
-    expect(toSafeAuthError(undefined, undefined, 400)).toBe(
-      "Почта или пароль введены некорректно",
-    );
+    expect(parseSignIn(formData({ token: "pfc_short" })).success).toBe(false);
+    expect(parseSignIn(formData({ token: "" })).success).toBe(false);
   });
 });

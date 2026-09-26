@@ -20,7 +20,9 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 This project retains the `ANON_KEY` name because it is the stable key emitted by local Supabase and supported by the current SDK. It is a public, RLS-limited API key, not a secret. Hosted projects that issue a publishable key may place that value in the same `NEXT_PUBLIC_SUPABASE_ANON_KEY` variable; the SDK accepts it. The service-role key is never public and must remain only in server environment configuration.
 
-`src/lib/supabase/browser.ts` is marked `"use client"` and validates only the public URL/key when requested. Session 3 uses `@supabase/ssr` cookie clients for browser authentication and Server Actions; `src/proxy.ts` refreshes dashboard-session cookies, and protected pages validate claims server-side as the final authorization check. `src/server/supabase/server.ts` remains server-only and requires an explicit authenticated bearer token; it still uses the public key so PostgreSQL RLS applies. `src/server/supabase/admin.ts` is server-only and is the only place that reads `SUPABASE_SERVICE_ROLE_KEY`; it bypasses RLS and must not be used for ordinary user-owned requests. Public/server configuration validates at client construction time, keeping static builds and dev startup independent of unconfigured Supabase.
+`src/lib/supabase/browser.ts` is marked `"use client"` and validates only the public URL/key when requested. Authentication uses a server-generated 256-bit token as the user's Supabase Auth password, paired with a random internal email on the reserved `.invalid` domain. The raw token is returned once at registration; `public.auth_access_tokens` stores only its SHA-256 digest and user ID, and has no grants for `anon` or `authenticated`. Token lookup and Auth account provisioning use `src/server/supabase/admin.ts` on the server only. After lookup, `@supabase/ssr` signs in through the regular Auth password flow and stores the session in cookies; `src/proxy.ts` refreshes dashboard-session cookies, and protected pages validate claims server-side as the final authorization check. `src/server/supabase/server.ts` remains server-only and requires an explicit authenticated bearer token; it still uses the public key so PostgreSQL RLS applies. The service-role key bypasses RLS and must not be used for ordinary user-owned requests. Public/server configuration validates at client construction time, keeping static builds and dev startup independent of unconfigured Supabase.
+
+The registration codeword is validated for length but is not stored or used as an authentication factor. Users authenticate later with the generated token alone. Losing the token means creating a new account; the new identity does not inherit the old account's data. Existing email/password Auth users are not automatically converted and cannot use token login until separately migrated.
 
 ## Migrations and schema
 
@@ -31,6 +33,8 @@ All schema changes live in `supabase/migrations`. The initial migration creates:
 - `analysis_jobs`, owned by the same user as its referenced content item, with constrained lifecycle status.
 
 It also adds foreign keys, query indexes, UTC timestamps, `updated_at` triggers, and an idempotent `auth.users` trigger that creates a profile. The profile trigger's `security definer` function lives in the private `app_private` schema, never in the exposed `public` schema. Run local migrations from a clean local stack:
+
+The later `20260926000000_token_auth.sql` migration adds `auth_access_tokens`, a server-only lookup of token digests to Auth identities. RLS is enabled, with table privileges revoked from `anon` and `authenticated`; only the server's service-role client can access it.
 
 ```bash
 pnpm dlx supabase@latest start

@@ -1,9 +1,9 @@
 export type AuthActionState = {
   message?: string;
+  generatedToken?: string;
   fieldErrors?: {
-    email?: string[];
-    password?: string[];
-    passwordRepeat?: string[];
+    secretWord?: string[];
+    token?: string[];
   };
 };
 

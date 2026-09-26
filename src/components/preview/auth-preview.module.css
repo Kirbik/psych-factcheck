@@ -30,7 +30,7 @@
 .stage { min-height: 820px; padding-top: 64px; }
 .card { background: var(--paper); border: 1px solid rgba(43, 34, 24, 0.07); border-radius: 24px; box-shadow: 0 1px 2px rgba(43, 34, 24, 0.04), 0 14px 34px -20px rgba(43, 34, 24, 0.2); margin: 0 auto; padding: 38px 40px 30px; width: 452px; }
 .tabs { border-bottom: 1px solid var(--line-soft); display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; }
-.tab, .tabActive { align-items: center; border-bottom: 2px solid transparent; color: var(--muted); display: flex; font-size: 14px; font-weight: 500; height: 44px; justify-content: center; line-height: 20px; text-decoration: none; }
+.tab, .tabActive { appearance: none; align-items: center; background: none; border-bottom: 2px solid transparent; border-left: 0; border-right: 0; border-top: 0; color: var(--muted); cursor: pointer; display: flex; font-family: inherit; font-size: 14px; font-weight: 500; height: 44px; justify-content: center; line-height: 20px; padding: 0; text-decoration: none; width: 100%; }
 .tabActive { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
 .tab:focus-visible, .tabActive:focus-visible, .passwordRow a:focus-visible, .footer a:focus-visible, .brand:focus-visible, .nav a:focus-visible, .primary:focus-visible { outline: 3.5px solid rgba(23, 96, 76, 0.13); outline-offset: 2px; }
 .card h1 { font-family: var(--auth-preview-lora), Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 8px; }
