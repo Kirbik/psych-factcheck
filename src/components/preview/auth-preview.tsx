@@ -5,6 +5,7 @@ import { Inter, Lora } from "next/font/google";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { AuthActionState } from "@/features/auth/state";
 import { initialAuthActionState } from "@/features/auth/state";
+import { storeFirstLoginSecrets } from "@/features/auth/first-login-secrets";
 import styles from "./auth-preview.module.css";
 
 type AuthPreviewMode = "login" | "signup" | "reset";
@@ -69,14 +70,19 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   );
   const [registrationState, registrationAction, registrationPending] =
     useActionState(actions.signup, initialAuthActionState);
-  const recoveryDialogRef = useRef<HTMLDialogElement>(null);
-  const recoveryCodeInputRef = useRef<HTMLInputElement>(null);
-  const [recoveryDialogDismissed, setRecoveryDialogDismissed] = useState(false);
+  const registrationDialogRef = useRef<HTMLDialogElement>(null);
+  const [registrationDialogDismissed, setRegistrationDialogDismissed] =
+    useState(false);
+  const [registrationTokenCleared, setRegistrationTokenCleared] =
+    useState(false);
+  const [secretStorageUnavailable, setSecretStorageUnavailable] =
+    useState(false);
   const [message, setMessage] = useState("");
   const [copyFeedback, setCopyFeedback] = useState<{
     target: "token" | "recoveryCode";
     result: "copied" | "error";
   } | null>(null);
+  const generatedToken = tokenGenerationState.generatedToken;
 
   useEffect(() => {
     const handlePopState = () => {
@@ -99,26 +105,29 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
     if (
       !registrationState.registrationComplete ||
       !registrationState.recoveryCode ||
-      recoveryDialogDismissed
+      registrationDialogDismissed
     ) {
       return;
     }
 
-    const dialog = recoveryDialogRef.current;
+    const dialog = registrationDialogRef.current;
     if (dialog && !dialog.open) {
+      const secretsStored = generatedToken
+        ? storeFirstLoginSecrets({
+            token: generatedToken,
+            recoveryCode: registrationState.recoveryCode,
+          })
+        : false;
+      setSecretStorageUnavailable(!secretsStored);
       dialog.showModal();
+      setRegistrationTokenCleared(true);
     }
   }, [
-    recoveryDialogDismissed,
+    generatedToken,
+    registrationDialogDismissed,
     registrationState.recoveryCode,
     registrationState.registrationComplete,
   ]);
-
-  useEffect(() => {
-    if (recoveryDialogDismissed) {
-      recoveryCodeInputRef.current?.focus();
-    }
-  }, [recoveryDialogDismissed]);
 
   const navigateMode = (nextMode: "login" | "signup") => {
     const href = nextMode === "login" ? "/" : "/?mode=signup";
@@ -129,7 +138,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
 
   const isSignup = activeMode === "signup";
   const isRecovery = activeMode === "reset";
-  const generatedToken = tokenGenerationState.generatedToken;
   const canRegister = Boolean(generatedToken);
 
   const copySecret = async (
@@ -166,6 +174,41 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           : "Не удалось скопировать. Выделите значение и скопируйте вручную"}
       </p>
     ) : null;
+
+  const renderSecretField = (
+    label: string,
+    id: string,
+    value: string | undefined,
+    target: "token" | "recoveryCode",
+  ) => (
+    <>
+      <label className={styles.fieldLabel} htmlFor={id}>
+        {label}
+      </label>
+      <div className={styles.fieldWrap}>
+        <input
+          className={styles.generatedToken}
+          id={id}
+          onFocus={(event) => event.currentTarget.select()}
+          readOnly
+          value={value ?? ""}
+        />
+        <button
+          aria-label={
+            target === "token"
+              ? "Скопировать токен авторизации"
+              : "Скопировать код восстановления"
+          }
+          className={styles.tokenCopyButton}
+          onClick={() => copySecret(value, target)}
+          type="button"
+        >
+          <CopyIcon />
+        </button>
+      </div>
+      {renderCopyFeedback(target)}
+    </>
+  );
 
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
@@ -261,62 +304,56 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           ) : isSignup ? (
             <>
               <p className={styles.description}>
-                Сначала сгенерируйте и сохраните токен. После регистрации
-                появится код восстановления.
+                Сначала сгенерируйте токен. После первого входа появятся токен
+                авторизации и код восстановления.
               </p>
 
               {registrationState.registrationComplete ? (
                 <>
-                  {!recoveryDialogDismissed ? (
+                  {!registrationDialogDismissed ? (
                     <dialog
-                      aria-describedby="recovery-dialog-description"
-                      aria-labelledby="recovery-dialog-title"
+                      aria-describedby="registration-dialog-description"
+                      aria-labelledby="registration-dialog-title"
                       className={`${styles.card} ${styles.recoveryDialog}`}
-                      onClose={() => setRecoveryDialogDismissed(true)}
-                      ref={recoveryDialogRef}
+                      onClose={() => setRegistrationDialogDismissed(true)}
+                      ref={registrationDialogRef}
                     >
-                      <h2 id="recovery-dialog-title">
-                        Сохраните код восстановления
+                      <h2 id="registration-dialog-title">
+                        Регистрация прошла успешно
                       </h2>
                       <p
                         className={`${styles.description} ${styles.tokenNotice}`}
-                        id="recovery-dialog-description"
+                        id="registration-dialog-description"
                       >
-                        Сохраните этот код: без него восстановить утерянный
-                        токен не получится.
+                        После первого входа появится окно с токеном авторизации
+                        и кодом восстановления.
                       </p>
-                      <label
-                        className={styles.fieldLabel}
-                        htmlFor="recovery-code-dialog"
-                      >
-                        Код восстановления
-                      </label>
-                      <div className={styles.fieldWrap}>
-                        <input
-                          className={styles.generatedToken}
-                          id="recovery-code-dialog"
-                          onFocus={(event) => event.currentTarget.select()}
-                          readOnly
-                          value={registrationState.recoveryCode}
-                        />
-                        <button
-                          aria-label="Скопировать код восстановления"
-                          className={styles.tokenCopyButton}
-                          onClick={() =>
-                            copySecret(
-                              registrationState.recoveryCode,
-                              "recoveryCode",
-                            )
-                          }
-                          type="button"
-                        >
-                          <CopyIcon />
-                        </button>
-                      </div>
-                      {renderCopyFeedback("recoveryCode")}
+                      {secretStorageUnavailable ? (
+                        <>
+                          <p
+                            className={`${styles.description} ${styles.tokenNotice}`}
+                            role="alert"
+                          >
+                            Браузер не смог сохранить данные до первого входа.
+                            Сохраните их сейчас.
+                          </p>
+                          {renderSecretField(
+                            "Токен авторизации",
+                            "fallback-auth-token-dialog",
+                            generatedToken,
+                            "token",
+                          )}
+                          {renderSecretField(
+                            "Код восстановления",
+                            "fallback-recovery-code-dialog",
+                            registrationState.recoveryCode,
+                            "recoveryCode",
+                          )}
+                        </>
+                      ) : null}
                       <button
                         className={styles.primary}
-                        onClick={() => recoveryDialogRef.current?.close()}
+                        onClick={() => registrationDialogRef.current?.close()}
                         type="button"
                       >
                         Понятно
@@ -335,57 +372,42 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       id="registration-token"
                       onFocus={(event) => event.currentTarget.select()}
                       readOnly
-                      value={generatedToken ?? ""}
+                      value={
+                        registrationTokenCleared ? "" : generatedToken ?? ""
+                      }
                     />
-                    <button
-                      aria-label="Скопировать токен"
-                      className={styles.tokenCopyButton}
-                      onClick={() => copySecret(generatedToken, "token")}
-                      type="button"
-                    >
-                      <CopyIcon />
-                    </button>
+                    {!registrationTokenCleared ? (
+                      <button
+                        aria-label="Скопировать токен"
+                        className={styles.tokenCopyButton}
+                        onClick={() => copySecret(generatedToken, "token")}
+                        type="button"
+                      >
+                        <CopyIcon />
+                      </button>
+                    ) : null}
                   </div>
-                  {renderCopyFeedback("token")}
                   {loginState.message ? (
                     <p className={styles.authError} role="alert">
                       {loginState.message}
                     </p>
                   ) : null}
-                  {recoveryDialogDismissed ? (
-                    <>
-                      <label
-                        className={styles.fieldLabel}
-                        htmlFor="recovery-code"
-                      >
-                        Код восстановления
-                      </label>
-                      <div className={styles.fieldWrap}>
-                        <input
-                          className={styles.generatedToken}
-                          id="recovery-code"
-                          onFocus={(event) => event.currentTarget.select()}
-                          ref={recoveryCodeInputRef}
-                          readOnly
-                          value={registrationState.recoveryCode ?? ""}
-                        />
-                        <button
-                          aria-label="Скопировать код восстановления"
-                          className={styles.tokenCopyButton}
-                          onClick={() =>
-                            copySecret(
-                              registrationState.recoveryCode,
-                              "recoveryCode",
-                            )
-                          }
-                          type="button"
-                        >
-                          <CopyIcon />
-                        </button>
-                      </div>
-                      {renderCopyFeedback("recoveryCode")}
-                    </>
-                  ) : null}
+                  {secretStorageUnavailable && registrationDialogDismissed
+                    ? renderSecretField(
+                        "Токен авторизации",
+                        "fallback-auth-token",
+                        generatedToken,
+                        "token",
+                      )
+                    : null}
+                  {secretStorageUnavailable && registrationDialogDismissed
+                    ? renderSecretField(
+                        "Код восстановления",
+                        "fallback-recovery-code",
+                        registrationState.recoveryCode,
+                        "recoveryCode",
+                      )
+                    : null}
                   <p
                     className={`${styles.description} ${styles.tokenNotice}`}
                     role="status"

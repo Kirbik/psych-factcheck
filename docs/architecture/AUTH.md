@@ -5,8 +5,11 @@
 Authentication uses a server-generated access token instead of user-chosen
 email/password credentials. Registration creates a token-backed Supabase Auth identity and
 returns a separate random recovery code once. The raw recovery code is never
-persisted; only its digest is stored for a future support-assisted recovery
-flow. No public recovery flow or support token-rotation interface is
+persisted on the server; only its digest is stored for a future support-assisted recovery
+flow. After registration, both secrets are temporarily kept in the current tab's
+`sessionStorage` until the first successful login, when they are shown together
+and removed from storage. Closing the tab before that login loses the staged
+values. No public recovery flow or support token-rotation interface is
 implemented.
 
 ## Session flow
@@ -15,7 +18,9 @@ implemented.
    digest is temporarily stored in `auth_pending_access_tokens`.
 2. The user registers with that token. The server consumes the pending token,
    creates the Auth identity, stores the access-token digest and a separate
-   recovery-code digest, then returns the raw recovery code exactly once.
+   recovery-code digest, then returns the raw recovery code exactly once. The
+   browser stages the two raw secrets in tab-scoped `sessionStorage` for the
+   first-login modal; the visible registration token field is cleared.
 3. Login resolves the access-token digest through the server-only service-role
    client and signs in through the regular Supabase Auth password flow.
 4. Supabase stores the session in cookies. `src/proxy.ts` refreshes those
@@ -54,8 +59,8 @@ and cannot read another user's rows.
 `pfr_...` code. Because the value has high entropy, digest lookup does not rely
 on a user-chosen secret. RLS is enabled and direct grants to `anon` and
 `authenticated` are revoked; only the server-side service-role client can
-access this table. The registration UI shows the raw recovery code once after
-account creation. A separately protected support process must be implemented
+access this table. The first successful login UI shows the raw token and
+recovery code once after account creation. A separately protected support process must be implemented
 before the code can be used to recover an account. The `/?mode=reset` screen
 is a UI preview and does not currently perform recovery.
 

@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthActionState } from "@/features/auth/state";
+import { firstLoginSecretsStorageKey } from "@/features/auth/first-login-secrets";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
 type Action = (
@@ -130,7 +131,7 @@ describe("AuthPreview", () => {
     );
   });
 
-  it("enables registration after server token generation and displays recovery code", async () => {
+  it("stages both secrets, clears the registration field, then signs in with the token", async () => {
     const token = `pfc_${"a".repeat(64)}`;
     const submittedForms: FormData[] = [];
     const login = vi.fn<Action>(async (state, formData) => {
@@ -145,8 +146,7 @@ describe("AuthPreview", () => {
     const signup = vi.fn(async () => ({
       registrationComplete: true,
       recoveryCode: `pfr_${"b".repeat(64)}`,
-      message:
-        "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
+      message: "Регистрация прошла успешно.",
     }));
     render(
       <AuthPreview
@@ -175,44 +175,24 @@ describe("AuthPreview", () => {
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalled();
       expect(
-        screen.getByText(
-          "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
-        ),
-      ).toHaveAttribute("role", "status");
+        screen.getByRole("heading", { name: "Регистрация прошла успешно" }),
+      ).toBeInTheDocument();
     });
+    expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
+    expect(window.sessionStorage.getItem(firstLoginSecretsStorageKey)).toBe(
+      JSON.stringify({
+        token,
+        recoveryCode: `pfr_${"b".repeat(64)}`,
+      }),
+    );
     const historyButton = screen.getByRole("button", {
       name: "Перейти к проверкам",
     });
     expect(historyButton.querySelector("svg")).not.toBeInTheDocument();
-    const completedToken = screen.getByLabelText("Токен регистрации");
-    const completedCopyButton = screen.getByRole("button", {
-      name: "Скопировать токен",
-    });
-    expect(completedCopyButton.parentElement).toContainElement(completedToken);
-    const recoveryDialog = screen.getByRole("dialog", {
-      name: "Сохраните код восстановления",
-    });
-    expect(
-      within(recoveryDialog).getByText(
-        "Сохраните этот код: без него восстановить утерянный токен не получится.",
-      ),
-    ).toBeInTheDocument();
-    const recoveryCodeInput =
-      within(recoveryDialog).getByLabelText("Код восстановления");
-    expect(recoveryCodeInput).toHaveValue(`pfr_${"b".repeat(64)}`);
-    expect(
-      within(recoveryDialog).getByRole("button", {
-        name: "Скопировать код восстановления",
-      }).parentElement,
-    ).toContainElement(recoveryCodeInput);
-    fireEvent.click(
-      within(recoveryDialog).getByRole("button", { name: "Понятно" }),
-    );
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Понятно" }));
     await vi.waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Код восстановления")).toHaveValue(
-        `pfr_${"b".repeat(64)}`,
-      );
+      expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
     });
 
     fireEvent.click(historyButton);
@@ -267,7 +247,9 @@ describe("AuthPreview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Регистрация" }));
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalledOnce();
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(
+        screen.getByRole("dialog", { name: "Регистрация прошла успешно" }),
+      ).toBeInTheDocument();
     });
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
@@ -279,6 +261,7 @@ describe("AuthPreview", () => {
         screen.getByRole("button", { name: "Перейти к проверкам" }),
       ).toBeInTheDocument();
     });
+    expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
     expect(screen.queryByText("Токен скопирован")).not.toBeInTheDocument();
 
     if (clipboardDescriptor) {

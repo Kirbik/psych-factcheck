@@ -68,8 +68,7 @@ describe("token auth actions", () => {
     ).resolves.toEqual({
       registrationComplete: true,
       recoveryCode,
-      message:
-        "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
+      message: "Регистрация прошла успешно.",
     });
     expect(registerAccessTokenAccount).toHaveBeenCalledWith(token);
   });

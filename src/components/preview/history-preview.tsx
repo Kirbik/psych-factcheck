@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "./history-preview.module.css";
 import extraStyles from "./history-preview-extra.module.css";
 import menuStyles from "./history-preview-menu.module.css";
+import { FirstLoginSecretsModal } from "./first-login-secrets-modal";
 
 const inter = Inter({ display: "swap", subsets: ["cyrillic", "latin"], variable: "--history-preview-inter", weight: ["400", "500", "600"] });
 const lora = Lora({ display: "swap", subsets: ["cyrillic", "latin"], variable: "--history-preview-lora", weight: ["600"] });
@@ -70,6 +71,7 @@ export function HistoryPreview() {
   }, []);
 
   return <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
+    <FirstLoginSecretsModal />
     <header className={styles.header}>
       <Link className={styles.brand} href="/" aria-label="Псих Фактчек — проверки"><span className={styles.mark}><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" /><path d="m8.4 12.1 2.2 2.2 4.9-5" /></svg></span>Псих Фактчек</Link>
       <nav className={styles.nav} aria-label="Навигация приложения"><Link className={styles.navActive} href="/ui-preview/history" aria-current="page">Проверки</Link><Link href="/ui-preview/profile">Профиль</Link></nav>

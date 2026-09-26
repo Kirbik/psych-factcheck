@@ -116,39 +116,46 @@ test.describe("authentication", () => {
       page.getByRole("button", { name: "Регистрация" }),
     ).toBeEnabled();
     await page.getByRole("button", { name: "Регистрация" }).click();
-    const recoveryDialog = page.getByRole("dialog", {
-      name: "Сохраните код восстановления",
+    const registrationDialog = page.getByRole("dialog", {
+      name: "Регистрация прошла успешно",
     });
-    await expect(recoveryDialog).toBeVisible();
+    await expect(registrationDialog).toBeVisible();
+    await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
+    await expect(registrationDialog).not.toContainText(/^pfc_[a-f0-9]{64}$/);
+    await registrationDialog.getByRole("button", { name: "Понятно" }).click();
+    await expect(registrationDialog).not.toBeVisible();
+    await page.getByRole("button", { name: "Перейти к проверкам" }).click();
+    await expect(page).toHaveURL(/\/ui-preview\/history/);
+
+    const firstLoginDialog = page.getByRole("dialog", {
+      name: "Сохраните данные для доступа",
+    });
+    await expect(firstLoginDialog).toBeVisible();
     for (const viewport of [
       { width: 1280, height: 800 },
       { width: 800, height: 600 },
       { width: 390, height: 844 },
     ]) {
       await page.setViewportSize(viewport);
-      const bounds = await recoveryDialog.boundingBox();
+      const bounds = await firstLoginDialog.boundingBox();
       const viewportCenter = await page.evaluate(() => ({
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
       }));
       if (!bounds) {
-        throw new Error("Recovery dialog must have visible bounds");
+        throw new Error("First-login secrets dialog must have visible bounds");
       }
       expect(Math.abs(bounds.x + bounds.width / 2 - viewportCenter.x)).toBeLessThan(2);
       expect(Math.abs(bounds.y + bounds.height / 2 - viewportCenter.y)).toBeLessThan(2);
     }
-    await expect(recoveryDialog).toContainText(
-      "Сохраните этот код: без него восстановить утерянный токен не получится.",
+    await expect(firstLoginDialog.getByLabel("Токен авторизации")).toHaveValue(
+      /^pfc_[a-f0-9]{64}$/,
     );
-    await expect(recoveryDialog.getByLabel("Код восстановления")).toHaveValue(
+    await expect(firstLoginDialog.getByLabel("Код восстановления")).toHaveValue(
       /^pfr_[a-f0-9]{64}$/,
     );
-    await recoveryDialog.getByRole("button", { name: "Понятно" }).click();
-    await expect(
-      page.getByRole("button", { name: "Перейти к проверкам" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Перейти к проверкам" }).click();
-    await expect(page).toHaveURL(/\/ui-preview\/history/);
+    await firstLoginDialog.getByRole("button", { name: "Понятно" }).click();
+    await expect(firstLoginDialog).not.toBeVisible();
   });
 
   test("allows an existing user to log in", async ({ page }) => {

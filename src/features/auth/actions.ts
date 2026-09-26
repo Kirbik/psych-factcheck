@@ -99,8 +99,7 @@ export async function registerWithToken(
     return {
       registrationComplete: true,
       recoveryCode,
-      message:
-        "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
+      message: "Регистрация прошла успешно.",
     };
   } catch (error) {
     return safeFailure(error, "register");
