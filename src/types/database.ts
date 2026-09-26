@@ -32,6 +32,24 @@ export type Database = {
         };
         Relationships: [];
       };
+      auth_pending_access_tokens: {
+        Row: {
+          created_at: string;
+          expires_at: string;
+          token_hash: string;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at?: string;
+          token_hash: string;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string;
+          token_hash?: string;
+        };
+        Relationships: [];
+      };
       analysis_jobs: {
         Row: {
           content_item_id: string;

@@ -47,20 +47,32 @@ describeDatabase("Supabase initial schema and RLS", () => {
          from pg_class c
          join pg_namespace n on n.oid = c.relnamespace
          where n.nspname = 'public'
-           and c.relname in ('profiles', 'content_items', 'analysis_jobs', 'auth_access_tokens')`,
+           and c.relname in ('profiles', 'content_items', 'analysis_jobs', 'auth_access_tokens', 'auth_pending_access_tokens')`,
       );
-      expect(schema.rows).toHaveLength(4);
+      expect(schema.rows).toHaveLength(5);
       expect(schema.rows.every((row) => row.relrowsecurity)).toBe(true);
 
       const tokenTablePrivileges = await client.query<{
         authenticated_can_read: boolean;
         anon_can_read: boolean;
+        authenticated_can_read_pending: boolean;
+        anon_can_read_pending: boolean;
+        service_role_can_insert_pending: boolean;
       }>(
         `select has_table_privilege('authenticated', 'public.auth_access_tokens', 'select') as authenticated_can_read,
-                has_table_privilege('anon', 'public.auth_access_tokens', 'select') as anon_can_read`,
+                has_table_privilege('anon', 'public.auth_access_tokens', 'select') as anon_can_read,
+                has_table_privilege('authenticated', 'public.auth_pending_access_tokens', 'select') as authenticated_can_read_pending,
+                has_table_privilege('anon', 'public.auth_pending_access_tokens', 'select') as anon_can_read_pending,
+                has_table_privilege('service_role', 'public.auth_pending_access_tokens', 'insert') as service_role_can_insert_pending`,
       );
       expect(tokenTablePrivileges.rows).toEqual([
-        { authenticated_can_read: false, anon_can_read: false },
+        {
+          authenticated_can_read: false,
+          anon_can_read: false,
+          authenticated_can_read_pending: false,
+          anon_can_read_pending: false,
+          service_role_can_insert_pending: true,
+        },
       ]);
 
       const bucket = await client.query<{ id: string; public: boolean }>(

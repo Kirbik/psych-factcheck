@@ -12,6 +12,13 @@ export class InvalidAccessTokenError extends Error {
   }
 }
 
+export class InvalidRegistrationTokenError extends Error {
+  constructor() {
+    super("Registration token is missing, expired, or already used");
+    this.name = "InvalidRegistrationTokenError";
+  }
+}
+
 function generateAccessToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const value = Array.from(bytes, (byte) =>
@@ -32,10 +39,52 @@ function createInternalEmail() {
   return `account-${crypto.randomUUID()}@users.invalid`;
 }
 
-/** Creates a Supabase Auth identity and returns its access token exactly once. */
-export async function registerAccessTokenAccount() {
+/** Generates an access token and temporarily stores only its digest. */
+export async function createPendingRegistrationToken() {
   const admin = createAdminSupabaseClient();
   const token = generateAccessToken();
+  const tokenHash = await hashAccessToken(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+  const { error: cleanupError } = await admin
+    .from("auth_pending_access_tokens")
+    .delete()
+    .lt("expires_at", now.toISOString());
+  if (cleanupError) {
+    throw cleanupError;
+  }
+
+  const { error } = await admin.from("auth_pending_access_tokens").insert({
+    token_hash: tokenHash,
+    expires_at: expiresAt,
+  });
+  if (error) {
+    throw error;
+  }
+
+  return token;
+}
+
+/** Consumes a pending token and creates a Supabase Auth identity exactly once. */
+export async function registerAccessTokenAccount(token: string) {
+  const admin = createAdminSupabaseClient();
+  const tokenHash = await hashAccessToken(token);
+  const { data: pendingToken, error: pendingTokenError } = await admin
+    .from("auth_pending_access_tokens")
+    .delete()
+    .eq("token_hash", tokenHash)
+    .gt("expires_at", new Date().toISOString())
+    .select("expires_at")
+    .maybeSingle();
+
+  if (pendingTokenError) {
+    throw pendingTokenError;
+  }
+  if (!pendingToken) {
+    throw new InvalidRegistrationTokenError();
+  }
+
   const email = createInternalEmail();
   let createdUserId: string | undefined;
 
@@ -51,7 +100,6 @@ export async function registerAccessTokenAccount() {
     }
 
     createdUserId = data.user.id;
-    const tokenHash = await hashAccessToken(token);
     const { error: tokenError } = await admin
       .from("auth_access_tokens")
       .insert({ user_id: createdUserId, token_hash: tokenHash });
@@ -70,15 +118,25 @@ export async function registerAccessTokenAccount() {
       throw sessionError;
     }
 
-    return token;
   } catch (error) {
+    let canRestorePendingToken = true;
     if (createdUserId) {
       const { error: cleanupError } =
         await admin.auth.admin.deleteUser(createdUserId);
       if (cleanupError) {
+        canRestorePendingToken = false;
         console.error("[auth] Failed to clean up incomplete token account", {
           code: cleanupError.code,
-          status: cleanupError.status,
+        });
+      }
+    }
+    if (canRestorePendingToken) {
+      const { error: restoreError } = await admin
+        .from("auth_pending_access_tokens")
+        .insert({ token_hash: tokenHash, expires_at: pendingToken.expires_at });
+      if (restoreError) {
+        console.error("[auth] Failed to restore pending registration token", {
+          code: restoreError.code,
         });
       }
     }

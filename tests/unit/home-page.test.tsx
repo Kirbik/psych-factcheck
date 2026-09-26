@@ -2,12 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
-const { signInWithToken, registerWithToken } = vi.hoisted(() => ({
+const { generateRegistrationToken, signInWithToken, registerWithToken } = vi.hoisted(() => ({
+  generateRegistrationToken: vi.fn(),
   signInWithToken: vi.fn(),
   registerWithToken: vi.fn(),
 }));
 
 vi.mock("@/features/auth/actions", () => ({
+  generateRegistrationToken,
   signInWithToken,
   registerWithToken,
 }));
@@ -21,6 +23,7 @@ describe("HomePage", () => {
         type: AuthPreview,
         props: expect.objectContaining({
           actions: expect.objectContaining({
+            generateToken: generateRegistrationToken,
             login: signInWithToken,
             signup: registerWithToken,
           }),

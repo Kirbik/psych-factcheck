@@ -10,6 +10,8 @@ import { parseSignIn, parseSignUp } from "@/features/auth/validation";
 import {
   authenticateWithAccessToken,
   InvalidAccessTokenError,
+  InvalidRegistrationTokenError,
+  createPendingRegistrationToken,
   registerAccessTokenAccount,
 } from "@/server/supabase/access-token-auth";
 import { createServerAuthClient } from "@/server/supabase/auth";
@@ -34,7 +36,10 @@ function getSafeErrorDetails(error: unknown) {
   };
 }
 
-function safeFailure(error: unknown, operation: "register" | "sign-in") {
+function safeFailure(
+  error: unknown,
+  operation: "generate-token" | "register" | "sign-in",
+) {
   const details = getSafeErrorDetails(error);
   console.error("[auth] Token authentication failed", {
     operation,
@@ -44,11 +49,37 @@ function safeFailure(error: unknown, operation: "register" | "sign-in") {
   if (error instanceof InvalidAccessTokenError) {
     return { message: "Токен авторизации введён неверно" };
   }
+  if (error instanceof InvalidRegistrationTokenError) {
+    return {
+      fieldErrors: {
+        token: [
+          "Токен регистрации истёк или уже использован. Сгенерируйте новый.",
+        ],
+      },
+    };
+  }
 
   return {
     message:
       details.name === "ZodError" ? authConfigurationError : authServiceError,
   };
+}
+
+export async function generateRegistrationToken(
+  previousState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  void previousState;
+  void formData;
+  try {
+    const generatedToken = await createPendingRegistrationToken();
+    return {
+      generatedToken,
+      message: "Сохраните токен: повторно показать его будет невозможно.",
+    };
+  } catch (error) {
+    return safeFailure(error, "generate-token");
+  }
 }
 
 export async function registerWithToken(
@@ -64,10 +95,10 @@ export async function registerWithToken(
   }
 
   try {
-    const generatedToken = await registerAccessTokenAccount();
+    await registerAccessTokenAccount(parsed.data.token);
     return {
-      generatedToken,
-      message: "Сохраните токен. Повторно показать его будет невозможно.",
+      registrationComplete: true,
+      message: "Регистрация завершена. Сохраните токен для следующих входов.",
     };
   } catch (error) {
     return safeFailure(error, "register");

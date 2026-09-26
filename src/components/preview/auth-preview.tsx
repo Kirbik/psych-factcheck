@@ -15,6 +15,10 @@ type AuthPreviewProps = {
       state: AuthActionState,
       formData: FormData,
     ) => Promise<AuthActionState>;
+    generateToken: (
+      state: AuthActionState,
+      formData: FormData,
+    ) => Promise<AuthActionState>;
     signup: (
       state: AuthActionState,
       formData: FormData,
@@ -57,6 +61,8 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
   const [authToken, setAuthToken] = useState("");
   const [secretWord, setSecretWord] = useState("");
+  const [tokenGenerationState, generateTokenAction, tokenGenerationPending] =
+    useActionState(actions.generateToken, initialAuthActionState);
   const [loginState, loginAction, loginPending] = useActionState(
     actions.login,
     initialAuthActionState,
@@ -91,6 +97,9 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
 
   const isSignup = activeMode === "signup";
   const isRecovery = activeMode === "reset";
+  const generatedToken = tokenGenerationState.generatedToken;
+  const secretWordLength = Array.from(secretWord.replace(/\s/g, "")).length;
+  const canRegister = Boolean(generatedToken) && secretWordLength >= 3 && secretWordLength <= 100;
 
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
@@ -187,12 +196,95 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           ) : isSignup ? (
             <>
               <p className={styles.description}>
-                Введите кодовое слово. После регистрации сервер создаст токен —
-                сохраните его для следующих входов.
+                Сначала сгенерируйте и сохраните токен, затем придумайте
+                кодовое слово для следующих входов.
               </p>
 
-              {!registrationState.generatedToken ? (
+              {registrationState.registrationComplete ? (
                 <>
+                  <label
+                    className={styles.fieldLabel}
+                    htmlFor="registration-token"
+                  >
+                    Токен регистрации
+                  </label>
+                  <div className={styles.fieldWrap}>
+                    <input
+                      className={styles.generatedToken}
+                      id="registration-token"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      value={generatedToken ?? ""}
+                    />
+                  </div>
+                  <p className={styles.description} role="status">
+                    {registrationState.message}
+                  </p>
+                  <Link className={styles.primary} href="/ui-preview/history">
+                    Перейти к проверкам
+                    <ArrowIcon />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <label
+                    className={styles.fieldLabel}
+                    htmlFor="registration-token"
+                  >
+                    Токен регистрации
+                  </label>
+                  <div className={styles.tokenRow}>
+                    <div className={styles.fieldWrap}>
+                      <input
+                        aria-describedby={
+                          registrationState.fieldErrors?.token
+                            ? "registration-token-error"
+                            : undefined
+                        }
+                        aria-invalid={
+                          registrationState.fieldErrors?.token ? true : undefined
+                        }
+                        className={styles.generatedToken}
+                        id="registration-token"
+                        name="token"
+                        onFocus={(event) => event.currentTarget.select()}
+                        placeholder="Появится после создания"
+                        readOnly
+                        value={generatedToken ?? ""}
+                      />
+                    </div>
+                    {!generatedToken || registrationState.fieldErrors?.token ? (
+                      <button
+                        className={`${styles.primary} ${styles.tokenCreateButton}`}
+                        disabled={tokenGenerationPending || registrationPending}
+                        formAction={generateTokenAction}
+                        type="submit"
+                      >
+                        {tokenGenerationPending
+                          ? "Генерируем…"
+                          : "Сгенерировать"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {registrationState.fieldErrors?.token ? (
+                    <p
+                      className={styles.fieldError}
+                      id="registration-token-error"
+                      role="alert"
+                    >
+                      {registrationState.fieldErrors.token[0]}
+                    </p>
+                  ) : null}
+                  {!generatedToken && tokenGenerationState.message ? (
+                    <p className={styles.authError} role="alert">
+                      {tokenGenerationState.message}
+                    </p>
+                  ) : null}
+                  {generatedToken && tokenGenerationState.message ? (
+                    <p className={styles.description} role="status">
+                      {tokenGenerationState.message}
+                    </p>
+                  ) : null}
                   <label className={styles.fieldLabel} htmlFor="secret-word">
                     Кодовое слово
                   </label>
@@ -209,6 +301,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                           ? true
                           : undefined
                       }
+                      disabled={!generatedToken}
                       id="secret-word"
                       name="secretWord"
                       onChange={(event) => setSecretWord(event.target.value)}
@@ -227,61 +320,19 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       {registrationState.fieldErrors.secretWord[0]}
                     </p>
                   ) : null}
-                  <label
-                    className={styles.fieldLabel}
-                    htmlFor="registration-token"
-                  >
-                    Токен регистрации
-                  </label>
-                  <div className={styles.tokenRow}>
-                    <div className={styles.fieldWrap}>
-                      <input
-                        className={styles.generatedToken}
-                        id="registration-token"
-                        placeholder="Появится после создания"
-                        readOnly
-                        value=""
-                      />
-                    </div>
-                    <button
-                      className={`${styles.primary} ${styles.tokenCreateButton}`}
-                      disabled={registrationPending}
-                      type="submit"
-                    >
-                      {registrationPending ? "Создаём…" : "Создать токен"}
-                      <ArrowIcon />
-                    </button>
-                  </div>
                   {registrationState.message ? (
                     <p className={styles.authError} role="alert">
                       {registrationState.message}
                     </p>
                   ) : null}
-                </>
-              ) : (
-                <>
-                  <label
-                    className={styles.fieldLabel}
-                    htmlFor="registration-token"
+                  <button
+                    className={styles.primary}
+                    disabled={!canRegister || registrationPending}
+                    type="submit"
                   >
-                    Токен регистрации
-                  </label>
-                  <div className={styles.fieldWrap}>
-                    <input
-                      className={styles.generatedToken}
-                      id="registration-token"
-                      onFocus={(event) => event.currentTarget.select()}
-                      readOnly
-                      value={registrationState.generatedToken}
-                    />
-                  </div>
-                  <p className={styles.description} role="status">
-                    {registrationState.message}
-                  </p>
-                  <Link className={styles.primary} href="/ui-preview/history">
-                    Перейти к проверкам
+                    {registrationPending ? "Регистрируем…" : "Регистрация"}
                     <ArrowIcon />
-                  </Link>
+                  </button>
                 </>
               )}
             </>

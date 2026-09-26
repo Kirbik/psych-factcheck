@@ -40,7 +40,7 @@ test("keeps the checks preview available", async ({ page }) => {
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("keeps codeword and token values separate across tabs and clears them on reload", async ({
+test("requires token generation before codeword entry and clears registration state on reload", async ({
   page,
 }) => {
   await page.goto("/");
@@ -50,8 +50,9 @@ test("keeps codeword and token values separate across tabs and clears them on re
   await expect(
     page.getByRole("heading", { name: "Создайте аккаунт" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Кодовое слово")).toHaveValue("");
-  await page.getByLabel("Кодовое слово").fill("some secret word");
+  await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
+  await expect(page.getByLabel("Кодовое слово")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Регистрация" })).toBeDisabled();
 
   await page.getByRole("tab", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -59,9 +60,7 @@ test("keeps codeword and token values separate across tabs and clears them on re
     `pfc_${"a".repeat(64)}`,
   );
   await page.getByRole("tab", { name: "Регистрация" }).click();
-  await expect(page.getByLabel("Кодовое слово")).toHaveValue(
-    "some secret word",
-  );
+  await expect(page.getByLabel("Кодовое слово")).toBeDisabled();
 
   await page.reload();
   await expect(page.getByLabel("Кодовое слово")).toHaveValue("");
@@ -91,11 +90,16 @@ test.describe("authentication", () => {
     page,
   }) => {
     await page.goto("/?mode=signup");
-    await page.getByLabel("Кодовое слово").fill("e2e-secret-word");
-    await page.getByRole("button", { name: "Создать токен" }).click();
+    await expect(page.getByRole("button", { name: "Регистрация" })).toBeDisabled();
+    await page.getByRole("button", { name: "Сгенерировать" }).click();
     await expect(page.getByLabel("Токен регистрации")).toHaveValue(
       /^pfc_[a-f0-9]{64}$/,
     );
+    await page.getByLabel("Кодовое слово").fill("e2e-secret-word");
+    await expect(page.getByRole("button", { name: "Регистрация" })).toBeEnabled();
+    await page.getByRole("button", { name: "Регистрация" }).click();
+    await expect(page.getByRole("status")).toContainText("Регистрация завершена");
+    await expect(page.getByRole("link", { name: "Перейти к проверкам" })).toBeVisible();
   });
 
   test("allows an existing user to log in", async ({ page }) => {

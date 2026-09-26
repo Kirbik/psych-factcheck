@@ -8,17 +8,32 @@ function formData(values: Record<string, string>) {
 }
 
 describe("token authentication validation", () => {
-  it("accepts a registration codeword with 3 to 100 non-whitespace characters", () => {
-    expect(parseSignUp(formData({ secretWord: "one two three" })).success).toBe(
-      true,
-    );
+  const validToken = `pfc_${"a".repeat(64)}`;
+
+  it("accepts a generated registration token and a valid codeword", () => {
+    expect(
+      parseSignUp(formData({ token: validToken, secretWord: "one two three" }))
+        .success,
+    ).toBe(true);
   });
 
   it("rejects a codeword that is too short or too long", () => {
-    expect(parseSignUp(formData({ secretWord: "a b" })).success).toBe(false);
-    expect(parseSignUp(formData({ secretWord: "x".repeat(101) })).success).toBe(
-      false,
-    );
+    expect(
+      parseSignUp(formData({ token: validToken, secretWord: "a b" })).success,
+    ).toBe(false);
+    expect(
+      parseSignUp(
+        formData({ token: validToken, secretWord: "x".repeat(101) }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("requires a token in the server-generated format before registration", () => {
+    expect(
+      parseSignUp(
+        formData({ token: "pfc_invalid", secretWord: "secure phrase" }),
+      ).success,
+    ).toBe(false);
   });
 
   it("accepts only a server-generated token format on login", () => {

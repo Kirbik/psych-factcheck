@@ -9,17 +9,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AuthActionState } from "@/features/auth/state";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
+type Action = (
+  state: AuthActionState,
+  formData: FormData,
+) => Promise<AuthActionState>;
+
 function createActions(
-  login: (
-    state: AuthActionState,
-    formData: FormData,
-  ) => Promise<AuthActionState> = async () => ({}),
-  signup: (
-    state: AuthActionState,
-    formData: FormData,
-  ) => Promise<AuthActionState> = async () => ({}),
+  login: Action = async () => ({}),
+  signup: Action = async () => ({}),
+  generateToken: Action = async () => ({}),
 ) {
-  return { login, signup };
+  return { generateToken, login, signup };
 }
 
 describe("AuthPreview", () => {
@@ -71,40 +71,69 @@ describe("AuthPreview", () => {
     );
   });
 
-  it("submits the codeword and shows the token returned by the server", async () => {
+  it("enables registration only after server token generation and valid codeword entry", async () => {
     const token = `pfc_${"a".repeat(64)}`;
-    const signup = vi.fn(async () => ({
+    const generateToken = vi.fn(async () => ({
       generatedToken: token,
-      message: "Сохраните токен. Повторно показать его будет невозможно.",
+      message: "Сохраните токен: повторно показать его будет невозможно.",
+    }));
+    const signup = vi.fn(async () => ({
+      registrationComplete: true,
+      message: "Регистрация завершена. Сохраните токен для следующих входов.",
     }));
     render(
-      <AuthPreview actions={createActions(undefined, signup)} mode="signup" />,
+      <AuthPreview
+        actions={createActions(undefined, signup, generateToken)}
+        mode="signup"
+      />,
     );
 
     expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
-    fireEvent.change(screen.getByLabelText("Кодовое слово"), {
-      target: { value: "secret phrase" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Создать токен" }));
+    expect(screen.getByLabelText("Кодовое слово")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Регистрация" })).toBeDisabled();
 
+    fireEvent.click(screen.getByRole("button", { name: "Сгенерировать" }));
+    await vi.waitFor(() => {
+      expect(generateToken).toHaveBeenCalledOnce();
+      expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
+    });
+
+    const codeword = screen.getByLabelText("Кодовое слово");
+    expect(codeword).toBeEnabled();
+    fireEvent.change(codeword, { target: { value: "secret phrase" } });
+    expect(screen.getByRole("button", { name: "Регистрация" })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Регистрация" }));
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalled();
-      expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Регистрация завершена.",
+      );
     });
     expect(
       screen.getByRole("link", { name: "Перейти к проверкам" }),
     ).toHaveAttribute("href", "/ui-preview/history");
   });
 
-  it("keeps login token and registration codeword separate across tabs", () => {
+  it("keeps login token and registration codeword separate across tabs", async () => {
+    const generateToken = vi.fn(async () => ({
+      generatedToken: `pfc_${"b".repeat(64)}`,
+    }));
     const { getByLabelText, getByRole } = render(
-      <AuthPreview actions={createActions()} mode="login" />,
+      <AuthPreview
+        actions={createActions(undefined, undefined, generateToken)}
+        mode="login"
+      />,
     );
 
     fireEvent.change(getByLabelText("Токен авторизации"), {
       target: { value: "login-token" },
     });
     fireEvent.click(getByRole("tab", { name: "Регистрация" }));
+    fireEvent.click(getByRole("button", { name: "Сгенерировать" }));
+    await vi.waitFor(() => {
+      expect(getByLabelText("Кодовое слово")).toBeEnabled();
+    });
     fireEvent.change(getByLabelText("Кодовое слово"), {
       target: { value: "registration-word" },
     });
