@@ -61,7 +61,6 @@ function CopyIcon() {
 export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
   const [authToken, setAuthToken] = useState("");
-  const [secretWord, setSecretWord] = useState("");
   const [tokenGenerationState, generateTokenAction, tokenGenerationPending] =
     useActionState(actions.generateToken, initialAuthActionState);
   const [loginState, loginAction, loginPending] = useActionState(
@@ -71,9 +70,10 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [registrationState, registrationAction, registrationPending] =
     useActionState(actions.signup, initialAuthActionState);
   const [message, setMessage] = useState("");
-  const [tokenCopyState, setTokenCopyState] = useState<
-    "idle" | "copied" | "error"
-  >("idle");
+  const [copyFeedback, setCopyFeedback] = useState<{
+    target: "token" | "recoveryCode";
+    result: "copied" | "error";
+  } | null>(null);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -102,23 +102,42 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const isSignup = activeMode === "signup";
   const isRecovery = activeMode === "reset";
   const generatedToken = tokenGenerationState.generatedToken;
-  const secretWordLength = Array.from(secretWord.replace(/\s/g, "")).length;
-  const canRegister =
-    Boolean(generatedToken) && secretWordLength >= 3 && secretWordLength <= 100;
+  const canRegister = Boolean(generatedToken);
 
-  const copyRegistrationToken = async () => {
-    if (!generatedToken) return;
+  const copySecret = async (
+    value: string | undefined,
+    target: "token" | "recoveryCode",
+  ) => {
+    if (!value) return;
 
     try {
       if (!navigator.clipboard?.writeText) {
         throw new Error("Clipboard API is unavailable");
       }
-      await navigator.clipboard.writeText(generatedToken);
-      setTokenCopyState("copied");
+      await navigator.clipboard.writeText(value);
+      setCopyFeedback({ target, result: "copied" });
     } catch {
-      setTokenCopyState("error");
+      setCopyFeedback({ target, result: "error" });
     }
   };
+
+  const renderCopyFeedback = (target: "token" | "recoveryCode") =>
+    copyFeedback?.target === target ? (
+      <p
+        className={
+          copyFeedback.result === "copied"
+            ? styles.tokenCopyStatus
+            : styles.fieldError
+        }
+        role={copyFeedback.result === "copied" ? "status" : "alert"}
+      >
+        {copyFeedback.result === "copied"
+          ? target === "token"
+            ? "Токен скопирован"
+            : "Код восстановления скопирован"
+          : "Не удалось скопировать. Выделите значение и скопируйте вручную"}
+      </p>
+    ) : null;
 
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
@@ -214,8 +233,8 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           ) : isSignup ? (
             <>
               <p className={styles.description}>
-                Сначала сгенерируйте и сохраните токен, затем придумайте
-                кодовое слово для следующих входов.
+                Сначала сгенерируйте и сохраните токен. После регистрации
+                появится код восстановления.
               </p>
 
               {registrationState.registrationComplete ? (
@@ -237,27 +256,43 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                     <button
                       aria-label="Скопировать токен"
                       className={styles.tokenCopyButton}
-                      onClick={copyRegistrationToken}
+                      onClick={() => copySecret(generatedToken, "token")}
                       type="button"
                     >
                       <CopyIcon />
                     </button>
                   </div>
-                  {tokenCopyState !== "idle" ? (
-                    <p
-                      className={
-                        tokenCopyState === "copied"
-                          ? styles.tokenCopyStatus
-                          : styles.fieldError
+                  {renderCopyFeedback("token")}
+                  <label className={styles.fieldLabel} htmlFor="recovery-code">
+                    Код восстановления
+                  </label>
+                  <div className={styles.fieldWrap}>
+                    <input
+                      className={styles.generatedToken}
+                      id="recovery-code"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      value={registrationState.recoveryCode ?? ""}
+                    />
+                    <button
+                      aria-label="Скопировать код восстановления"
+                      className={styles.tokenCopyButton}
+                      onClick={() =>
+                        copySecret(
+                          registrationState.recoveryCode,
+                          "recoveryCode",
+                        )
                       }
-                      role={tokenCopyState === "copied" ? "status" : "alert"}
+                      type="button"
                     >
-                      {tokenCopyState === "copied"
-                        ? "Токен скопирован"
-                        : "Не удалось скопировать токен. Выделите его и скопируйте вручную"}
-                    </p>
-                  ) : null}
-                  <p className={styles.description} role="status">
+                      <CopyIcon />
+                    </button>
+                  </div>
+                  {renderCopyFeedback("recoveryCode")}
+                  <p
+                    className={`${styles.description} ${styles.tokenNotice}`}
+                    role="status"
+                  >
                     {registrationState.message}
                   </p>
                   <Link className={styles.primary} href="/ui-preview/history">
@@ -281,7 +316,9 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                             : undefined
                         }
                         aria-invalid={
-                          registrationState.fieldErrors?.token ? true : undefined
+                          registrationState.fieldErrors?.token
+                            ? true
+                            : undefined
                         }
                         className={styles.generatedToken}
                         id="registration-token"
@@ -295,7 +332,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                         <button
                           aria-label="Скопировать токен"
                           className={styles.tokenCopyButton}
-                          onClick={copyRegistrationToken}
+                          onClick={() => copySecret(generatedToken, "token")}
                           type="button"
                         >
                           <CopyIcon />
@@ -315,20 +352,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       </button>
                     ) : null}
                   </div>
-                  {tokenCopyState !== "idle" ? (
-                    <p
-                      className={
-                        tokenCopyState === "copied"
-                          ? styles.tokenCopyStatus
-                          : styles.fieldError
-                      }
-                      role={tokenCopyState === "copied" ? "status" : "alert"}
-                    >
-                      {tokenCopyState === "copied"
-                        ? "Токен скопирован"
-                        : "Не удалось скопировать токен. Выделите его и скопируйте вручную"}
-                    </p>
-                  ) : null}
+                  {renderCopyFeedback("token")}
                   {registrationState.fieldErrors?.token ? (
                     <p
                       className={styles.fieldError}
@@ -351,41 +375,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       {tokenGenerationState.message}
                     </p>
                   ) : null}
-                  <label className={styles.fieldLabel} htmlFor="secret-word">
-                    Кодовое слово
-                  </label>
-                  <div className={styles.fieldWrap}>
-                    <input
-                      autoComplete="off"
-                      aria-describedby={
-                        registrationState.fieldErrors?.secretWord
-                          ? "secret-word-error"
-                          : undefined
-                      }
-                      aria-invalid={
-                        registrationState.fieldErrors?.secretWord
-                          ? true
-                          : undefined
-                      }
-                      disabled={!generatedToken}
-                      id="secret-word"
-                      name="secretWord"
-                      onChange={(event) => setSecretWord(event.target.value)}
-                      required
-                      type="password"
-                      value={secretWord}
-                      placeholder="Введите кодовое слово"
-                    />
-                  </div>
-                  {registrationState.fieldErrors?.secretWord ? (
-                    <p
-                      className={styles.fieldError}
-                      id="secret-word-error"
-                      role="alert"
-                    >
-                      {registrationState.fieldErrors.secretWord[0]}
-                    </p>
-                  ) : null}
                   {registrationState.message ? (
                     <p className={styles.authError} role="alert">
                       {registrationState.message}
@@ -394,7 +383,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   <button
                     className={styles.primary}
                     disabled={!canRegister || registrationPending}
-                    onClick={() => setTokenCopyState("idle")}
+                    onClick={() => setCopyFeedback(null)}
                     type="submit"
                   >
                     {registrationPending ? "Регистрируем…" : "Регистрация"}

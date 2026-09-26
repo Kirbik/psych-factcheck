@@ -1,17 +1,10 @@
 import { z } from "zod";
 
-const tokenSchema = z.string().regex(/^pfc_[a-f0-9]{64}$/, "Введите корректный токен");
-const secretWordSchema = z
+const tokenSchema = z
   .string()
-  .max(200, "Кодовое слово слишком длинное")
-  .refine((value) => {
-    const length = Array.from(value.replace(/\s/g, "")).length;
-    return length >= 3 && length <= 100;
-  }, "Введите от 3 до 100 символов, не считая пробелы");
-
+  .regex(/^pfc_[a-f0-9]{64}$/, "Введите корректный токен");
 const signUpSchema = z.object({
   token: tokenSchema,
-  secretWord: secretWordSchema,
 });
 
 const accessTokenSchema = z.object({
@@ -21,10 +14,7 @@ const accessTokenSchema = z.object({
 });
 
 export function parseSignUp(formData: FormData) {
-  return signUpSchema.safeParse({
-    token: formData.get("token"),
-    secretWord: formData.get("secretWord"),
-  });
+  return signUpSchema.safeParse({ token: formData.get("token") });
 }
 
 export function parseSignIn(formData: FormData) {

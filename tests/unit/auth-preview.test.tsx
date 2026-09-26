@@ -56,9 +56,9 @@ describe("AuthPreview", () => {
       );
       const buttons = within(container).getAllByRole("button");
 
-      expect(buttons.every((button) => button.querySelector("svg") === null)).toBe(
-        true,
-      );
+      expect(
+        buttons.every((button) => button.querySelector("svg") === null),
+      ).toBe(true);
       unmount();
     }
   });
@@ -85,7 +85,7 @@ describe("AuthPreview", () => {
     );
   });
 
-  it("enables registration only after server token generation and valid codeword entry", async () => {
+  it("enables registration after server token generation and displays recovery code", async () => {
     const token = `pfc_${"a".repeat(64)}`;
     const generateToken = vi.fn(async () => ({
       generatedToken: token,
@@ -93,7 +93,9 @@ describe("AuthPreview", () => {
     }));
     const signup = vi.fn(async () => ({
       registrationComplete: true,
-      message: "Регистрация завершена. Сохраните токен для следующих входов.",
+      recoveryCode: `pfr_${"b".repeat(64)}`,
+      message:
+        "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
     }));
     render(
       <AuthPreview
@@ -103,7 +105,6 @@ describe("AuthPreview", () => {
     );
 
     expect(screen.getByLabelText("Токен регистрации")).toHaveValue("");
-    expect(screen.getByLabelText("Кодовое слово")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Регистрация" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Сгенерировать" }));
@@ -117,17 +118,16 @@ describe("AuthPreview", () => {
     );
     expect(tokenNotice.className).toContain("tokenNotice");
 
-    const codeword = screen.getByLabelText("Кодовое слово");
-    expect(codeword).toBeEnabled();
-    fireEvent.change(codeword, { target: { value: "secret phrase" } });
     expect(screen.getByRole("button", { name: "Регистрация" })).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Регистрация" }));
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalled();
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "Регистрация завершена.",
-      );
+      expect(
+        screen.getByText(
+          "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
+        ),
+      ).toHaveAttribute("role", "status");
     });
     const historyLink = screen.getByRole("link", {
       name: "Перейти к проверкам",
@@ -139,6 +139,13 @@ describe("AuthPreview", () => {
       name: "Скопировать токен",
     });
     expect(completedCopyButton.parentElement).toContainElement(completedToken);
+    expect(screen.getByLabelText("Код восстановления")).toHaveValue(
+      `pfr_${"b".repeat(64)}`,
+    );
+    expect(
+      screen.getByRole("button", { name: "Скопировать код восстановления" })
+        .parentElement,
+    ).toContainElement(screen.getByLabelText("Код восстановления"));
   });
 
   it("clears copy feedback when registration is submitted", async () => {
@@ -146,6 +153,7 @@ describe("AuthPreview", () => {
     const generateToken = vi.fn(async () => ({ generatedToken: token }));
     const signup = vi.fn(async () => ({
       registrationComplete: true,
+      recoveryCode: `pfr_${"d".repeat(64)}`,
       message: "Регистрация завершена.",
     }));
     const clipboardDescriptor = Object.getOwnPropertyDescriptor(
@@ -182,9 +190,6 @@ describe("AuthPreview", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Токен скопирован");
     });
 
-    fireEvent.change(screen.getByLabelText("Кодовое слово"), {
-      target: { value: "a-secure-word" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "Регистрация" }));
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalledOnce();
@@ -201,7 +206,7 @@ describe("AuthPreview", () => {
     }
   });
 
-  it("keeps login token and registration codeword separate across tabs", async () => {
+  it("keeps login and registration tokens separate across tabs", async () => {
     const generateToken = vi.fn(async () => ({
       generatedToken: `pfc_${"b".repeat(64)}`,
     }));
@@ -218,15 +223,17 @@ describe("AuthPreview", () => {
     fireEvent.click(getByRole("tab", { name: "Регистрация" }));
     fireEvent.click(getByRole("button", { name: "Сгенерировать" }));
     await vi.waitFor(() => {
-      expect(getByLabelText("Кодовое слово")).toBeEnabled();
-    });
-    fireEvent.change(getByLabelText("Кодовое слово"), {
-      target: { value: "registration-word" },
+      expect(getByLabelText("Токен регистрации")).toHaveValue(
+        `pfc_${"b".repeat(64)}`,
+      );
     });
     fireEvent.click(getByRole("tab", { name: "Войти" }));
 
     expect(getByLabelText("Токен авторизации")).toHaveValue("login-token");
     fireEvent.click(getByRole("tab", { name: "Регистрация" }));
-    expect(getByLabelText("Кодовое слово")).toHaveValue("registration-word");
+    expect(getByLabelText("Токен регистрации")).toHaveValue(
+      `pfc_${"b".repeat(64)}`,
+    );
+    expect(screen.queryByLabelText("Кодовое слово")).not.toBeInTheDocument();
   });
 });

@@ -19,17 +19,17 @@ export class InvalidRegistrationTokenError extends Error {
   }
 }
 
-function generateAccessToken() {
+function generateSecret(prefix: "pfc" | "pfr") {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const value = Array.from(bytes, (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
-  return `pfc_${value}`;
+  return `${prefix}_${value}`;
 }
 
-async function hashAccessToken(token: string) {
-  const encodedToken = new TextEncoder().encode(token);
-  const digest = await crypto.subtle.digest("SHA-256", encodedToken);
+async function hashSecret(secret: string) {
+  const encodedSecret = new TextEncoder().encode(secret);
+  const digest = await crypto.subtle.digest("SHA-256", encodedSecret);
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
@@ -42,8 +42,8 @@ function createInternalEmail() {
 /** Generates an access token and temporarily stores only its digest. */
 export async function createPendingRegistrationToken() {
   const admin = createAdminSupabaseClient();
-  const token = generateAccessToken();
-  const tokenHash = await hashAccessToken(token);
+  const token = generateSecret("pfc");
+  const tokenHash = await hashSecret(token);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
@@ -69,7 +69,9 @@ export async function createPendingRegistrationToken() {
 /** Consumes a pending token and creates a Supabase Auth identity exactly once. */
 export async function registerAccessTokenAccount(token: string) {
   const admin = createAdminSupabaseClient();
-  const tokenHash = await hashAccessToken(token);
+  const tokenHash = await hashSecret(token);
+  const recoveryCode = generateSecret("pfr");
+  const recoveryCodeHash = await hashSecret(recoveryCode);
   const { data: pendingToken, error: pendingTokenError } = await admin
     .from("auth_pending_access_tokens")
     .delete()
@@ -108,6 +110,14 @@ export async function registerAccessTokenAccount(token: string) {
       throw tokenError;
     }
 
+    const { error: recoveryCodeError } = await admin
+      .from("auth_recovery_codes")
+      .insert({ user_id: createdUserId, code_hash: recoveryCodeHash });
+
+    if (recoveryCodeError) {
+      throw recoveryCodeError;
+    }
+
     const auth = await createServerAuthClient();
     const { error: sessionError } = await auth.auth.signInWithPassword({
       email,
@@ -117,7 +127,7 @@ export async function registerAccessTokenAccount(token: string) {
     if (sessionError) {
       throw sessionError;
     }
-
+    return recoveryCode;
   } catch (error) {
     let canRestorePendingToken = true;
     if (createdUserId) {
@@ -147,7 +157,7 @@ export async function registerAccessTokenAccount(token: string) {
 /** Finds a token account by its digest, then creates a normal Supabase cookie session. */
 export async function authenticateWithAccessToken(token: string) {
   const admin = createAdminSupabaseClient();
-  const tokenHash = await hashAccessToken(token);
+  const tokenHash = await hashSecret(token);
   const { data: tokenRecord, error: tokenLookupError } = await admin
     .from("auth_access_tokens")
     .select("user_id")

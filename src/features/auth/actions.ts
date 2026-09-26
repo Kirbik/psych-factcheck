@@ -95,10 +95,12 @@ export async function registerWithToken(
   }
 
   try {
-    await registerAccessTokenAccount(parsed.data.token);
+    const recoveryCode = await registerAccessTokenAccount(parsed.data.token);
     return {
       registrationComplete: true,
-      message: "Регистрация завершена. Сохраните токен для следующих входов.",
+      recoveryCode,
+      message:
+        "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
     };
   } catch (error) {
     return safeFailure(error, "register");

@@ -47,9 +47,9 @@ describeDatabase("Supabase initial schema and RLS", () => {
          from pg_class c
          join pg_namespace n on n.oid = c.relnamespace
          where n.nspname = 'public'
-           and c.relname in ('profiles', 'content_items', 'analysis_jobs', 'auth_access_tokens', 'auth_pending_access_tokens')`,
+           and c.relname in ('profiles', 'content_items', 'analysis_jobs', 'auth_access_tokens', 'auth_pending_access_tokens', 'auth_recovery_codes')`,
       );
-      expect(schema.rows).toHaveLength(5);
+      expect(schema.rows).toHaveLength(6);
       expect(schema.rows.every((row) => row.relrowsecurity)).toBe(true);
 
       const tokenTablePrivileges = await client.query<{
@@ -57,13 +57,19 @@ describeDatabase("Supabase initial schema and RLS", () => {
         anon_can_read: boolean;
         authenticated_can_read_pending: boolean;
         anon_can_read_pending: boolean;
+        authenticated_can_read_recovery: boolean;
+        anon_can_read_recovery: boolean;
         service_role_can_insert_pending: boolean;
+        service_role_can_insert_recovery: boolean;
       }>(
         `select has_table_privilege('authenticated', 'public.auth_access_tokens', 'select') as authenticated_can_read,
                 has_table_privilege('anon', 'public.auth_access_tokens', 'select') as anon_can_read,
                 has_table_privilege('authenticated', 'public.auth_pending_access_tokens', 'select') as authenticated_can_read_pending,
                 has_table_privilege('anon', 'public.auth_pending_access_tokens', 'select') as anon_can_read_pending,
-                has_table_privilege('service_role', 'public.auth_pending_access_tokens', 'insert') as service_role_can_insert_pending`,
+                has_table_privilege('authenticated', 'public.auth_recovery_codes', 'select') as authenticated_can_read_recovery,
+                has_table_privilege('anon', 'public.auth_recovery_codes', 'select') as anon_can_read_recovery,
+                has_table_privilege('service_role', 'public.auth_pending_access_tokens', 'insert') as service_role_can_insert_pending,
+                has_table_privilege('service_role', 'public.auth_recovery_codes', 'insert') as service_role_can_insert_recovery`,
       );
       expect(tokenTablePrivileges.rows).toEqual([
         {
@@ -71,7 +77,10 @@ describeDatabase("Supabase initial schema and RLS", () => {
           anon_can_read: false,
           authenticated_can_read_pending: false,
           anon_can_read_pending: false,
+          authenticated_can_read_recovery: false,
+          anon_can_read_recovery: false,
           service_role_can_insert_pending: true,
+          service_role_can_insert_recovery: true,
         },
       ]);
 

@@ -58,32 +58,20 @@ describe("token auth actions", () => {
     expect(registerAccessTokenAccount).not.toHaveBeenCalled();
   });
 
-  it("registers with the pending token and a valid codeword", async () => {
+  it("registers with only the pending token and returns a recovery code", async () => {
     const token = `pfc_${"a".repeat(64)}`;
+    const recoveryCode = `pfr_${"b".repeat(64)}`;
+    registerAccessTokenAccount.mockResolvedValue(recoveryCode);
 
     await expect(
-      registerWithToken(
-        initialAuthActionState,
-        formData({ token, secretWord: "one two three" }),
-      ),
+      registerWithToken(initialAuthActionState, formData({ token })),
     ).resolves.toEqual({
       registrationComplete: true,
-      message: "Регистрация завершена. Сохраните токен для следующих входов.",
+      recoveryCode,
+      message:
+        "Сохраните токен авторизации и код восстановления. Они показаны только один раз.",
     });
     expect(registerAccessTokenAccount).toHaveBeenCalledWith(token);
-  });
-
-  it("does not create an account when the registration codeword is invalid", async () => {
-    await expect(
-      registerWithToken(
-        initialAuthActionState,
-        formData({ token: `pfc_${"a".repeat(64)}`, secretWord: "a b" }),
-      ),
-    ).resolves.toMatchObject({
-      message: "Проверьте введённые данные",
-      fieldErrors: { secretWord: [expect.any(String)] },
-    });
-    expect(registerAccessTokenAccount).not.toHaveBeenCalled();
   });
 
   it("maps missing server configuration to a safe message", async () => {

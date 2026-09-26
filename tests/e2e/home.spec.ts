@@ -40,7 +40,7 @@ test("keeps the checks preview available", async ({ page }) => {
   ).toHaveAttribute("aria-current", "page");
 });
 
-test("requires token generation before codeword entry and clears registration state on reload", async ({
+test("requires token generation before registration and clears registration state on reload", async ({
   page,
 }) => {
   await page.goto("/");
@@ -51,8 +51,9 @@ test("requires token generation before codeword entry and clears registration st
     page.getByRole("heading", { name: "Создайте аккаунт" }),
   ).toBeVisible();
   await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
-  await expect(page.getByLabel("Кодовое слово")).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Регистрация" })).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Регистрация" }),
+  ).toBeDisabled();
 
   await page.getByRole("tab", { name: "Войти" }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -60,10 +61,10 @@ test("requires token generation before codeword entry and clears registration st
     `pfc_${"a".repeat(64)}`,
   );
   await page.getByRole("tab", { name: "Регистрация" }).click();
-  await expect(page.getByLabel("Кодовое слово")).toBeDisabled();
+  await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
 
   await page.reload();
-  await expect(page.getByLabel("Кодовое слово")).toHaveValue("");
+  await expect(page.getByLabel("Токен регистрации")).toHaveValue("");
   await page.goto("/");
   await expect(page.getByLabel("Токен авторизации")).toHaveValue("");
   await page.goto("/?mode=reset");
@@ -90,16 +91,26 @@ test.describe("authentication", () => {
     page,
   }) => {
     await page.goto("/?mode=signup");
-    await expect(page.getByRole("button", { name: "Регистрация" })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Регистрация" }),
+    ).toBeDisabled();
     await page.getByRole("button", { name: "Сгенерировать" }).click();
     await expect(page.getByLabel("Токен регистрации")).toHaveValue(
       /^pfc_[a-f0-9]{64}$/,
     );
-    await page.getByLabel("Кодовое слово").fill("e2e-secret-word");
-    await expect(page.getByRole("button", { name: "Регистрация" })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "Регистрация" }),
+    ).toBeEnabled();
     await page.getByRole("button", { name: "Регистрация" }).click();
-    await expect(page.getByRole("status")).toContainText("Регистрация завершена");
-    await expect(page.getByRole("link", { name: "Перейти к проверкам" })).toBeVisible();
+    await expect(page.getByRole("status")).toContainText(
+      "Регистрация завершена",
+    );
+    await expect(page.getByLabel("Код восстановления")).toHaveValue(
+      /^pfr_[a-f0-9]{64}$/,
+    );
+    await expect(
+      page.getByRole("link", { name: "Перейти к проверкам" }),
+    ).toBeVisible();
   });
 
   test("allows an existing user to log in", async ({ page }) => {
