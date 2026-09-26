@@ -222,7 +222,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   </p>
                   <Link className={styles.primary} href="/ui-preview/history">
                     Перейти к проверкам
-                    <ArrowIcon />
                   </Link>
                 </>
               ) : (

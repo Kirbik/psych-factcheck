@@ -110,9 +110,11 @@ describe("AuthPreview", () => {
         "Регистрация завершена.",
       );
     });
-    expect(
-      screen.getByRole("link", { name: "Перейти к проверкам" }),
-    ).toHaveAttribute("href", "/ui-preview/history");
+    const historyLink = screen.getByRole("link", {
+      name: "Перейти к проверкам",
+    });
+    expect(historyLink).toHaveAttribute("href", "/ui-preview/history");
+    expect(historyLink.querySelector("svg")).not.toBeInTheDocument();
   });
 
   it("keeps login token and registration codeword separate across tabs", async () => {
