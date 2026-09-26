@@ -136,6 +136,44 @@ describe("AuthPreview", () => {
     expect(historyLink.querySelector("svg")).not.toBeInTheDocument();
   });
 
+  it("copies the generated registration token to the clipboard", async () => {
+    const token = `pfc_${"c".repeat(64)}`;
+    const generateToken = vi.fn(async () => ({ generatedToken: token }));
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(
+      navigator,
+      "clipboard",
+    );
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    render(
+      <AuthPreview
+        actions={createActions(undefined, undefined, generateToken)}
+        mode="signup"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Сгенерировать" }));
+    await vi.waitFor(() => {
+      expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Скопировать токен" }));
+
+    await vi.waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(token);
+      expect(screen.getByRole("status")).toHaveTextContent("Токен скопирован");
+    });
+
+    if (clipboardDescriptor) {
+      Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+    } else {
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
   it("keeps login token and registration codeword separate across tabs", async () => {
     const generateToken = vi.fn(async () => ({
       generatedToken: `pfc_${"b".repeat(64)}`,

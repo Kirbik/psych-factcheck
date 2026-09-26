@@ -62,6 +62,9 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [registrationState, registrationAction, registrationPending] =
     useActionState(actions.signup, initialAuthActionState);
   const [message, setMessage] = useState("");
+  const [tokenCopyState, setTokenCopyState] = useState<
+    "idle" | "copied" | "error"
+  >("idle");
 
   useEffect(() => {
     const handlePopState = () => {
@@ -91,7 +94,22 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const isRecovery = activeMode === "reset";
   const generatedToken = tokenGenerationState.generatedToken;
   const secretWordLength = Array.from(secretWord.replace(/\s/g, "")).length;
-  const canRegister = Boolean(generatedToken) && secretWordLength >= 3 && secretWordLength <= 100;
+  const canRegister =
+    Boolean(generatedToken) && secretWordLength >= 3 && secretWordLength <= 100;
+
+  const copyRegistrationToken = async () => {
+    if (!generatedToken) return;
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API is unavailable");
+      }
+      await navigator.clipboard.writeText(generatedToken);
+      setTokenCopyState("copied");
+    } catch {
+      setTokenCopyState("error");
+    }
+  };
 
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
@@ -199,15 +217,38 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   >
                     Токен регистрации
                   </label>
-                  <div className={styles.fieldWrap}>
-                    <input
-                      className={styles.generatedToken}
-                      id="registration-token"
-                      onFocus={(event) => event.currentTarget.select()}
-                      readOnly
-                      value={generatedToken ?? ""}
-                    />
+                  <div className={styles.tokenRow}>
+                    <div className={styles.fieldWrap}>
+                      <input
+                        className={styles.generatedToken}
+                        id="registration-token"
+                        onFocus={(event) => event.currentTarget.select()}
+                        readOnly
+                        value={generatedToken ?? ""}
+                      />
+                    </div>
+                    <button
+                      className={`${styles.primary} ${styles.tokenCreateButton}`}
+                      onClick={copyRegistrationToken}
+                      type="button"
+                    >
+                      Скопировать токен
+                    </button>
                   </div>
+                  {tokenCopyState !== "idle" ? (
+                    <p
+                      className={
+                        tokenCopyState === "copied"
+                          ? styles.tokenCopyStatus
+                          : styles.authError
+                      }
+                      role={tokenCopyState === "copied" ? "status" : "alert"}
+                    >
+                      {tokenCopyState === "copied"
+                        ? "Токен скопирован"
+                        : "Не удалось скопировать токен. Выделите его и скопируйте вручную"}
+                    </p>
+                  ) : null}
                   <p className={styles.description} role="status">
                     {registrationState.message}
                   </p>
@@ -254,8 +295,30 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                           ? "Генерируем…"
                           : "Сгенерировать"}
                       </button>
-                    ) : null}
+                    ) : (
+                      <button
+                        className={`${styles.primary} ${styles.tokenCreateButton}`}
+                        onClick={copyRegistrationToken}
+                        type="button"
+                      >
+                        Скопировать токен
+                      </button>
+                    )}
                   </div>
+                  {tokenCopyState !== "idle" ? (
+                    <p
+                      className={
+                        tokenCopyState === "copied"
+                          ? styles.tokenCopyStatus
+                          : styles.authError
+                      }
+                      role={tokenCopyState === "copied" ? "status" : "alert"}
+                    >
+                      {tokenCopyState === "copied"
+                        ? "Токен скопирован"
+                        : "Не удалось скопировать токен. Выделите его и скопируйте вручную"}
+                    </p>
+                  ) : null}
                   {registrationState.fieldErrors?.token ? (
                     <p
                       className={styles.fieldError}

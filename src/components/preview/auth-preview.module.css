@@ -43,6 +43,7 @@
 .tokenRow { align-items: stretch; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
 .tokenRow .fieldWrap { min-width: 0; }
 .tokenRow .fieldWrap + .tokenCreateButton { height: 52px; margin-top: 0; min-height: 52px; padding-inline: 16px; white-space: nowrap; width: auto; }
+.tokenCopyStatus { color: var(--accent); font-size: 13px; line-height: 1.5; margin: 4px 0 0; }
 .fieldWrap:focus-within { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(23, 96, 76, 0.13); }
 .fieldWrap:has(input[aria-invalid="true"]) { border-color: var(--danger); }
 .fieldWrap:focus-within:has(input[aria-invalid="true"]) { border-color: var(--danger); box-shadow: 0 0 0 3.5px rgba(180, 85, 31, 0.13); }
