@@ -141,9 +141,13 @@ describe("AuthPreview", () => {
     expect(completedCopyButton.parentElement).toContainElement(completedToken);
   });
 
-  it("copies the generated registration token to the clipboard", async () => {
+  it("clears copy feedback when registration is submitted", async () => {
     const token = `pfc_${"c".repeat(64)}`;
     const generateToken = vi.fn(async () => ({ generatedToken: token }));
+    const signup = vi.fn(async () => ({
+      registrationComplete: true,
+      message: "Регистрация завершена.",
+    }));
     const clipboardDescriptor = Object.getOwnPropertyDescriptor(
       navigator,
       "clipboard",
@@ -156,7 +160,7 @@ describe("AuthPreview", () => {
 
     render(
       <AuthPreview
-        actions={createActions(undefined, undefined, generateToken)}
+        actions={createActions(undefined, signup, generateToken)}
         mode="signup"
       />,
     );
@@ -177,6 +181,18 @@ describe("AuthPreview", () => {
       expect(writeText).toHaveBeenCalledWith(token);
       expect(screen.getByRole("status")).toHaveTextContent("Токен скопирован");
     });
+
+    fireEvent.change(screen.getByLabelText("Кодовое слово"), {
+      target: { value: "a-secure-word" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Регистрация" }));
+    await vi.waitFor(() => {
+      expect(signup).toHaveBeenCalledOnce();
+      expect(
+        screen.getByRole("link", { name: "Перейти к проверкам" }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Токен скопирован")).not.toBeInTheDocument();
 
     if (clipboardDescriptor) {
       Object.defineProperty(navigator, "clipboard", clipboardDescriptor);

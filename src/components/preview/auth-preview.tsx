@@ -394,6 +394,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   <button
                     className={styles.primary}
                     disabled={!canRegister || registrationPending}
+                    onClick={() => setTokenCopyState("idle")}
                     type="submit"
                   >
                     {registrationPending ? "Регистрируем…" : "Регистрация"}
