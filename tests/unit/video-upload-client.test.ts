@@ -69,7 +69,7 @@ describe("direct video upload client", () => {
     );
     expect(tusOptions).toHaveLength(1);
     expect(tusOptions[0]).toMatchObject({
-      endpoint: "https://project.supabase.co/storage/v1/upload/resumable",
+      endpoint: "https://project.supabase.co/storage/v1/upload/resumable/sign",
       chunkSize: 6 * 1024 * 1024,
       headers: {
         apikey: "public-test-key",

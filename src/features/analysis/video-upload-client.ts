@@ -80,7 +80,7 @@ async function uploadWithTus(
   const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } =
     getPublicSupabaseConfig();
   const endpoint = new URL(
-    "/storage/v1/upload/resumable",
+    "/storage/v1/upload/resumable/sign",
     NEXT_PUBLIC_SUPABASE_URL,
   ).toString();
 
