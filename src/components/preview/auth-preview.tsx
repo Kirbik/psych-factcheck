@@ -347,6 +347,11 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                     </button>
                   </div>
                   {renderCopyFeedback("token")}
+                  {loginState.message ? (
+                    <p className={styles.authError} role="alert">
+                      {loginState.message}
+                    </p>
+                  ) : null}
                   {recoveryDialogDismissed ? (
                     <>
                       <label
@@ -387,9 +392,19 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   >
                     {registrationState.message}
                   </p>
-                  <Link className={styles.primary} href="/ui-preview/history">
-                    Перейти к проверкам
-                  </Link>
+                  <input
+                    name="token"
+                    type="hidden"
+                    value={generatedToken ?? ""}
+                  />
+                  <button
+                    className={styles.primary}
+                    disabled={loginPending}
+                    formAction={loginAction}
+                    type="submit"
+                  >
+                    {loginPending ? "Переходим…" : "Перейти к проверкам"}
+                  </button>
                 </>
               ) : (
                 <>

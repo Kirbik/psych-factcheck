@@ -132,6 +132,12 @@ describe("AuthPreview", () => {
 
   it("enables registration after server token generation and displays recovery code", async () => {
     const token = `pfc_${"a".repeat(64)}`;
+    const submittedForms: FormData[] = [];
+    const login = vi.fn<Action>(async (state, formData) => {
+      void state;
+      submittedForms.push(formData);
+      return {};
+    });
     const generateToken = vi.fn(async () => ({
       generatedToken: token,
       message: "Сохраните токен: повторно показать его будет невозможно.",
@@ -144,7 +150,7 @@ describe("AuthPreview", () => {
     }));
     render(
       <AuthPreview
-        actions={createActions(undefined, signup, generateToken)}
+        actions={createActions(login, signup, generateToken)}
         mode="signup"
       />,
     );
@@ -174,11 +180,10 @@ describe("AuthPreview", () => {
         ),
       ).toHaveAttribute("role", "status");
     });
-    const historyLink = screen.getByRole("link", {
+    const historyButton = screen.getByRole("button", {
       name: "Перейти к проверкам",
     });
-    expect(historyLink).toHaveAttribute("href", "/ui-preview/history");
-    expect(historyLink.querySelector("svg")).not.toBeInTheDocument();
+    expect(historyButton.querySelector("svg")).not.toBeInTheDocument();
     const completedToken = screen.getByLabelText("Токен регистрации");
     const completedCopyButton = screen.getByRole("button", {
       name: "Скопировать токен",
@@ -208,6 +213,12 @@ describe("AuthPreview", () => {
       expect(screen.getByLabelText("Код восстановления")).toHaveValue(
         `pfr_${"b".repeat(64)}`,
       );
+    });
+
+    fireEvent.click(historyButton);
+    await vi.waitFor(() => {
+      expect(login).toHaveBeenCalledOnce();
+      expect(submittedForms[0]?.get("token")).toBe(token);
     });
   });
 
@@ -265,7 +276,7 @@ describe("AuthPreview", () => {
     );
     await vi.waitFor(() => {
       expect(
-        screen.getByRole("link", { name: "Перейти к проверкам" }),
+        screen.getByRole("button", { name: "Перейти к проверкам" }),
       ).toBeInTheDocument();
     });
     expect(screen.queryByText("Токен скопирован")).not.toBeInTheDocument();

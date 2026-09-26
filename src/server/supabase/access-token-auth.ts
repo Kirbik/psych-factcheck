@@ -118,15 +118,6 @@ export async function registerAccessTokenAccount(token: string) {
       throw recoveryCodeError;
     }
 
-    const auth = await createServerAuthClient();
-    const { error: sessionError } = await auth.auth.signInWithPassword({
-      email,
-      password: token,
-    });
-
-    if (sessionError) {
-      throw sessionError;
-    }
     return recoveryCode;
   } catch (error) {
     let canRestorePendingToken = true;

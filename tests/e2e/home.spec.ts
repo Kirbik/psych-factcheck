@@ -128,8 +128,10 @@ test.describe("authentication", () => {
     );
     await recoveryDialog.getByRole("button", { name: "Понятно" }).click();
     await expect(
-      page.getByRole("link", { name: "Перейти к проверкам" }),
+      page.getByRole("button", { name: "Перейти к проверкам" }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Перейти к проверкам" }).click();
+    await expect(page).toHaveURL(/\/ui-preview\/history/);
   });
 
   test("allows an existing user to log in", async ({ page }) => {
