@@ -4,12 +4,14 @@ import {
   registerWithToken,
   signInWithToken,
 } from "@/features/auth/actions";
+import { redirectAuthenticatedUser } from "@/features/auth/redirect-authenticated-user";
 
 type HomePageProps = {
   searchParams: Promise<{ mode?: string }>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
+  await redirectAuthenticatedUser();
   const { mode } = await searchParams;
   const view = mode === "signup" || mode === "reset" ? mode : "login";
   return (

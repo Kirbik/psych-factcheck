@@ -4,6 +4,7 @@ import {
   registerWithToken,
   signInWithToken,
 } from "@/features/auth/actions";
+import { redirectAuthenticatedUser } from "@/features/auth/redirect-authenticated-user";
 
 type AuthPreviewPageProps = {
   searchParams: Promise<{ mode?: string }>;
@@ -12,6 +13,7 @@ type AuthPreviewPageProps = {
 export default async function AuthPreviewPage({
   searchParams,
 }: AuthPreviewPageProps) {
+  await redirectAuthenticatedUser();
   const { mode } = await searchParams;
   const view = mode === "signup" || mode === "reset" ? mode : "login";
   return (
