@@ -116,12 +116,17 @@ test.describe("authentication", () => {
       page.getByRole("button", { name: "Регистрация" }),
     ).toBeEnabled();
     await page.getByRole("button", { name: "Регистрация" }).click();
-    await expect(page.getByRole("status")).toContainText(
-      "Регистрация завершена",
+    const recoveryDialog = page.getByRole("dialog", {
+      name: "Сохраните код восстановления",
+    });
+    await expect(recoveryDialog).toBeVisible();
+    await expect(recoveryDialog).toContainText(
+      "Сохраните этот код: без него восстановить утерянный токен не получится.",
     );
-    await expect(page.getByLabel("Код восстановления")).toHaveValue(
+    await expect(recoveryDialog.getByLabel("Код восстановления")).toHaveValue(
       /^pfr_[a-f0-9]{64}$/,
     );
+    await recoveryDialog.getByRole("button", { name: "Понятно" }).click();
     await expect(
       page.getByRole("link", { name: "Перейти к проверкам" }),
     ).toBeVisible();

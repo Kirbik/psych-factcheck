@@ -5,7 +5,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthActionState } from "@/features/auth/state";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
@@ -23,7 +23,52 @@ function createActions(
 }
 
 describe("AuthPreview", () => {
-  afterEach(() => cleanup());
+  const showModalDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLDialogElement.prototype,
+    "showModal",
+  );
+  const closeDescriptor = Object.getOwnPropertyDescriptor(
+    HTMLDialogElement.prototype,
+    "close",
+  );
+
+  beforeEach(() => {
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.open = true;
+      },
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.open = false;
+        this.dispatchEvent(new Event("close"));
+      },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    if (showModalDescriptor) {
+      Object.defineProperty(
+        HTMLDialogElement.prototype,
+        "showModal",
+        showModalDescriptor,
+      );
+    } else {
+      Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+    }
+    if (closeDescriptor) {
+      Object.defineProperty(
+        HTMLDialogElement.prototype,
+        "close",
+        closeDescriptor,
+      );
+    } else {
+      Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+    }
+  });
 
   it("renders token login and registration tabs", () => {
     render(<AuthPreview actions={createActions()} mode="login" />);
@@ -139,13 +184,31 @@ describe("AuthPreview", () => {
       name: "Скопировать токен",
     });
     expect(completedCopyButton.parentElement).toContainElement(completedToken);
-    expect(screen.getByLabelText("Код восстановления")).toHaveValue(
-      `pfr_${"b".repeat(64)}`,
-    );
+    const recoveryDialog = screen.getByRole("dialog", {
+      name: "Сохраните код восстановления",
+    });
     expect(
-      screen.getByRole("button", { name: "Скопировать код восстановления" })
-        .parentElement,
-    ).toContainElement(screen.getByLabelText("Код восстановления"));
+      within(recoveryDialog).getByText(
+        "Сохраните этот код: без него восстановить утерянный токен не получится.",
+      ),
+    ).toBeInTheDocument();
+    const recoveryCodeInput =
+      within(recoveryDialog).getByLabelText("Код восстановления");
+    expect(recoveryCodeInput).toHaveValue(`pfr_${"b".repeat(64)}`);
+    expect(
+      within(recoveryDialog).getByRole("button", {
+        name: "Скопировать код восстановления",
+      }).parentElement,
+    ).toContainElement(recoveryCodeInput);
+    fireEvent.click(
+      within(recoveryDialog).getByRole("button", { name: "Понятно" }),
+    );
+    await vi.waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Код восстановления")).toHaveValue(
+        `pfr_${"b".repeat(64)}`,
+      );
+    });
   });
 
   it("clears copy feedback when registration is submitted", async () => {
@@ -193,6 +256,14 @@ describe("AuthPreview", () => {
     fireEvent.click(screen.getByRole("button", { name: "Регистрация" }));
     await vi.waitFor(() => {
       expect(signup).toHaveBeenCalledOnce();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Понятно",
+      }),
+    );
+    await vi.waitFor(() => {
       expect(
         screen.getByRole("link", { name: "Перейти к проверкам" }),
       ).toBeInTheDocument();

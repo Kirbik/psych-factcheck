@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { AuthActionState } from "@/features/auth/state";
 import { initialAuthActionState } from "@/features/auth/state";
 import styles from "./auth-preview.module.css";
@@ -69,6 +69,9 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   );
   const [registrationState, registrationAction, registrationPending] =
     useActionState(actions.signup, initialAuthActionState);
+  const recoveryDialogRef = useRef<HTMLDialogElement>(null);
+  const recoveryCodeInputRef = useRef<HTMLInputElement>(null);
+  const [recoveryDialogDismissed, setRecoveryDialogDismissed] = useState(false);
   const [message, setMessage] = useState("");
   const [copyFeedback, setCopyFeedback] = useState<{
     target: "token" | "recoveryCode";
@@ -91,6 +94,31 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (
+      !registrationState.registrationComplete ||
+      !registrationState.recoveryCode ||
+      recoveryDialogDismissed
+    ) {
+      return;
+    }
+
+    const dialog = recoveryDialogRef.current;
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+  }, [
+    recoveryDialogDismissed,
+    registrationState.recoveryCode,
+    registrationState.registrationComplete,
+  ]);
+
+  useEffect(() => {
+    if (recoveryDialogDismissed) {
+      recoveryCodeInputRef.current?.focus();
+    }
+  }, [recoveryDialogDismissed]);
 
   const navigateMode = (nextMode: "login" | "signup") => {
     const href = nextMode === "login" ? "/" : "/?mode=signup";
@@ -239,6 +267,62 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
 
               {registrationState.registrationComplete ? (
                 <>
+                  {!recoveryDialogDismissed ? (
+                    <dialog
+                      aria-describedby="recovery-dialog-description"
+                      aria-labelledby="recovery-dialog-title"
+                      className={`${styles.card} ${styles.recoveryDialog}`}
+                      onClose={() => setRecoveryDialogDismissed(true)}
+                      ref={recoveryDialogRef}
+                    >
+                      <h2 id="recovery-dialog-title">
+                        Сохраните код восстановления
+                      </h2>
+                      <p
+                        className={`${styles.description} ${styles.tokenNotice}`}
+                        id="recovery-dialog-description"
+                      >
+                        Сохраните этот код: без него восстановить утерянный
+                        токен не получится.
+                      </p>
+                      <label
+                        className={styles.fieldLabel}
+                        htmlFor="recovery-code-dialog"
+                      >
+                        Код восстановления
+                      </label>
+                      <div className={styles.fieldWrap}>
+                        <input
+                          className={styles.generatedToken}
+                          id="recovery-code-dialog"
+                          onFocus={(event) => event.currentTarget.select()}
+                          readOnly
+                          value={registrationState.recoveryCode}
+                        />
+                        <button
+                          aria-label="Скопировать код восстановления"
+                          className={styles.tokenCopyButton}
+                          onClick={() =>
+                            copySecret(
+                              registrationState.recoveryCode,
+                              "recoveryCode",
+                            )
+                          }
+                          type="button"
+                        >
+                          <CopyIcon />
+                        </button>
+                      </div>
+                      {renderCopyFeedback("recoveryCode")}
+                      <button
+                        className={styles.primary}
+                        onClick={() => recoveryDialogRef.current?.close()}
+                        type="button"
+                      >
+                        Понятно
+                      </button>
+                    </dialog>
+                  ) : null}
                   <label
                     className={styles.fieldLabel}
                     htmlFor="registration-token"
@@ -263,32 +347,40 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                     </button>
                   </div>
                   {renderCopyFeedback("token")}
-                  <label className={styles.fieldLabel} htmlFor="recovery-code">
-                    Код восстановления
-                  </label>
-                  <div className={styles.fieldWrap}>
-                    <input
-                      className={styles.generatedToken}
-                      id="recovery-code"
-                      onFocus={(event) => event.currentTarget.select()}
-                      readOnly
-                      value={registrationState.recoveryCode ?? ""}
-                    />
-                    <button
-                      aria-label="Скопировать код восстановления"
-                      className={styles.tokenCopyButton}
-                      onClick={() =>
-                        copySecret(
-                          registrationState.recoveryCode,
-                          "recoveryCode",
-                        )
-                      }
-                      type="button"
-                    >
-                      <CopyIcon />
-                    </button>
-                  </div>
-                  {renderCopyFeedback("recoveryCode")}
+                  {recoveryDialogDismissed ? (
+                    <>
+                      <label
+                        className={styles.fieldLabel}
+                        htmlFor="recovery-code"
+                      >
+                        Код восстановления
+                      </label>
+                      <div className={styles.fieldWrap}>
+                        <input
+                          className={styles.generatedToken}
+                          id="recovery-code"
+                          onFocus={(event) => event.currentTarget.select()}
+                          ref={recoveryCodeInputRef}
+                          readOnly
+                          value={registrationState.recoveryCode ?? ""}
+                        />
+                        <button
+                          aria-label="Скопировать код восстановления"
+                          className={styles.tokenCopyButton}
+                          onClick={() =>
+                            copySecret(
+                              registrationState.recoveryCode,
+                              "recoveryCode",
+                            )
+                          }
+                          type="button"
+                        >
+                          <CopyIcon />
+                        </button>
+                      </div>
+                      {renderCopyFeedback("recoveryCode")}
+                    </>
+                  ) : null}
                   <p
                     className={`${styles.description} ${styles.tokenNotice}`}
                     role="status"
