@@ -68,6 +68,16 @@
 .footer p { margin: 0; }
 .footer a { margin-left: 5px; }
 
+.generateToken { background: #fff; border: 1px solid rgba(23, 96, 76, 0.28); border-radius: 12px; color: var(--accent); cursor: pointer; font: 600 14px/20px var(--auth-preview-inter), Arial, sans-serif; height: 48px; margin: 0 0 20px; width: 100%; }
+.generateToken:hover { background: #f5f8f6; }
+.generateToken:focus-visible { outline: 3.5px solid rgba(23, 96, 76, 0.13); outline-offset: 2px; }
+.generatedToken { font-family: ui-monospace, Consolas, monospace !important; font-size: 12px !important; letter-spacing: 0 !important; }
+.authError { color: var(--danger); font-size: 13px; line-height: 1.5; margin: 16px 0 0; }
+.primary:disabled { cursor: not-allowed; opacity: 0.55; }
+.fieldWrap + .primary, .authError + .primary { margin-top: 20px; }
+.fieldWrap:has(.generatedToken) { margin-bottom: 0; }
+.card > h1 + .description { margin-bottom: 20px; }
+
 @media (max-width: 640px) {
   .header { padding: 0 20px; }
   .nav a:not(.signIn) { display: none; }

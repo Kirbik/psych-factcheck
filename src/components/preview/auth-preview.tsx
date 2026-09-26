@@ -2,40 +2,20 @@
 
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { AuthActionState } from "@/features/auth/state";
-import { initialAuthActionState } from "@/features/auth/state";
 import styles from "./auth-preview.module.css";
 
 type AuthPreviewMode = "login" | "signup" | "reset";
 
 type AuthPreviewProps = {
-  actions?: AuthPreviewActions;
+  /** Kept temporarily for call-site compatibility; token authentication is not wired to the existing backend. */
+  actions?: {
+    login: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
+    signup: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
+  };
   mode: AuthPreviewMode;
 };
-
-type AuthPreviewAction = (
-  state: AuthActionState,
-  formData: FormData,
-) => Promise<AuthActionState>;
-
-type AuthPreviewFormValues = {
-  email: string;
-  password: string;
-  passwordRepeat: string;
-  remember: boolean;
-};
-
-type AuthPreviewTextField = "email" | "password" | "passwordRepeat";
-
-type AuthPreviewActions = {
-  login: AuthPreviewAction;
-  signup: AuthPreviewAction;
-};
-
-async function previewAction(): Promise<AuthActionState> {
-  return {};
-}
 
 const inter = Inter({
   display: "swap",
@@ -50,30 +30,6 @@ const lora = Lora({
   variable: "--auth-preview-lora",
   weight: ["600"],
 });
-
-const copy: Record<
-  AuthPreviewMode,
-  { title: string; description: string; submit: string }
-> = {
-  login: {
-    title: "С возвращением",
-    description:
-      "Войдите, чтобы продолжить проверять утверждения и смотреть свои отчёты.",
-    submit: "Войти",
-  },
-  signup: {
-    title: "Создайте аккаунт",
-    description:
-      "Сохраняйте приватные проверки и возвращайтесь к отчётам в любое время.",
-    submit: "Создать аккаунт",
-  },
-  reset: {
-    title: "Восстановить пароль",
-    description:
-      "Укажите почту — мы отправим ссылку для восстановления доступа.",
-    submit: "Отправить ссылку",
-  },
-};
 
 function CheckIcon() {
   return (
@@ -91,47 +47,39 @@ function ArrowIcon() {
   );
 }
 
-export function AuthPreview({ actions, mode }: AuthPreviewProps) {
+function createRegistrationToken() {
+  const bytes = window.crypto.getRandomValues(new Uint8Array(24));
+  const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `pfc_${token}`;
+}
+
+export function AuthPreview({ mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
-  const [formValues, setFormValues] = useState<Record<AuthPreviewMode, AuthPreviewFormValues>>(() => ({
-    login: { email: "", password: "", passwordRepeat: "", remember: true },
-    signup: { email: "", password: "", passwordRepeat: "", remember: true },
-    reset: { email: "", password: "", passwordRepeat: "", remember: true },
-  }));
+  const [authToken, setAuthToken] = useState("");
+  const [registrationToken, setRegistrationToken] = useState("");
+  const [secretWord, setSecretWord] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const handlePopState = () => {
       const nextMode = new URLSearchParams(window.location.search).get("mode");
-      setActiveMode(nextMode === "signup" || nextMode === "reset" ? nextMode : "login");
+      setActiveMode(nextMode === "signup" ? "signup" : nextMode === "reset" ? "reset" : "login");
+      setMessage("");
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  const navigateMode = (nextMode: AuthPreviewMode) => {
-    const href = nextMode === "login" ? "/" : `/?mode=${nextMode}`;
+  const navigateMode = (nextMode: "login" | "signup") => {
+    const href = nextMode === "login" ? "/" : "/?mode=signup";
     window.history.pushState(null, "", href);
     setActiveMode(nextMode);
+    setMessage("");
   };
 
-  const updateTextValue = (
-    formMode: AuthPreviewMode,
-    field: AuthPreviewTextField,
-    value: string,
-  ) => {
-    setFormValues((current) => ({
-      ...current,
-      [formMode]: { ...current[formMode], [field]: value },
-    }));
-  };
-
-  const updateRememberValue = (formMode: AuthPreviewMode, value: boolean) => {
-    setFormValues((current) => ({
-      ...current,
-      [formMode]: { ...current[formMode], remember: value },
-    }));
-  };
+  const isSignup = activeMode === "signup";
+  const isRecovery = activeMode === "reset";
 
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
@@ -158,165 +106,146 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
       </header>
 
       <section className={styles.stage} aria-labelledby="auth-preview-title">
-        <AuthPreviewForm
-          action={activeMode === "reset" ? undefined : actions?.[activeMode]}
-          key={activeMode}
-          mode={activeMode}
-          onModeChange={navigateMode}
-          onRememberChange={(value) => updateRememberValue(activeMode, value)}
-          onTextChange={(field, value) => updateTextValue(activeMode, field, value)}
-          values={formValues[activeMode]}
-        />
-      </section>
-    </main>
-  );
-}
-
-type AuthPreviewFormProps = {
-  action?: AuthPreviewAction;
-  mode: AuthPreviewMode;
-  onModeChange: (mode: AuthPreviewMode) => void;
-  onRememberChange: (value: boolean) => void;
-  onTextChange: (field: AuthPreviewTextField, value: string) => void;
-  values: AuthPreviewFormValues;
-};
-
-function AuthPreviewForm({
-  action,
-  mode,
-  onModeChange,
-  onRememberChange,
-  onTextChange,
-  values,
-}: AuthPreviewFormProps) {
-  const [authState, formAction, pending] = useActionState(
-    action ?? previewAction,
-    initialAuthActionState,
-  );
-  const screen = copy[mode];
-  const isReset = mode === "reset";
-  const emailError = authState.fieldErrors?.email?.[0];
-  const passwordError = authState.fieldErrors?.password?.[0];
-  const passwordRepeatError = authState.fieldErrors?.passwordRepeat?.[0];
-  const hasFieldErrors = Boolean(emailError || passwordError || passwordRepeatError);
-
-  return (
-    <form
-      autoComplete="off"
-      action={formAction}
-      aria-label={mode === "signup" ? "Регистрация" : mode === "reset" ? "Восстановление пароля" : "Авторизация"}
-      className={`${styles.card} ${isReset ? styles.resetCard : ""}`}
-      noValidate
-      onSubmit={action ? undefined : (event) => event.preventDefault()}
-      onReset={(event) => event.preventDefault()}
-    >
-      {mode !== "reset" ? (
-        <div className={styles.tabs} role="tablist" aria-label="Способ доступа">
-          <Link
-            aria-selected={mode === "login"}
-            className={mode === "login" ? styles.tabActive : styles.tab}
-            href="/"
-            onClick={(event) => {
-              event.preventDefault();
-              onModeChange("login");
-            }}
-            role="tab"
-          >
-            Войти
-          </Link>
-          <Link
-            aria-selected={mode === "signup"}
-            className={mode === "signup" ? styles.tabActive : styles.tab}
-            href="/?mode=signup"
-            onClick={(event) => {
-              event.preventDefault();
-              onModeChange("signup");
-            }}
-            role="tab"
-          >
-            Регистрация
-          </Link>
-        </div>
-      ) : null}
-      <h1 id="auth-preview-title">{screen.title}</h1>
-      <p className={styles.description}>{screen.description}</p>
-
-      <label className={styles.fieldLabel} htmlFor="preview-email">
-        Электронная почта
-      </label>
-      <div className={styles.fieldWrap}>
-        <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4.5 7 7.5 5.7L19.5 7" /></svg>
-        <input aria-describedby={emailError ? "preview-email-error" : undefined} aria-invalid={emailError ? true : undefined} autoComplete="off" id="preview-email" name="email" onChange={(event) => onTextChange("email", event.target.value)} required type="email" value={values.email} placeholder="name@example.ru" />
-      </div>
-      {emailError ? <p className={styles.fieldError} id="preview-email-error" role="alert">{emailError}</p> : null}
-
-      {!isReset ? (
-        <>
-          <span className={styles.passwordRow}>
-            <label className={styles.fieldLabel} htmlFor="preview-password">Пароль</label>
-            {mode === "login" ? (
+        <form
+          aria-label={isSignup ? "Регистрация" : isRecovery ? "Восстановление доступа" : "Авторизация"}
+          className={styles.card}
+          onSubmit={(event) => {
+            event.preventDefault();
+            setMessage(
+              isSignup
+                ? "Регистрация по токену пока не подключена к серверу."
+                : "Вход по токену пока не подключён к серверу.",
+            );
+          }}
+        >
+          {!isRecovery ? (
+            <div className={styles.tabs} role="tablist" aria-label="Режим входа">
               <Link
-                href="/?mode=reset"
+                aria-selected={!isSignup}
+                className={!isSignup ? styles.tabActive : styles.tab}
+                href="/"
                 onClick={(event) => {
                   event.preventDefault();
-                  onModeChange("reset");
+                  navigateMode("login");
                 }}
+                role="tab"
               >
-                Забыли пароль?
+                Войти
               </Link>
-            ) : null}
-          </span>
-          <div className={styles.fieldWrap}>
-            <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-            <input aria-describedby={passwordError ? "preview-password-error" : undefined} aria-invalid={passwordError ? true : undefined} autoComplete="new-password" id="preview-password" name="password" onChange={(event) => onTextChange("password", event.target.value)} required type="password" value={values.password} placeholder="Введите пароль" />
-          </div>
-          {passwordError ? <p className={styles.fieldError} id="preview-password-error" role="alert">{passwordError}</p> : null}
-          {mode === "signup" ? (
+              <Link
+                aria-selected={isSignup}
+                className={isSignup ? styles.tabActive : styles.tab}
+                href="/?mode=signup"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateMode("signup");
+                }}
+                role="tab"
+              >
+                Регистрация
+              </Link>
+            </div>
+          ) : null}
+
+          <h1 id="auth-preview-title">
+            {isRecovery ? "Восстановление доступа" : isSignup ? "Создайте аккаунт" : "Вход в аккаунт"}
+          </h1>
+
+          {isRecovery ? (
             <>
-              <label className={styles.fieldLabel} htmlFor="preview-password-repeat">
-                Повторите пароль
+              <p className={styles.description}>
+                Если вы забыли токен, восстановить доступ можно только через службу поддержки.
+              </p>
+              <button className={styles.primary} onClick={() => navigateMode("login")} type="button">
+                Вернуться ко входу
+                <ArrowIcon />
+              </button>
+            </>
+          ) : isSignup ? (
+            <>
+              <p className={styles.description}>
+                Добро пожаловать! Создайте токен регистрации и сохраните его. Все дальнейшие авторизации будут происходить через этот токен. Если вы его забудете, восстановить токен можно только через службу поддержки.
+              </p>
+
+              {!registrationToken ? (
+                <button
+                  className={styles.generateToken}
+                  onClick={() => {
+                    setRegistrationToken(createRegistrationToken());
+                    setMessage("");
+                  }}
+                  type="button"
+                >
+                  Создать токен регистрации
+                </button>
+              ) : null}
+
+              {registrationToken ? (
+                <>
+                  <label className={styles.fieldLabel} htmlFor="registration-token">
+                    Токен регистрации
+                  </label>
+                  <div className={styles.fieldWrap}>
+                    <input
+                      className={styles.generatedToken}
+                      id="registration-token"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      value={registrationToken}
+                    />
+                  </div>
+                </>
+              ) : null}
+
+              <label className={styles.fieldLabel} htmlFor="secret-word">
+                Секретное слово
               </label>
               <div className={styles.fieldWrap}>
-                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
-                <input aria-describedby={passwordRepeatError ? "preview-password-repeat-error" : undefined} aria-invalid={passwordRepeatError ? true : undefined} autoComplete="new-password" id="preview-password-repeat" name="passwordRepeat" onChange={(event) => onTextChange("passwordRepeat", event.target.value)} required type="password" value={values.passwordRepeat} placeholder="Повторите пароль" />
+                <input
+                  autoComplete="off"
+                  id="secret-word"
+                  onChange={(event) => setSecretWord(event.target.value)}
+                  required
+                  type="password"
+                  value={secretWord}
+                  placeholder="Придумайте секретное слово"
+                />
               </div>
-              {passwordRepeatError ? <p className={styles.fieldError} id="preview-password-repeat-error" role="alert">{passwordRepeatError}</p> : null}
+
+              {message ? <p className={styles.authError} role="status">{message}</p> : null}
+              <button className={styles.primary} disabled={!registrationToken} type="submit">
+                Зарегистрироваться
+                <ArrowIcon />
+              </button>
             </>
-          ) : null}
-          <label className={styles.remember}>
-            <input checked={values.remember} onChange={(event) => onRememberChange(event.target.checked)} type="checkbox" />
-            <span aria-hidden="true"><CheckIcon /></span>
-            Запомнить меня
-          </label>
-        </>
-      ) : null}
-
-      {authState.message && !hasFieldErrors ? (
-        <p className={`${styles.description} ${styles.authError}`} role="alert">
-          {authState.message}
-        </p>
-      ) : null}
-
-      <button className={styles.primary} disabled={pending} type="submit">
-        {pending ? "Пожалуйста, подождите…" : screen.submit}
-        <ArrowIcon />
-      </button>
-
-      {mode === "reset" ? (
-        <footer className={styles.footer}>
-          <p>
-            <Link
-              href="/"
-              onClick={(event) => {
-                event.preventDefault();
-                onModeChange("login");
-              }}
-            >
-              Вернуться ко входу
-            </Link>
-          </p>
-        </footer>
-      ) : null}
-    </form>
+          ) : (
+            <>
+              <p className={styles.description}>
+                Введите токен авторизации, сохранённый при регистрации.
+              </p>
+              <label className={styles.fieldLabel} htmlFor="authorization-token">
+                Токен авторизации
+              </label>
+              <div className={styles.fieldWrap}>
+                <input
+                  autoComplete="off"
+                  id="authorization-token"
+                  onChange={(event) => setAuthToken(event.target.value)}
+                  required
+                  type="password"
+                  value={authToken}
+                  placeholder="Введите токен авторизации"
+                />
+              </div>
+              {message ? <p className={styles.authError} role="status">{message}</p> : null}
+              <button className={styles.primary} type="submit">
+                Войти
+                <ArrowIcon />
+              </button>
+            </>
+          )}
+        </form>
+      </section>
+    </main>
   );
 }
