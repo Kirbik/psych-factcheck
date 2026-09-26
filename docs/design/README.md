@@ -20,16 +20,16 @@ The same image set is also present in the root `design-prototypes/` folder and i
 
 ## Preview routes
 
-The `/ui-preview/*` pages are UI prototypes, not database-backed product flows:
+These root-level pages are UI prototypes, not database-backed product flows:
 
-- `/ui-preview/auth`
-- `/ui-preview/history`
-- `/ui-preview/new-check`
-- `/ui-preview/processing`
-- `/ui-preview/report`
-- `/ui-preview/profile`
+- `/auth`
+- `/history`
+- `/new-check`
+- `/processing`
+- `/report`
+- `/profile`
 
-The actual `/` route hosts token login/registration UI. `/dashboard` is the currently persisted checks list and single-video upload entry. Login currently redirects to `/ui-preview/history`, so this route transition is not yet the final integration of the dashboard with the preview design.
+The actual `/` route hosts token login/registration UI. `/dashboard` is the currently persisted checks list and single-video upload entry. Login redirects to `/history`; legacy `/ui-preview/*` URLs redirect to the corresponding root-level paths.
 
 ## Known design alignment task
 

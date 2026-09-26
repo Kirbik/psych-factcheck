@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
+import AuthPage from "@/app/auth/page";
 import AuthPreviewPage from "@/app/ui-preview/auth/page";
 import { AuthPreview } from "@/components/preview/auth-preview";
 
@@ -66,20 +67,28 @@ describe("HomePage", () => {
 
     await HomePage({ searchParams: Promise.resolve({ mode: "signup" }) });
 
-    expect(redirect).toHaveBeenCalledWith("/ui-preview/history");
+    expect(redirect).toHaveBeenCalledWith("/history");
   });
 
-  it("redirects authenticated visitors from the auth preview to check history", async () => {
+  it("redirects authenticated visitors from /auth to check history", async () => {
     getClaims.mockResolvedValue({
       data: { claims: { sub: "user-123" } },
       error: null,
     });
 
+    await AuthPage({
+      searchParams: Promise.resolve({ mode: "signup" }),
+    });
+
+    expect(redirect).toHaveBeenCalledWith("/history");
+  });
+
+  it("redirects the old auth route to its clean equivalent", async () => {
     await AuthPreviewPage({
       searchParams: Promise.resolve({ mode: "signup" }),
     });
 
-    expect(redirect).toHaveBeenCalledWith("/ui-preview/history");
+    expect(redirect).toHaveBeenCalledWith("/auth?mode=signup");
   });
 
   it("keeps auth available when the session cannot be verified", async () => {

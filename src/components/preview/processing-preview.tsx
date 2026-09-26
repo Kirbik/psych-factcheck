@@ -48,17 +48,17 @@ export function ProcessingPreview() {
   return <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
     <header className={styles.header}>
       <Link className={styles.brand} href="/" aria-label="Псих Фактчек — проверки"><span className={styles.mark}><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" /><path d="m8.4 12.1 2.2 2.2 4.9-5" /></svg></span>Псих Фактчек</Link>
-      <nav className={styles.nav} aria-label="Навигация приложения"><Link className={styles.navActive} href="/ui-preview/history" aria-current="page">Проверки</Link><Link href="/ui-preview/profile">Профиль</Link></nav>
+      <nav className={styles.nav} aria-label="Навигация приложения"><Link className={styles.navActive} href="/history" aria-current="page">Проверки</Link><Link href="/profile">Профиль</Link></nav>
     </header>
     <section className={`${styles.content} ${processingStyles.content}`} aria-labelledby="processing-title">
-      <Link className={processingStyles.back} href="/ui-preview/new-check"><span aria-hidden="true">←</span> Новая проверка</Link>
+      <Link className={processingStyles.back} href="/new-check"><span aria-hidden="true">←</span> Новая проверка</Link>
       <h1 className={processingStyles.title} id="processing-title">Проверяем видео</h1>
       <p className={processingStyles.subtitle}>Эту страницу можно закрыть: проверка продолжится автоматически</p>
       <div className={processingStyles.card}>
       <ol className={processingStyles.steps} aria-label="Прогресс проверки видео">
         {backendSteps.map((step, index) => { const status = stepStatuses[index]; return <li className={`${processingStyles.step} ${processingStyles[`step-${status}`]}`} key={step.label}><span className={processingStyles.indicator} aria-hidden="true">{status === "completed" ? "✓" : status === "failed" ? "×" : ""}</span><span className={processingStyles.stepLabel}>{step.label}</span><span className={processingStyles.stepStatus}>{statusLabels[status]}</span></li>; })}
       </ol>
-      <Link className={`${processingStyles.reportButton} ${!isComplete ? processingStyles.disabled : ""}`} aria-disabled={!isComplete} href={isComplete ? "/ui-preview/report" : "#processing-title"} onClick={(event) => { if (!isComplete) event.preventDefault(); }}>Перейти к отчету</Link>
+      <Link className={`${processingStyles.reportButton} ${!isComplete ? processingStyles.disabled : ""}`} aria-disabled={!isComplete} href={isComplete ? "/report" : "#processing-title"} onClick={(event) => { if (!isComplete) event.preventDefault(); }}>Перейти к отчету</Link>
       </div>
     </section>
   </main>;

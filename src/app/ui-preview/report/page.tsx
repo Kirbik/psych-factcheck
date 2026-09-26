@@ -1,5 +1,5 @@
-import { ReportPreview } from "@/components/preview/report-preview";
+import { redirect } from "next/navigation";
 
 export default function PreviewReportPage() {
-  return <ReportPreview />;
+  redirect("/report");
 }

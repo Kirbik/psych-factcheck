@@ -16,7 +16,7 @@ async function signIn(page: import("@playwright/test").Page) {
     .getByLabel("Токен авторизации")
     .fill(process.env.E2E_SUPABASE_TOKEN!);
   await page.getByRole("button", { name: "Войти" }).click();
-  await expect(page).toHaveURL(/\/ui-preview\/history/);
+  await expect(page).toHaveURL(/\/history$/);
 }
 
 test("opens token login from the home page", async ({ page }) => {
@@ -31,13 +31,31 @@ test("opens token login from the home page", async ({ page }) => {
 });
 
 test("keeps the checks preview available", async ({ page }) => {
-  await page.goto("/ui-preview/history");
+  await page.goto("/history");
   await expect(
     page.getByRole("heading", { name: "Все проверки" }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Проверки", exact: true }),
   ).toHaveAttribute("aria-current", "page");
+});
+
+test("redirects legacy preview addresses to clean section paths", async ({
+  page,
+}) => {
+  const routes = [
+    ["/ui-preview/auth?mode=signup", "/auth?mode=signup"],
+    ["/ui-preview/history", "/history"],
+    ["/ui-preview/new-check", "/new-check"],
+    ["/ui-preview/processing", "/processing"],
+    ["/ui-preview/profile", "/profile"],
+    ["/ui-preview/report", "/report"],
+  ] as const;
+
+  for (const [legacyPath, cleanPath] of routes) {
+    await page.goto(legacyPath);
+    await expect(page).toHaveURL(new RegExp(`${cleanPath.replace("?", "\\?")}$`));
+  }
 });
 
 test("requires token generation before registration and clears registration state on reload", async ({
@@ -132,7 +150,7 @@ test.describe("authentication", () => {
     await registrationDialog.getByRole("button", { name: "Понятно" }).click();
     await expect(registrationDialog).not.toBeVisible();
     await page.getByRole("button", { name: "Перейти к проверкам" }).click();
-    await expect(page).toHaveURL(/\/ui-preview\/history/);
+    await expect(page).toHaveURL(/\/history$/);
 
     const firstLoginDialog = page.getByRole("dialog", {
       name: "Сохраните данные для доступа",
@@ -184,7 +202,7 @@ test.describe("authentication", () => {
     );
 
     await signIn(page);
-    await page.goto("/ui-preview/profile");
+    await page.goto("/profile");
     await page.getByRole("button", { name: "Выйти" }).click();
     await expect(page).toHaveURL(/\/$/);
     await page.goto("/dashboard");

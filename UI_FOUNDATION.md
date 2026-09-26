@@ -50,7 +50,7 @@
 
 ## Navigation
 
-Header содержит бренд и ссылки «Проверки» / «Профиль». Активная вкладка обозначается цветом текста и нижним accent-индикатором. Профиль ведёт на `/ui-preview/profile`, проверки — на `/ui-preview/history`.
+Header содержит бренд и ссылки «Проверки» / «Профиль». Активная вкладка обозначается цветом текста и нижним accent-индикатором. Профиль ведёт на `/profile`, проверки — на `/history`.
 
 ## Controls
 
@@ -75,11 +75,11 @@ Header содержит бренд и ссылки «Проверки» / «Пр
 ## Implemented screens
 
 - `/` (`?mode=signup` и `?mode=reset`) — авторизация/регистрация/восстановление; по умолчанию открывается вход.
-- `/ui-preview/history` — список проверок, фильтры, pagination, context menu, clickable rows.
-- `/ui-preview/new-check` — новая проверка и выбор видеофайла.
-- `/ui-preview/processing` — вертикальный прогресс обработки.
-- `/ui-preview/report` — отчёт с метаданными, segmented verdict chart, tabs утверждений и источниками.
-- `/ui-preview/profile` — email, editable password и modal 6-digit confirmation.
+- `/history` — список проверок, фильтры, pagination, context menu, clickable rows.
+- `/new-check` — новая проверка и выбор видеофайла.
+- `/processing` — вертикальный прогресс обработки.
+- `/report` — отчёт с метаданными, segmented verdict chart, tabs утверждений и источниками.
+- `/profile` — email, editable password и modal 6-digit confirmation.
 
 ## Responsive rules
 

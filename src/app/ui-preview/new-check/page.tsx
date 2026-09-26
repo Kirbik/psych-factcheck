@@ -1,5 +1,5 @@
-import { NewCheckPreview } from "@/components/preview/new-check-preview";
+import { redirect } from "next/navigation";
 
 export default function PreviewNewCheckPage() {
-  return <NewCheckPreview />;
+  redirect("/new-check");
 }

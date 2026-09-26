@@ -43,7 +43,7 @@ pnpm test:db
 
 Playwright uses the stable Google Chrome channel. Install Chrome locally; CI may install the matching Playwright browser. The current suite covers public token-auth UI states and prototype routes. Supabase-backed signup and protected-route coverage needs the public URL/key plus the server service-role key. Existing-user login/logout/upload additionally need `E2E_SUPABASE_TOKEN` for a dedicated confirmed test user. Missing credentials cause explicit skips.
 
-Future critical flows include actual upload persistence, analysis start/progress, report viewing, and history. The `/ui-preview/*` screens are not substitutes for those flows.
+Future critical flows include actual upload persistence, analysis start/progress, report viewing, and history. The root-level prototype screens are not substitutes for those flows.
 
 ```bash
 pnpm test:e2e

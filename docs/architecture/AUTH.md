@@ -29,7 +29,7 @@ implemented.
 5. Protected pages independently call `auth.getClaims()` server-side before
    rendering. The Proxy is not the authorization boundary.
 6. Logout calls `auth.signOut()` through the server cookie client. Login
-   currently redirects to `/ui-preview/history`; that is a preview route,
+   currently redirects to `/history`; that remains a UI prototype route,
    while the persisted content list and upload are on `/dashboard`.
 
 ## Client and server boundaries

@@ -1,5 +1,5 @@
-import { ProcessingPreview } from "@/components/preview/processing-preview";
+import { redirect } from "next/navigation";
 
 export default function PreviewProcessingPage() {
-  return <ProcessingPreview />;
+  redirect("/processing");
 }

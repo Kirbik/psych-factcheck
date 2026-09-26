@@ -17,6 +17,6 @@ export async function redirectAuthenticatedUser() {
   }
 
   if (hasVerifiedSession) {
-    redirect("/ui-preview/history");
+    redirect("/history");
   }
 }

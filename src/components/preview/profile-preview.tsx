@@ -36,11 +36,11 @@ export function ProfilePreview() {
           Псих Фактчек
         </Link>
         <nav aria-label="Навигация приложения" className={styles.nav}>
-          <Link href="/ui-preview/history">Проверки</Link>
+          <Link href="/history">Проверки</Link>
           <Link
             aria-current="page"
             className={styles.navActive}
-            href="/ui-preview/profile"
+            href="/profile"
           >
             Профиль
           </Link>

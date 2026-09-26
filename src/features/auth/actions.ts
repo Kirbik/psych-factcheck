@@ -124,7 +124,7 @@ export async function signInWithToken(
     return safeFailure(error, "sign-in");
   }
 
-  redirect("/ui-preview/history");
+  redirect("/history");
 }
 
 export async function signOut() {

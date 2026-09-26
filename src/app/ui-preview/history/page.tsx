@@ -1,5 +1,5 @@
-import { HistoryPreview } from "@/components/preview/history-preview";
+import { redirect } from "next/navigation";
 
 export default function PreviewHistoryPage() {
-  return <HistoryPreview />;
+  redirect("/history");
 }
