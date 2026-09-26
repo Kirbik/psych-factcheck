@@ -49,14 +49,6 @@ function CheckIcon() {
   );
 }
 
-function ArrowIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M5 12h14M13 6l6 6-6 6" />
-    </svg>
-  );
-}
-
 export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
   const [authToken, setAuthToken] = useState("");
@@ -190,7 +182,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                 type="button"
               >
                 Вернуться ко входу
-                <ArrowIcon />
               </button>
             </>
           ) : isSignup ? (
@@ -280,7 +271,10 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                     </p>
                   ) : null}
                   {generatedToken && tokenGenerationState.message ? (
-                    <p className={styles.description} role="status">
+                    <p
+                      className={`${styles.description} ${styles.tokenNotice}`}
+                      role="status"
+                    >
                       {tokenGenerationState.message}
                     </p>
                   ) : null}
@@ -330,7 +324,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                     type="submit"
                   >
                     {registrationPending ? "Регистрируем…" : "Регистрация"}
-                    <ArrowIcon />
                   </button>
                 </>
               )}
@@ -375,7 +368,6 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
               >
                 {loginPending ? "Входим…" : null}
                 Войти
-                <ArrowIcon />
               </button>
             </>
           )}

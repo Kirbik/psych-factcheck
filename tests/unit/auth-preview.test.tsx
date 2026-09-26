@@ -49,6 +49,20 @@ describe("AuthPreview", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("does not render decorative arrow icons in auth buttons", () => {
+    for (const mode of ["login", "signup", "reset"] as const) {
+      const { container, unmount } = render(
+        <AuthPreview actions={createActions()} mode={mode} />,
+      );
+      const buttons = within(container).getAllByRole("button");
+
+      expect(buttons.every((button) => button.querySelector("svg") === null)).toBe(
+        true,
+      );
+      unmount();
+    }
+  });
+
   it("uses the server action for token login and preserves the entered token on error", async () => {
     const login = vi.fn(async () => ({
       message: "Токен авторизации введён неверно",
@@ -97,6 +111,11 @@ describe("AuthPreview", () => {
       expect(generateToken).toHaveBeenCalledOnce();
       expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
     });
+    const tokenNotice = screen.getByRole("status");
+    expect(tokenNotice).toHaveTextContent(
+      "Сохраните токен: повторно показать его будет невозможно.",
+    );
+    expect(tokenNotice.className).toContain("tokenNotice");
 
     const codeword = screen.getByLabelText("Кодовое слово");
     expect(codeword).toBeEnabled();

@@ -35,6 +35,7 @@
 .tab:focus-visible, .tabActive:focus-visible, .passwordRow a:focus-visible, .footer a:focus-visible, .brand:focus-visible, .nav a:focus-visible, .primary:focus-visible { outline: 3.5px solid rgba(23, 96, 76, 0.13); outline-offset: 2px; }
 .card h1 { font-family: var(--auth-preview-lora), Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 8px; }
 .description { color: var(--muted); font-size: 14.5px; font-weight: 400; line-height: 1.55; margin: 0 0 20px; }
+.tokenNotice { color: var(--ink2); font-weight: 600; }
 .authError { color: var(--danger); }
 .fieldError { color: var(--danger); font-size: 13px; font-weight: 500; line-height: 1.5; margin: 4px 0 0; }
 .fieldLabel { color: var(--ink2); display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
@@ -68,7 +69,6 @@
 .remember span { align-items: center; background: var(--accent); border: 1px solid #b8d1c6; border-radius: 6px; color: #fff; display: grid; height: 18px; place-items: center; width: 18px; }
 .remember input:not(:checked) + span { background: #fff; color: transparent; }
 .primary { align-items: center; background: var(--accent); border: 0; border-radius: 12px; box-shadow: 0 10px 22px -10px rgba(23, 96, 76, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.14); color: #fff; cursor: pointer; display: flex; font: 600 15px/1.2 var(--auth-preview-inter), Arial, sans-serif; gap: 9px; height: 54px; justify-content: center; text-decoration: none; width: 100%; }
-.primary svg { fill: none; height: 17px; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; width: 17px; }
 .resetCard .primary { margin-top: 20px; }
 .footer { border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12.5px; font-weight: 400; line-height: 1.5; margin-top: 24px; padding-top: 20px; text-align: center; }
 .footer p { margin: 0; }
