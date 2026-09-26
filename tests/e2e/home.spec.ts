@@ -167,6 +167,7 @@ test.describe("authentication", () => {
     );
 
     await signIn(page);
+    await page.goto("/dashboard");
     await page.setInputFiles("#video-upload-file", {
       name: "e2e-video.mp4",
       mimeType: "video/mp4",
