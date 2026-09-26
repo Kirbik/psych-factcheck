@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
+import { signOut } from "@/features/auth/actions";
 import styles from "./history-preview.module.css";
 import profileStyles from "./profile-preview.module.css";
 
@@ -53,9 +54,11 @@ export function ProfilePreview() {
           Профиль
         </h1>
         <div className={profileStyles.card}>
-          <button className={profileStyles.logoutButton} type="button">
-            Выйти
-          </button>
+          <form action={signOut}>
+            <button className={profileStyles.logoutButton} type="submit">
+              Выйти
+            </button>
+          </form>
         </div>
       </section>
     </main>

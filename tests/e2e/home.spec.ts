@@ -125,13 +125,14 @@ test.describe("authentication", () => {
     ).toBeVisible();
   });
 
-  test("ends the session on logout", async ({ page }) => {
+  test("ends the session from the profile screen", async ({ page }) => {
     test.skip(
       !loginEnvironmentIsConfigured,
       "Requires a valid E2E_SUPABASE_TOKEN for a confirmed test user.",
     );
 
     await signIn(page);
+    await page.goto("/ui-preview/profile");
     await page.getByRole("button", { name: "Выйти" }).click();
     await expect(page).toHaveURL(/\/$/);
     await page.goto("/dashboard");
