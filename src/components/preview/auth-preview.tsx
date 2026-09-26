@@ -49,6 +49,15 @@ function CheckIcon() {
   );
 }
 
+function CopyIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <rect height="13" rx="2" width="13" x="8" y="8" />
+      <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+    </svg>
+  );
+}
+
 export function AuthPreview({ actions, mode }: AuthPreviewProps) {
   const [activeMode, setActiveMode] = useState(mode);
   const [authToken, setAuthToken] = useState("");
@@ -217,22 +226,21 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                   >
                     Токен регистрации
                   </label>
-                  <div className={styles.tokenRow}>
-                    <div className={styles.fieldWrap}>
-                      <input
-                        className={styles.generatedToken}
-                        id="registration-token"
-                        onFocus={(event) => event.currentTarget.select()}
-                        readOnly
-                        value={generatedToken ?? ""}
-                      />
-                    </div>
+                  <div className={styles.fieldWrap}>
+                    <input
+                      className={styles.generatedToken}
+                      id="registration-token"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      value={generatedToken ?? ""}
+                    />
                     <button
-                      className={`${styles.primary} ${styles.tokenCreateButton}`}
+                      aria-label="Скопировать токен"
+                      className={styles.tokenCopyButton}
                       onClick={copyRegistrationToken}
                       type="button"
                     >
-                      Скопировать токен
+                      <CopyIcon />
                     </button>
                   </div>
                   {tokenCopyState !== "idle" ? (
@@ -240,7 +248,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                       className={
                         tokenCopyState === "copied"
                           ? styles.tokenCopyStatus
-                          : styles.authError
+                          : styles.fieldError
                       }
                       role={tokenCopyState === "copied" ? "status" : "alert"}
                     >
@@ -283,6 +291,16 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                         readOnly
                         value={generatedToken ?? ""}
                       />
+                      {generatedToken ? (
+                        <button
+                          aria-label="Скопировать токен"
+                          className={styles.tokenCopyButton}
+                          onClick={copyRegistrationToken}
+                          type="button"
+                        >
+                          <CopyIcon />
+                        </button>
+                      ) : null}
                     </div>
                     {!generatedToken || registrationState.fieldErrors?.token ? (
                       <button
@@ -295,22 +313,14 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                           ? "Генерируем…"
                           : "Сгенерировать"}
                       </button>
-                    ) : (
-                      <button
-                        className={`${styles.primary} ${styles.tokenCreateButton}`}
-                        onClick={copyRegistrationToken}
-                        type="button"
-                      >
-                        Скопировать токен
-                      </button>
-                    )}
+                    ) : null}
                   </div>
                   {tokenCopyState !== "idle" ? (
                     <p
                       className={
                         tokenCopyState === "copied"
                           ? styles.tokenCopyStatus
-                          : styles.authError
+                          : styles.fieldError
                       }
                       role={tokenCopyState === "copied" ? "status" : "alert"}
                     >

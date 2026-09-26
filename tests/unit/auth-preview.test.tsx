@@ -134,6 +134,11 @@ describe("AuthPreview", () => {
     });
     expect(historyLink).toHaveAttribute("href", "/ui-preview/history");
     expect(historyLink.querySelector("svg")).not.toBeInTheDocument();
+    const completedToken = screen.getByLabelText("Токен регистрации");
+    const completedCopyButton = screen.getByRole("button", {
+      name: "Скопировать токен",
+    });
+    expect(completedCopyButton.parentElement).toContainElement(completedToken);
   });
 
   it("copies the generated registration token to the clipboard", async () => {
@@ -160,7 +165,13 @@ describe("AuthPreview", () => {
     await vi.waitFor(() => {
       expect(screen.getByLabelText("Токен регистрации")).toHaveValue(token);
     });
-    fireEvent.click(screen.getByRole("button", { name: "Скопировать токен" }));
+    const tokenInput = screen.getByLabelText("Токен регистрации");
+    const copyButton = screen.getByRole("button", {
+      name: "Скопировать токен",
+    });
+    expect(copyButton.parentElement).toContainElement(tokenInput);
+    expect(copyButton.querySelector("svg")).toBeInTheDocument();
+    fireEvent.click(copyButton);
 
     await vi.waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(token);

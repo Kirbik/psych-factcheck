@@ -35,7 +35,7 @@
 .tab:focus-visible, .tabActive:focus-visible, .passwordRow a:focus-visible, .footer a:focus-visible, .brand:focus-visible, .nav a:focus-visible, .primary:focus-visible { outline: 3.5px solid rgba(23, 96, 76, 0.13); outline-offset: 2px; }
 .card h1 { font-family: var(--auth-preview-lora), Georgia, serif; font-size: 30px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; margin: 0 0 8px; }
 .description { color: var(--muted); font-size: 14.5px; font-weight: 400; line-height: 1.55; margin: 0 0 20px; }
-.tokenNotice { color: var(--ink2); font-weight: 600; }
+.tokenNotice { background: var(--field); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 12px; color: var(--ink2); font-size: 14px; font-weight: 500; line-height: 1.5; margin: 16px 0 20px; padding: 12px 16px; }
 .authError { color: var(--danger); }
 .fieldError { color: var(--danger); font-size: 13px; font-weight: 500; line-height: 1.5; margin: 4px 0 0; }
 .fieldLabel { color: var(--ink2); display: block; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
@@ -43,6 +43,7 @@
 .tokenRow { align-items: stretch; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
 .tokenRow .fieldWrap { min-width: 0; }
 .tokenRow .fieldWrap + .tokenCreateButton { height: 52px; margin-top: 0; min-height: 52px; padding-inline: 16px; white-space: nowrap; width: auto; }
+.tokenCopyButton { align-items: center; background: transparent; border: 0; color: var(--muted); cursor: pointer; display: grid; flex: none; height: 44px; place-items: center; padding: 0; width: 44px; }
 .tokenCopyStatus { color: var(--accent); font-size: 13px; line-height: 1.5; margin: 4px 0 0; }
 .fieldWrap:focus-within { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3.5px rgba(23, 96, 76, 0.13); }
 .fieldWrap:has(input[aria-invalid="true"]) { border-color: var(--danger); }
