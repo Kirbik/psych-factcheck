@@ -141,12 +141,12 @@ describe("AuthPreview", () => {
     });
     const generateToken = vi.fn(async () => ({
       generatedToken: token,
-      message: "Сохраните токен: повторно показать его будет невозможно.",
+      message: "Сохраните токен: повторно показать его будет невозможно",
     }));
     const signup = vi.fn(async () => ({
       registrationComplete: true,
       recoveryCode: `pfr_${"b".repeat(64)}`,
-      message: "Регистрация прошла успешно.",
+      message: "Регистрация прошла успешно",
     }));
     render(
       <AuthPreview
@@ -172,7 +172,7 @@ describe("AuthPreview", () => {
     expect(tokenInput.selectionEnd).toBe(3);
     const tokenNotice = screen.getByRole("status");
     expect(tokenNotice).toHaveTextContent(
-      "Сохраните токен: повторно показать его будет невозможно.",
+      "Сохраните токен: повторно показать его будет невозможно",
     );
     expect(tokenNotice.className).toContain("tokenNotice");
 

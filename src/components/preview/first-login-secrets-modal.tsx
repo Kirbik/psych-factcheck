@@ -74,8 +74,8 @@ export function FirstLoginSecretsModal() {
         className={`${styles.description} ${styles.tokenNotice}`}
         id="first-login-secrets-description"
       >
-        Сохраните токен и код восстановления. После закрытия окна повторно
-        показать их не получится.
+        Сохраните токен и код восстановления После закрытия окна повторно
+        показать их не получится
       </p>
       <label className={styles.fieldLabel} htmlFor="first-login-token">
         Токен авторизации

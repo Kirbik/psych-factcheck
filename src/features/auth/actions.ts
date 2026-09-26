@@ -53,7 +53,7 @@ function safeFailure(
     return {
       fieldErrors: {
         token: [
-          "Токен регистрации истёк или уже использован. Сгенерируйте новый.",
+          "Токен регистрации истёк или уже использован Сгенерируйте новый",
         ],
       },
     };
@@ -75,7 +75,7 @@ export async function generateRegistrationToken(
     const generatedToken = await createPendingRegistrationToken();
     return {
       generatedToken,
-      message: "Сохраните токен: повторно показать его будет невозможно.",
+      message: "Сохраните токен: повторно показать его будет невозможно",
     };
   } catch (error) {
     return safeFailure(error, "generate-token");
@@ -99,7 +99,7 @@ export async function registerWithToken(
     return {
       registrationComplete: true,
       recoveryCode,
-      message: "Регистрация прошла успешно.",
+      message: "Регистрация прошла успешно",
     };
   } catch (error) {
     return safeFailure(error, "register");

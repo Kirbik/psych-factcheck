@@ -52,7 +52,7 @@ describe("token auth actions", () => {
       generateRegistrationToken(initialAuthActionState, formData({})),
     ).resolves.toEqual({
       generatedToken,
-      message: "Сохраните токен: повторно показать его будет невозможно.",
+      message: "Сохраните токен: повторно показать его будет невозможно",
     });
     expect(createPendingRegistrationToken).toHaveBeenCalledOnce();
     expect(registerAccessTokenAccount).not.toHaveBeenCalled();
@@ -68,7 +68,7 @@ describe("token auth actions", () => {
     ).resolves.toEqual({
       registrationComplete: true,
       recoveryCode,
-      message: "Регистрация прошла успешно.",
+      message: "Регистрация прошла успешно",
     });
     expect(registerAccessTokenAccount).toHaveBeenCalledWith(token);
   });

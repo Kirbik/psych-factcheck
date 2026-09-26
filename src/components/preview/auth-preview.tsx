@@ -171,7 +171,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           ? target === "token"
             ? "Токен скопирован"
             : "Код восстановления скопирован"
-          : "Не удалось скопировать. Выделите значение и скопируйте вручную"}
+          : "Не удалось скопировать Выделите значение и скопируйте вручную"}
       </p>
     ) : null;
 
@@ -289,8 +289,8 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           {isRecovery ? (
             <>
               <p className={styles.description}>
-                Если токен утерян, создайте новый аккаунт. История прежнего
-                аккаунта не переносится.
+                Если токен утерян, создайте новый аккаунт История прежнего
+                аккаунта не переносится
               </p>
               <button
                 className={styles.primary}
@@ -303,8 +303,8 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           ) : isSignup ? (
             <>
               <p className={styles.description}>
-                Сначала сгенерируйте токен. После первого входа появятся токен
-                авторизации и код восстановления.
+                Сначала сгенерируйте токен После первого входа появятся токен
+                авторизации и код восстановления
               </p>
 
               {registrationState.registrationComplete ? (
@@ -325,7 +325,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                         id="registration-dialog-description"
                       >
                         После первого входа появится окно с токеном авторизации
-                        и кодом восстановления.
+                        и кодом восстановления
                       </p>
                       {secretStorageUnavailable ? (
                         <>
@@ -333,8 +333,8 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
                             className={`${styles.description} ${styles.tokenNotice}`}
                             role="alert"
                           >
-                            Браузер не смог сохранить данные до первого входа.
-                            Сохраните их сейчас.
+                            Браузер не смог сохранить данные до первого входа
+                            Сохраните их сейчас
                           </p>
                           {renderSecretField(
                             "Токен авторизации",
@@ -520,7 +520,7 @@ export function AuthPreview({ actions, mode }: AuthPreviewProps) {
           ) : (
             <>
               <p className={styles.description}>
-                Введите токен авторизации, сохранённый при регистрации.
+                Введите токен авторизации, сохранённый при регистрации
               </p>
               <label
                 className={styles.fieldLabel}
