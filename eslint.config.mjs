@@ -12,6 +12,7 @@ export default defineConfig([
     "dist/**",
     ".vinext/**",
     ".wrangler/**",
+    ".trigger/**",
     "coverage/**",
     "playwright-report/**",
     "test-results/**",

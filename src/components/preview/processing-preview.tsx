@@ -19,15 +19,15 @@ const lora = Lora({
 });
 
 export type UploadProgressStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed";
+  "pending" | "processing" | "completed" | "failed";
 
 type ProcessingPreviewProps = {
   onBack?: () => void;
   uploadError?: string;
   uploadStatus?: UploadProgressStatus;
+  workflowMessage?: string;
+  onRetry?: () => void;
+  retryDisabled?: boolean;
 };
 
 type ProcessingStep = { label: string; status: UploadProgressStatus };
@@ -66,6 +66,9 @@ export function ProcessingPreview({
   onBack,
   uploadError,
   uploadStatus = "pending",
+  workflowMessage,
+  onRetry,
+  retryDisabled,
 }: ProcessingPreviewProps) {
   const steps: ProcessingStep[] = stepLabels.map((label, index) => ({
     label,
@@ -90,7 +93,11 @@ export function ProcessingPreview({
           Псих Фактчек
         </Link>
         <nav className={styles.nav} aria-label="Навигация приложения">
-          <Link className={styles.navActive} href="/history" aria-current="page">
+          <Link
+            className={styles.navActive}
+            href="/history"
+            aria-current="page"
+          >
             Проверки
           </Link>
           <Link href="/profile">Профиль</Link>
@@ -115,7 +122,7 @@ export function ProcessingPreview({
           {titleByUploadStatus[uploadStatus]}
         </h1>
         <p className={processingStyles.subtitle} aria-live="polite">
-          {subtitleByUploadStatus[uploadStatus]}
+          {workflowMessage ?? subtitleByUploadStatus[uploadStatus]}
         </p>
         {uploadError ? (
           <p className={processingStyles.subtitle} role="alert">
@@ -146,16 +153,27 @@ export function ProcessingPreview({
               </li>
             ))}
           </ol>
-          <Link
-            className={`${processingStyles.reportButton} ${!isComplete ? processingStyles.disabled : ""}`}
-            aria-disabled={!isComplete}
-            href={isComplete ? "/report" : "#processing-title"}
-            onClick={(event) => {
-              if (!isComplete) event.preventDefault();
-            }}
-          >
-            Перейти к отчету
-          </Link>
+          {onRetry ? (
+            <button
+              className={processingStyles.reportButton}
+              type="button"
+              onClick={onRetry}
+              disabled={retryDisabled}
+            >
+              Повторить запуск
+            </button>
+          ) : (
+            <Link
+              className={`${processingStyles.reportButton} ${!isComplete ? processingStyles.disabled : ""}`}
+              aria-disabled={!isComplete}
+              href={isComplete ? "/report" : "#processing-title"}
+              onClick={(event) => {
+                if (!isComplete) event.preventDefault();
+              }}
+            >
+              Перейти к отчету
+            </Link>
+          )}
         </div>
       </section>
     </main>

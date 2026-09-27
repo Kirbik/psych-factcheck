@@ -29,7 +29,7 @@ These root-level pages are UI prototypes, not fully database-backed product flow
 - `/report`
 - `/profile`
 
-`/new-check` submits the selected video through the authenticated upload API and displays the real upload status. Transcription and later analysis stages are not implemented; `/processing` remains a visual prototype and must not imply that those stages are running.
+`/new-check` submits the selected video through the authenticated upload API and displays the real upload status. Session 5 adds preparation-job status after upload and on `/processing?contentItemId=...`, using the existing screen. Transcription and later analysis stages remain pending; `/processing` without an ID remains a visual prototype. Live Trigger setup/deployment is still pending.
 
 The actual `/` route hosts token login/registration UI. `/dashboard` is the currently persisted checks list and single-video upload entry. Login redirects to `/history`; legacy `/ui-preview/*` URLs redirect to the corresponding root-level paths.
 

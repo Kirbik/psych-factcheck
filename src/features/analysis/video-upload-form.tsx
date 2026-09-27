@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UploadDropzone } from "@/components/product/upload-dropzone";
 import { useVideoUpload } from "@/features/analysis/video-upload-provider";
@@ -96,6 +97,11 @@ export function VideoUploadForm() {
         >
           {message}
         </p>
+      ) : null}
+      {task?.status === "completed" && task.result ? (
+        <Link className="button button--secondary" href={`/processing?contentItemId=${task.result.contentItemId}`}>
+          Продолжить
+        </Link>
       ) : null}
     </form>
   );

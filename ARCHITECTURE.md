@@ -9,12 +9,12 @@ Psych Factcheck is a modular monolith for evidence-grounded analysis of psycholo
 - Next.js App Router and strict TypeScript for the web application and server code
 - React for UI, Zod for runtime validation
 - Supabase PostgreSQL, Auth, and private Storage (current); pgvector is future scope
-- Trigger.dev for durable background workflows (future scope)
+- Trigger.dev for the Session 5 non-AI preparation workflow (Development worker and hosted migrations verified; production deployment pending)
 - Vitest, Playwright, ESLint, and Prettier
 - pnpm for package management
 - Next.js toolchain plus an experimental Vinext/Vite/Cloudflare Workers target
 
-The current app is a Next.js modular monolith backed by Supabase. Standard Next.js scripts coexist with an experimental Vinext/Vite/Cloudflare Worker path (`dev:vinext`, `build:vinext`, `start:vinext`, `deploy:vinext`). The Cloudflare path is present in configuration but is not represented here as a production-verified deployment. No separate Python backend, Redis/Celery queue, Docker/Kubernetes stack, or external vector database is used. Trigger.dev, pgvector, and AI providers are not connected.
+The current app is a Next.js modular monolith backed by Supabase. Standard Next.js scripts coexist with an experimental Vinext/Vite/Cloudflare Worker path (`dev:vinext`, `build:vinext`, `start:vinext`, `deploy:vinext`), which has been deployed to the project's `workers.dev` address. This deployment is not a production release verification: authenticated upload and the hosted Storage size/MIME restrictions have not been verified as fully configured. No separate Python backend, Redis/Celery queue, Docker/Kubernetes stack, or external vector database is used. Trigger.dev preparation tasks are implemented locally but not live-verified; pgvector and AI providers are not connected.
 
 ## System flow
 
@@ -29,8 +29,9 @@ flowchart TD
   STORAGE --> VERIFY[Server verifies object owner, size, and container]
   VERIFY --> CONTENT[Owned content_items row]
   CONTENT --> HISTORY[Dashboard history/status]
-  STORAGE -. future .-> JOB[Background analysis]
-  JOB -. future .-> TRANS[Transcription and claim extraction]
+  CONTENT --> JOB[Durable preparation job]
+  JOB --> PREP[Trigger.dev upload validation]
+  PREP -. future .-> TRANS[Transcription and claim extraction]
   TRANS -. future .-> RAG[Evidence retrieval and reranking]
   RAG -. future .-> JUDGE[Evidence-bound judgment]
   JUDGE -. future .-> REPORT[Persisted report]
@@ -38,7 +39,7 @@ flowchart TD
 
 ## Frontend and server boundaries
 
-`src/app` owns routes, layouts, server actions/route handlers, and rendering. `src/components` contains shared presentation components. `src/features` groups feature-specific UI and orchestration. Browser code receives only the minimum public data and never imports privileged clients or secrets. Current routes include auth at `/` and `/auth`, the protected persisted dashboard at `/dashboard`, `/api/uploads/video` and its completion handler, and UI prototype sections at `/history`, `/new-check`, `/processing`, `/report`, and `/profile`. Video bytes travel directly from the browser to private Supabase Storage using TUS; a root-layout upload provider keeps the in-flight task alive across client-side route navigation. Server handlers prepare a constrained signed upload and validate the completed object before creating `content_items`. The analysis stages after upload remain a prototype and do not indicate that an analysis job is running. Other prototype pages do not constitute the persisted report/analysis workflow; legacy `/ui-preview/*` URLs redirect to the corresponding clean paths.
+`src/app` owns routes, layouts, server actions/route handlers, and rendering. `src/components` contains shared presentation components. `src/features` groups feature-specific UI and orchestration. Browser code receives only the minimum public data and never imports privileged clients or secrets. Current routes include auth at `/` and `/auth`, the protected persisted dashboard at `/dashboard`, `/api/uploads/video` and its completion handler, `/api/analysis`, and UI sections at `/history`, `/new-check`, `/processing`, `/report`, and `/profile`. Video bytes travel directly from the browser to private Supabase Storage using signed TUS uploads at `/storage/v1/upload/resumable/sign`; a root-layout upload provider keeps the in-flight task alive across client-side route navigation only. The task and selected `File` stay in memory, so a reload, closed tab, or browser restart interrupts the upload and it cannot be resumed from persisted state. Server handlers prepare a constrained signed upload and validate the completed object before creating `content_items`. Session 5 displays persisted preparation-job status after upload and on `/processing?contentItemId=...`; AI stages remain pending. Other prototype pages do not constitute the persisted report/analysis workflow; legacy `/ui-preview/*` URLs redirect to the corresponding clean paths.
 
 `src/server` owns provider adapters, repositories, evidence retrieval, storage operations, billing authorization, and workflows. Business logic depends on domain contracts rather than vendor SDKs. `src/lib` is reserved for genuinely shared utilities; `src/types` holds stable cross-cutting domain types. `src/lib/supabase/browser.ts` is the sole browser client entry point. Authentication uses a server-generated access token with Supabase Auth cookie sessions through `@supabase/ssr`; a server-only token-digest mapping resolves the token to its Auth identity. `src/proxy.ts` refreshes dashboard sessions, while each protected page independently validates claims on the server. `src/server/supabase/server.ts` retains the explicit bearer-token client for non-browser user-context operations, while `src/server/supabase/admin.ts` is `server-only` and reserved for explicitly privileged operations.
 
@@ -56,11 +57,11 @@ Composition belongs in a server-only application boundary. UI and domain service
 
 ## Supabase boundary
 
-Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrations create `profiles`, `content_items`, `analysis_jobs`, token-digest tables, and the `videos` bucket with ownership policies. The app includes generated-token registration/login, cookie sessions, signed TUS upload preparation/finalization, and owner-filtered dashboard listing. No analysis job is currently created by the upload path; `analysis_jobs` is schema-only. RLS, admin/client boundaries, local setup, and tests are documented in [Supabase foundation](docs/architecture/SUPABASE.md) and [Authentication](docs/architecture/AUTH.md).
+Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrations create `profiles`, `content_items`, `analysis_jobs`, token-digest tables, and the `videos` bucket with ownership policies. The app includes generated-token registration/login, cookie sessions, signed TUS upload preparation/finalization, and owner-filtered dashboard listing. The Session 5 migration adds atomic job creation on upload, owner-authorized request/retry and service-only lifecycle transitions. RLS, admin/client boundaries, local setup, and tests are documented in [Supabase foundation](docs/architecture/SUPABASE.md) and [Authentication](docs/architecture/AUTH.md).
 
 ## Workflow boundary
 
-No background runner is currently connected. The upload route persists the media and content row, but it does not enqueue `analysis_jobs` or update it through a processing lifecycle. A future Trigger.dev workflow must be idempotent, retry only safe steps, persist state transitions, and distinguish transient from permanent failures.
+Session 5 adds a Trigger.dev preparation workflow. A database trigger atomically queues an `analysis_jobs` row with each uploaded content row; a scheduled dispatcher and an owner-authorized API trigger the worker. Generation/run fencing protects retries and persisted progress. Completion means upload preparation only: content remains pending and AI/report stages do not run. A live Development run passed; production deployment and browser acceptance are pending. See [Background workflows](docs/architecture/WORKFLOWS.md).
 
 ## AI and Evidence Base
 

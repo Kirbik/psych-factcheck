@@ -26,16 +26,16 @@ The current code implements only part of this flow:
 - `/` provides the token-based sign-in, registration, and recovery-code presentation UI.
 - Server Actions generate a one-time registration token, create a token-backed Supabase Auth account, authenticate with an access token, and sign out.
 - `/dashboard` validates the session server-side, lists the authenticated user's `content_items`, and provides a single-video upload form. `/new-check` also uploads its selected video and continues only after the object is validated and its `content_items` record succeeds.
-- The authenticated upload endpoints prepare a single signed TUS upload to the private `videos` bucket and finalize it only after server-side validation of object ownership, actual size, and container signature. A root-layout upload manager keeps an in-flight upload running across in-app navigation; a full page reload or closing the tab interrupts it.
-- `/history`, `/processing`, `/report`, and `/profile` contain interface prototypes not connected to the corresponding persisted product workflows. On `/new-check`, only video upload is connected; `/processing` remains a prototype and does not represent a running analysis job.
+- The authenticated upload endpoints prepare a single signed TUS upload to the private `videos` bucket at `/storage/v1/upload/resumable/sign` and finalize it only after server-side validation of object ownership, actual size, and container signature. A root-layout upload manager keeps an in-flight upload running across in-app navigation only; a full page reload, closing the tab, or browser restart interrupts it. Durable background upload/resume is not implemented.
+- `/history`, `/report`, and `/profile` contain interface prototypes. `/processing?contentItemId=...` and the post-upload view on `/new-check` now display persisted preparation-job status; the route without an ID remains a preview. AI stages stay pending and report access remains disabled.
 
-The upload creates a `pending` content item. It does not create an `analysis_jobs` row or start processing. Transcription, claim extraction/normalization/classification, Evidence Base, embeddings, retrieval, reranking, judgment, report persistence, history pagination, usage enforcement, and recovery are not implemented. The complete flow above remains the product target, not a claim about current behavior.
+The upload creates a `pending` content item and atomically queues one preparation job. Trigger.dev Development validates the stored upload and completes the preparation job only; this passed a real hosted integration run. Production worker deployment and browser acceptance remain. Transcription, claim extraction/normalization/classification, Evidence Base, embeddings, retrieval, reranking, judgment, report persistence, history pagination, usage enforcement, and recovery are not implemented. The complete flow above remains the product target, not a claim about current behavior.
 
 ## MVP scope
 
 - Token-based authentication and protected user data (implemented foundation)
 - One video upload to private storage with validation and idempotency (implemented foundation)
-- Analysis job execution and live status tracking (future implementation)
+- Non-AI preparation job execution and persisted status (Development integration verified; production deployment pending)
 - Transcription, claim extraction, normalization, and classification
 - A small curated Evidence Base with embeddings, retrieval, metadata filters, and reranking
 - Evidence-grounded fact-check judgments and structured reports

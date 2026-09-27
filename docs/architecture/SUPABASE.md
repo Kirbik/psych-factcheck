@@ -4,7 +4,7 @@
 
 Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated direct-to-Storage TUS video upload backed by a private bucket. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
 
-The upload path does not yet enqueue or update an analysis job. Transcription, AI, evidence retrieval, report persistence, and Trigger.dev remain future scope. See [Authentication](AUTH.md) for the token flow and current limits.
+The applied Session 5 migration atomically queues a preparation job with uploaded content. Trigger.dev Development worker is configured; production deployment and full browser acceptance remain pending. Transcription, AI, evidence retrieval and report persistence remain future scope. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
 
 ## Dependencies
 
@@ -84,19 +84,28 @@ The test connects to real local PostgreSQL, temporarily assumes Supabase `authen
 ## Video upload
 
 The private `videos` Storage bucket is created by
-`20260913000000_video_upload.sql`; `20260926000000_direct_video_upload.sql`
-sets its 100 MiB size limit and supported MIME types. Objects use the
-server-generated path `<auth-user-id>/<random-id>.<extension>`. Storage RLS
-scopes insert, select, update, and delete to the first path segment matching
-`auth.uid()`.
+`20260913000000_video_upload.sql`. Objects use the server-generated path
+`<auth-user-id>/<random-id>.<extension>`. Storage RLS scopes insert, select,
+update, and delete to the first path segment matching `auth.uid()`.
+
+The hosted project was rechecked on 2026-09-27: the bucket is private,
+`file_size_limit` is 104857600 (100 MiB), and `allowed_mime_types` contains
+`video/mp4`, `video/webm`, and `video/quicktime`. The duplicate migration version
+was resolved by retaining `20260926000000_token_auth.sql` (confirmed in hosted
+history) and renaming the unapplied direct-upload settings migration to
+`20260927090000_direct_video_upload.sql`. A dry run showed only that migration
+and `20260927100000_analysis_workflow.sql`; both were then applied successfully.
+The public DB types were regenerated against the resulting hosted schema.
 
 `POST /api/uploads/video` authenticates the user, validates the proposed
 filename and size, and returns a signed upload token for one generated object
-path. The browser sends video bytes directly to Supabase Storage using TUS
-6 MiB chunks, so video payloads do not pass through the application host or
-its Cloudflare body-size limit. The root-layout upload provider keeps the task
-alive through in-app route navigation; a full page reload or closing the tab
-still interrupts the in-memory task. After TUS completion,
+path. The browser sends video bytes directly to Supabase Storage using the
+signed TUS endpoint `/storage/v1/upload/resumable/sign` and 6 MiB chunks, so
+video payloads do not pass through the application host or its Cloudflare
+body-size limit. The root-layout upload provider keeps the task alive through
+in-app route navigation only; a full page reload, closed tab, or browser restart
+interrupts the in-memory task, and durable resume is not implemented. After
+TUS completion,
 `POST /api/uploads/video/complete` verifies the path belongs to the caller,
 reads Storage's actual object size and checks a server-fetched byte-range
 signature before writing an idempotent owned `content_items` record. MIME is
@@ -104,7 +113,7 @@ derived from the validated extension and container signature, not from the
 browser. Storage cleanup is attempted on validation or database failures when
 safe to do so.
 
-The implementation accepts MP4, WebM, and MOV files up to 100 MiB. On success,
+The application accepts MP4, WebM, and MOV files up to 100 MiB. On success,
 the row remains `pending`: no analysis workflow currently advances it. Apply
 migrations with the reviewed local/hosted workflow above; no database columns
 changed, so `src/types/database.ts` does not need regeneration for the bucket

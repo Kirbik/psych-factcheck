@@ -5,6 +5,7 @@ import { Inter, Lora } from "next/font/google";
 import { useRef, useState } from "react";
 import { ProcessingPreview } from "@/components/preview/processing-preview";
 import { useVideoUpload } from "@/features/analysis/video-upload-provider";
+import { WorkflowProgress } from "@/features/analysis/workflow-progress";
 import styles from "./history-preview.module.css";
 import newStyles from "./new-check-preview.module.css";
 
@@ -25,6 +26,9 @@ export function NewCheckPreview() {
   }
 
   if (task) {
+    if (task.status === "completed" && task.result) {
+      return <WorkflowProgress contentItemId={task.result.contentItemId} onBack={clearTask} />;
+    }
     return (
       <ProcessingPreview
         onBack={() => {

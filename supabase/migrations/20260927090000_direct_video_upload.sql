@@ -1,3 +1,4 @@
+-- Unique version: 20260926000000 is already used by token_auth.
 update storage.buckets
 set public = false,
     file_size_limit = 104857600,

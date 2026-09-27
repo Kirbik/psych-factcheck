@@ -2,9 +2,9 @@
 
 Use one session per bounded objective. Do not begin a later session until the user accepts the current one. Every session starts with `AGENTS.md`, `ARCHITECTURE.md`, relevant documents, tests, and `git status`, and ends with actual check results plus `git diff --stat`.
 
-## Repository progress (2026-09-26)
+## Repository progress (2026-09-27)
 
-The repository contains implementation work through Session 4: foundation/tooling, Supabase schema and clients, token-based authentication, and validated private video upload. These sessions have implementation artifacts in the current tree; this status is not a claim that every environment-gated test passed or that the MVP is release-ready. Session 5 is the next planned development goal. No analysis workflow, transcription, AI, Evidence Base, or report persistence is connected.
+The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Trigger.dev preparation workflow. Session 5 has passed a real Development worker and Supabase integration run; production deployment, browser failure/retry scenarios and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
 
 ## Session 0 — Foundation
 
@@ -79,11 +79,11 @@ The repository contains implementation work through Session 4: foundation/toolin
 - **QA requirements:** Security-oriented Reviewer and failure-case Test Engineer.
 - **Definition of Done:** One private untrusted video can be uploaded safely.
 
-**Status:** Implemented. The authenticated upload preparation route issues a signed, owner-scoped TUS upload to the private `videos` bucket. A separate finalizer verifies actual object ownership, size, and container signature before persisting the owner-scoped content row, using a per-user upload ID for idempotency. An app-root upload manager preserves active transfers across client-side navigation. It does not start analysis or create an `analysis_jobs` record.
+**Status:** Implemented; hosted bucket configuration verified. The authenticated upload preparation route issues a signed, owner-scoped TUS upload to the private `videos` bucket at `/storage/v1/upload/resumable/sign`. A separate finalizer verifies actual object ownership, size, and container signature before persisting the owner-scoped content row, using a per-user upload ID for idempotency. An app-root upload manager preserves active transfers across client-side navigation only; the selected file and task state are in memory, so reload/closed-tab resume is not supported. The direct-upload migration version conflict was resolved after checking hosted migration history. Bucket size and MIME restrictions are applied. See [Supabase foundation](../architecture/SUPABASE.md).
 
 ## Session 5 — Background Workflow
 
-**Status:** Planned; next session. Start only after the user approves this development goal.
+**Status:** Development integration verified on 2026-09-27. Trigger task, atomic upload/job creation, guarded lifecycle/retry RPCs, scheduled recovery, API and persisted progress UI are present. Hosted migrations were applied, DB types regenerated, Development secrets configured and a real uploaded WebM reached `completed`; duplicate dispatch reused the same run. Production deployment, fresh browser upload/retry/crash checks and Figma acceptance remain. See [workflow setup and limits](../architecture/WORKFLOWS.md) and [live verification](../testing/SESSION_5.md).
 
 - **Goal:** Add an idempotent Trigger.dev analysis workflow without AI.
 - **Why:** Long-running work must not depend on an HTTP request.

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { connection } from "next/server";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { createServerAuthClient } from "@/server/supabase/auth";
@@ -13,7 +14,7 @@ import type { Database } from "@/types/database";
 type ContentItemStatus = Database["public"]["Enums"]["content_item_status"];
 
 const contentItemStatusLabels: Record<ContentItemStatus, string> = {
-  pending: "В обработке",
+  pending: "Видео загружено",
   ready: "Готово",
   failed: "Не удалось завершить",
 };
@@ -66,7 +67,9 @@ export default async function DashboardPage() {
                       <span>{formatCheckDate(check.created_at)}</span>
                     </div>
                     <span className="dashboard-history__status">
-                      {contentItemStatusLabels[check.status]}
+                      <Link href={`/processing?contentItemId=${check.id}`}>
+                        {contentItemStatusLabels[check.status]}
+                      </Link>
                     </span>
                   </li>
                 ))}
