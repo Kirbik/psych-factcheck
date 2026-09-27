@@ -1,8 +1,6 @@
 "use client";
 
 import { Upload as TusUpload } from "tus-js-client";
-import { getPublicSupabaseConfig } from "@/lib/supabase-config";
-
 export type VideoUploadResult = {
   contentItemId: string;
   duplicate: boolean;
@@ -13,6 +11,8 @@ type UploadPreparation =
   | {
       duplicate: false;
       fileMimeType: string;
+      storageApiKey: string;
+      storageUploadEndpoint: string;
       storagePath: string;
       token: string;
     };
@@ -77,20 +77,13 @@ async function uploadWithTus(
   file: File,
   preparation: Extract<UploadPreparation, { token: string }>,
 ) {
-  const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } =
-    getPublicSupabaseConfig();
-  const endpoint = new URL(
-    "/storage/v1/upload/resumable/sign",
-    NEXT_PUBLIC_SUPABASE_URL,
-  ).toString();
-
   await new Promise<void>((resolve, reject) => {
     const upload = new TusUpload(file, {
-      endpoint,
+      endpoint: preparation.storageUploadEndpoint,
       chunkSize: 6 * 1024 * 1024,
       retryDelays: [0, 3000, 5000, 10000, 20000],
       headers: {
-        apikey: NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        apikey: preparation.storageApiKey,
         "x-signature": preparation.token,
       },
       metadata: {
@@ -135,6 +128,8 @@ export async function uploadVideoFile(
 
   if (
     preparation.duplicate !== false ||
+    typeof preparation.storageApiKey !== "string" ||
+    typeof preparation.storageUploadEndpoint !== "string" ||
     typeof preparation.storagePath !== "string" ||
     typeof preparation.token !== "string" ||
     typeof preparation.fileMimeType !== "string"
@@ -145,6 +140,8 @@ export async function uploadVideoFile(
   await uploadWithTus(file, {
     duplicate: false,
     fileMimeType: preparation.fileMimeType,
+    storageApiKey: preparation.storageApiKey,
+    storageUploadEndpoint: preparation.storageUploadEndpoint,
     storagePath: preparation.storagePath,
     token: preparation.token,
   });

@@ -12,7 +12,10 @@ const tusOptions = vi.hoisted(() => [] as MockTusOptions[]);
 
 vi.mock("tus-js-client", () => ({
   Upload: class {
-    constructor(_file: File, private options: MockTusOptions) {
+    constructor(
+      _file: File,
+      private options: MockTusOptions,
+    ) {
       tusOptions.push(options);
     }
 
@@ -32,15 +35,21 @@ describe("direct video upload client", () => {
   });
 
   it("prepares a signed upload, sends via TUS, then requests server verification", async () => {
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-test-key");
-    const fetchMock = vi.fn< typeof fetch >();
+    // Browser builds may receive no Supabase variables at build time. The
+    // authenticated preparation API supplies its runtime public configuration.
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", undefined);
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", undefined);
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", undefined);
+    const fetchMock = vi.fn<typeof fetch>();
     fetchMock
       .mockResolvedValueOnce(
         Response.json(
           {
             duplicate: false,
             fileMimeType: "video/mp4",
+            storageApiKey: "public-test-key",
+            storageUploadEndpoint:
+              "https://project.supabase.co/storage/v1/upload/resumable/sign",
             storagePath: "owner-id/object-id.mp4",
             token: "single-object-token",
           },
@@ -48,9 +57,12 @@ describe("direct video upload client", () => {
         ),
       )
       .mockResolvedValueOnce(
-        Response.json({ contentItemId: "content-item-id", duplicate: false }, {
-          status: 201,
-        }),
+        Response.json(
+          { contentItemId: "content-item-id", duplicate: false },
+          {
+            status: 201,
+          },
+        ),
       );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -64,9 +76,7 @@ describe("direct video upload client", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/uploads/video");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "/api/uploads/video/complete",
-    );
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/uploads/video/complete");
     expect(tusOptions).toHaveLength(1);
     expect(tusOptions[0]).toMatchObject({
       endpoint: "https://project.supabase.co/storage/v1/upload/resumable/sign",

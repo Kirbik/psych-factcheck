@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { getPublicSupabaseConfig } from "@/lib/supabase-config";
 import { contentItemsRepository } from "@/server/db/content-items-repository";
 import { createServerAuthClient } from "@/server/supabase/auth";
 import { readBoundedJson } from "@/server/storage/bounded-json";
@@ -24,7 +25,9 @@ function jsonError(message: string, status: number) {
 function isSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
   try {
-    return Boolean(origin && new URL(origin).origin === new URL(request.url).origin);
+    return Boolean(
+      origin && new URL(origin).origin === new URL(request.url).origin,
+    );
   } catch {
     return false;
   }
@@ -79,9 +82,11 @@ export async function POST(request: Request) {
   }
 
   const storagePath = `${userId}/${randomUUID()}${metadata.extension}`;
-  const { data: signedUpload, error: signedUploadError } = await supabase.storage
-    .from(VIDEO_BUCKET)
-    .createSignedUploadUrl(storagePath, { upsert: false });
+  const publicConfig = getPublicSupabaseConfig();
+  const { data: signedUpload, error: signedUploadError } =
+    await supabase.storage
+      .from(VIDEO_BUCKET)
+      .createSignedUploadUrl(storagePath, { upsert: false });
   if (signedUploadError || !signedUpload) {
     return jsonError("Не удалось подготовить защищённую загрузку.", 502);
   }
@@ -90,6 +95,11 @@ export async function POST(request: Request) {
     {
       duplicate: false,
       fileMimeType: metadata.fileMimeType,
+      storageApiKey: publicConfig.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      storageUploadEndpoint: new URL(
+        "/storage/v1/upload/resumable/sign",
+        publicConfig.NEXT_PUBLIC_SUPABASE_URL,
+      ).toString(),
       storagePath,
       token: signedUpload.token,
     },
