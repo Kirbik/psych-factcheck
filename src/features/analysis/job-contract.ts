@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const PIPELINE_VERSION = "orchestration-v1";
-export const ANALYSIS_TASK_ID = "analysis-orchestration-v1";
+export const ANALYSIS_WORKFLOW_NAME = "analysis-preparation-v1";
 export const jobPayloadSchema = z
   .object({
     jobId: z.uuid(),

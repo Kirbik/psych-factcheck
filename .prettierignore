@@ -1,5 +1,4 @@
 .next
-.trigger
 coverage
 node_modules
 playwright-report

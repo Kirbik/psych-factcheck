@@ -1,10 +1,10 @@
 # Psych Factcheck
 
-An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 5 adds a non-AI Trigger.dev preparation workflow with durable jobs and retry/status UI; its Development worker and hosted migrations have passed a real integration run. Production deployment and browser acceptance remain. Transcription, claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
+An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 5 adds a Cloudflare Workflows preparation process with durable jobs and retry/status UI. Production workflow deployment and browser acceptance remain. Transcription, claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Trigger.dev SDK, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains an experimental Vinext/Vite/Cloudflare Workers build path. Trigger.dev Development is verified; real AI/transcription/embedding providers are not connected.
+Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Real AI/transcription/embedding providers are not connected.
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ The suite includes unit tests for auth validation/actions, Supabase configuratio
 
 ## Deployment concept
 
-The standard Next.js scripts (`dev`, `build`, `start`) remain available. The experimental Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address, but that does not constitute production release verification. The authenticated video upload has not been end-to-end verified against the hosted project, and the hosted `videos` bucket currently lacks its intended file-size and allowed-MIME restrictions; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, and private Storage are already used by server routes. pgvector remains future work; Trigger.dev tasks require a separate worker deployment and environment setup. Do not deploy from this README without reviewing the target environment and Wrangler bindings/secrets.
+The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address, but that does not constitute production workflow verification. The authenticated video upload has not been end-to-end verified against the hosted project, and the hosted `videos` bucket currently lacks its intended file-size and allowed-MIME restrictions; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, and private Storage are already used by server routes. pgvector remains future work. The Cloudflare Workflow binding and Worker secrets must be configured in Wrangler/Cloudflare before deployment.
 
 ## Documentation
 

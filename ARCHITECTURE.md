@@ -9,12 +9,12 @@ Psych Factcheck is a modular monolith for evidence-grounded analysis of psycholo
 - Next.js App Router and strict TypeScript for the web application and server code
 - React for UI, Zod for runtime validation
 - Supabase PostgreSQL, Auth, and private Storage (current); pgvector is future scope
-- Trigger.dev for the Session 5 non-AI preparation workflow (Development worker and hosted migrations verified; production deployment pending)
+- Cloudflare Workflows and a Worker cron for the Session 5 non-AI preparation workflow (local implementation; production verification pending)
 - Vitest, Playwright, ESLint, and Prettier
 - pnpm for package management
 - Next.js toolchain plus an experimental Vinext/Vite/Cloudflare Workers target
 
-The current app is a Next.js modular monolith backed by Supabase. Standard Next.js scripts coexist with an experimental Vinext/Vite/Cloudflare Worker path (`dev:vinext`, `build:vinext`, `start:vinext`, `deploy:vinext`), which has been deployed to the project's `workers.dev` address. This deployment is not a production release verification: authenticated upload and the hosted Storage size/MIME restrictions have not been verified as fully configured. No separate Python backend, Redis/Celery queue, Docker/Kubernetes stack, or external vector database is used. Trigger.dev preparation tasks are implemented locally but not live-verified; pgvector and AI providers are not connected.
+The current app is a Next.js modular monolith backed by Supabase. Standard Next.js scripts coexist with a Vinext/Vite/Cloudflare Worker path (`dev:vinext`, `build:vinext`, `start:vinext`, `deploy:vinext`), which has been deployed to the project's `workers.dev` address. The Cloudflare Worker hosts the app, durable background workflow, and scheduled recovery; Supabase remains the source of truth for jobs and content. Production workflow verification is pending. No separate Python backend, Redis/Celery queue, Docker/Kubernetes stack, or external vector database is used. pgvector and AI providers are not connected.
 
 ## System flow
 
@@ -30,7 +30,7 @@ flowchart TD
   VERIFY --> CONTENT[Owned content_items row]
   CONTENT --> HISTORY[Dashboard history/status]
   CONTENT --> JOB[Durable preparation job]
-  JOB --> PREP[Trigger.dev upload validation]
+  JOB --> PREP[Cloudflare Workflow upload validation]
   PREP -. future .-> TRANS[Transcription and claim extraction]
   TRANS -. future .-> RAG[Evidence retrieval and reranking]
   RAG -. future .-> JUDGE[Evidence-bound judgment]
@@ -61,7 +61,7 @@ Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrati
 
 ## Workflow boundary
 
-Session 5 adds a Trigger.dev preparation workflow. A database trigger atomically queues an `analysis_jobs` row with each uploaded content row; a scheduled dispatcher and an owner-authorized API trigger the worker. Generation/run fencing protects retries and persisted progress. Completion means upload preparation only: content remains pending and AI/report stages do not run. A live Development run passed; production deployment and browser acceptance are pending. See [Background workflows](docs/architecture/WORKFLOWS.md).
+Session 5 adds a Cloudflare preparation workflow. A database trigger atomically queues an `analysis_jobs` row with each uploaded content row; a Worker cron and an owner-authorized API start or reconcile the workflow. Generation/run fencing protects retries and persisted progress. Completion means upload preparation only: content remains pending and AI/report stages do not run. Production workflow deployment and browser acceptance are pending. See [Background workflows](docs/architecture/WORKFLOWS.md).
 
 ## AI and Evidence Base
 

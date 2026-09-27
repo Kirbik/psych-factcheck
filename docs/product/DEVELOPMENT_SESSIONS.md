@@ -4,7 +4,7 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 ## Repository progress (2026-09-27)
 
-The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Trigger.dev preparation workflow. Session 5 has passed a real Development worker and Supabase integration run; production deployment, browser failure/retry scenarios and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
+The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Cloudflare Workflows preparation process. Production deployment, browser failure/retry scenarios and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
 
 ## Session 0 — Foundation
 
@@ -13,7 +13,7 @@ The repository contains implementation work through Session 5: foundation/toolin
 - **Goal:** Establish architecture, documentation, project rules, and executable quality tooling.
 - **Why:** Future Codex sessions need a safe, shared operating baseline.
 - **Scope:** Next.js/TypeScript App Router skeleton, pnpm, lint/format, Vitest, Playwright, smoke tests, provider contracts, directories, and documentation.
-- **Out of scope:** Supabase, Trigger.dev, real providers, product workflows, credentials.
+- **Out of scope:** Supabase, background execution, real providers, product workflows, credentials.
 - **Expected files:** Root configs/docs, `src/app`, provider contracts, `tests`, `evals`, `docs`.
 - **Acceptance criteria:** Strict TypeScript; placeholder-only env example; all requested commands exist and are honest.
 - **Required tests:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and E2E where environment permits.
@@ -43,7 +43,7 @@ The repository contains implementation work through Session 5: foundation/toolin
 - **Goal:** Add typed Supabase connections, migrations, initial schema, and RLS foundations.
 - **Why:** Persistence and ownership precede user features.
 - **Scope:** Local/server/browser client boundaries, migrations for initial entities, generated types workflow, RLS tests.
-- **Out of scope:** Auth UI, upload UI, AI, Trigger.dev, billing.
+- **Out of scope:** Auth UI, upload UI, AI, background execution, billing.
 - **Expected files:** `src/server/db`, Supabase config/migrations, integration tests, env docs.
 - **Acceptance criteria:** Keys stay in correct boundary; user-owned tables deny cross-user access by default.
 - **Required tests:** lint, typecheck, unit, database integration/RLS, build.
@@ -85,7 +85,7 @@ The repository contains implementation work through Session 5: foundation/toolin
 
 **Status:** Development integration verified on 2026-09-27. Trigger task, atomic upload/job creation, guarded lifecycle/retry RPCs, scheduled recovery, API and persisted progress UI are present. Hosted migrations were applied, DB types regenerated, Development secrets configured and a real uploaded WebM reached `completed`; duplicate dispatch reused the same run. Production deployment, fresh browser upload/retry/crash checks and Figma acceptance remain. See [workflow setup and limits](../architecture/WORKFLOWS.md) and [live verification](../testing/SESSION_5.md).
 
-- **Goal:** Add an idempotent Trigger.dev analysis workflow without AI.
+- **Goal:** Add an idempotent Cloudflare preparation workflow without AI.
 - **Why:** Long-running work must not depend on an HTTP request.
 - **Scope:** Job state machine, enqueue action, durable status/progress, retry-safe stub stages that represent orchestration only.
 - **Out of scope:** Fake AI outputs, transcription, retrieval, report.

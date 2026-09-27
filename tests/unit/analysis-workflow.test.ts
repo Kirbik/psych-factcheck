@@ -96,7 +96,7 @@ function repository() {
 
 function runner() {
   return {
-    trigger: vi.fn<WorkflowRunner["trigger"]>().mockResolvedValue(runId),
+    start: vi.fn<WorkflowRunner["start"]>().mockResolvedValue(runId),
     status: vi.fn<WorkflowRunner["status"]>().mockResolvedValue("EXECUTING"),
   } satisfies WorkflowRunner;
 }
@@ -302,12 +302,12 @@ describe("workflow dispatch and recovery", () => {
     const repo = repository();
     const taskRunner = runner();
     const failure = new Error("Connection lost after enqueue");
-    taskRunner.trigger.mockRejectedValueOnce(failure);
+    taskRunner.start.mockRejectedValueOnce(failure);
 
     await expect(dispatchJob(job(), repo, taskRunner)).rejects.toBe(failure);
     expect(repo.advance).not.toHaveBeenCalled();
     await dispatchJob(job(), repo, taskRunner);
-    expect(taskRunner.trigger.mock.calls).toEqual([
+    expect(taskRunner.start.mock.calls).toEqual([
       [payload, `${jobId}:1`],
       [payload, `${jobId}:1`],
     ]);
@@ -317,7 +317,7 @@ describe("workflow dispatch and recovery", () => {
     const repo = repository();
     const taskRunner = runner();
     await dispatchJob(job({ generation: 2 }), repo, taskRunner);
-    expect(taskRunner.trigger).toHaveBeenCalledExactlyOnceWith(
+    expect(taskRunner.start).toHaveBeenCalledExactlyOnceWith(
       { jobId, generation: 2 },
       `${jobId}:2`,
     );
@@ -336,8 +336,8 @@ describe("workflow dispatch and recovery", () => {
 
     await expect(dispatchJob(job(), repo, taskRunner)).rejects.toBe(failure);
     await dispatchJob(job(), repo, taskRunner);
-    expect(taskRunner.trigger.mock.calls[0]).toEqual(
-      taskRunner.trigger.mock.calls[1],
+    expect(taskRunner.start.mock.calls[0]).toEqual(
+      taskRunner.start.mock.calls[1],
     );
     expect(repo.advance.mock.calls[0]).toEqual(repo.advance.mock.calls[1]);
   });
@@ -374,7 +374,7 @@ describe("workflow dispatch and recovery", () => {
       await expect(reconcileJob(terminal, repo, taskRunner)).resolves.toBe(
         terminal,
       );
-      expect(taskRunner.trigger).not.toHaveBeenCalled();
+      expect(taskRunner.start).not.toHaveBeenCalled();
       expect(taskRunner.status).not.toHaveBeenCalled();
       expect(repo.advance).not.toHaveBeenCalled();
     },
@@ -387,14 +387,14 @@ describe("workflow dispatch and recovery", () => {
     await expect(dispatchJob(attached, repo, taskRunner)).resolves.toBe(
       attached,
     );
-    expect(taskRunner.trigger).not.toHaveBeenCalled();
+    expect(taskRunner.start).not.toHaveBeenCalled();
   });
 
   it("reconciles the persisted queued job even when it has no runner ID", async () => {
     const repo = repository();
     const taskRunner = runner();
     await reconcileJob(job(), repo, taskRunner);
-    expect(taskRunner.trigger).toHaveBeenCalledExactlyOnceWith(
+    expect(taskRunner.start).toHaveBeenCalledExactlyOnceWith(
       payload,
       `${jobId}:1`,
     );
@@ -435,7 +435,7 @@ describe("workflow dispatch and recovery", () => {
         3,
         errorCode,
       );
-      expect(taskRunner.trigger).not.toHaveBeenCalled();
+      expect(taskRunner.start).not.toHaveBeenCalled();
     },
   );
 

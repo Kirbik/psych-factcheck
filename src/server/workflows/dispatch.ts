@@ -2,7 +2,7 @@ import { isActiveJob, type JobPayload } from "@/features/analysis/job-contract";
 import type { AnalysisJob, WorkflowRepository } from "./repository";
 
 export interface WorkflowRunner {
-  trigger(payload: JobPayload, key: string): Promise<string>;
+  start(payload: JobPayload, key: string): Promise<string>;
   status(runId: string): Promise<string>;
 }
 
@@ -13,7 +13,7 @@ export async function dispatchJob(
 ) {
   if (job.status !== "queued" || job.run_id) return job;
   const payload = { jobId: job.id, generation: job.generation };
-  const runId = await runner.trigger(payload, `${job.id}:${job.generation}`);
+  const runId = await runner.start(payload, `${job.id}:${job.generation}`);
   // Worker may have already advanced the row. Never overwrite it with queued.
   await repository.advance(payload, runId, "queued");
   return (await repository.get(payload)) ?? job;

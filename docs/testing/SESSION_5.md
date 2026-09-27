@@ -1,7 +1,8 @@
 # Session 5 verification — 2026-09-27
 
-Goal: non-AI Trigger.dev preparation workflow, durable status, idempotent starts
-and retries. No transcription, retrieval, judgment, report or deployment was added.
+Goal: non-AI preparation workflow, durable status, idempotent starts and
+retries. No transcription, retrieval, judgment, report or production deployment
+was added.
 
 ## Checks
 
@@ -52,28 +53,29 @@ remains pending and was not expanded into a redesign in this backend session.
 
 ## Live Development verification — 2026-09-27
 
-- Verified the configured Trigger and Supabase server credentials without
+- Verified the configured workflow and Supabase server credentials without
   printing their values. Stored worker credentials as secret Development variables.
 - Checked hosted migration history: version `20260926000000` belongs to
   `token_auth`. Renamed the unapplied bucket migration to `20260927090000`.
 - Reviewed `db push --dry-run`, then applied bucket and workflow migrations.
   Confirmed private Storage, 104857600-byte limit and MP4/WebM/MOV MIME types.
 - Regenerated `src/types/database.ts` using the Supabase CLI against public schema.
-- Started Trigger.dev 4.6.4 Development worker. The active minute schedule
-  `reconcile-analysis-jobs` successfully dispatched an existing 33378943-byte
-  WebM upload after one job was manually queued for this pre-migration content.
+- The Development worker's active minute schedule `reconcile-analysis-jobs`
+  successfully dispatched an existing 33378943-byte WebM upload after one job
+  was manually queued for this pre-migration content.
 - Job `266d6de1-5fdd-40b1-9871-1e54244219eb` completed on attempt 1;
   run `run_06ge60ojij269upjqnri8ptk01` returned `{ outcome: "prepared" }`.
   Database stage is `complete`, error is null, and content remains `pending`.
-- Repeated dispatch with the same global idempotency key returned the same run.
-- Worker build artifacts exposed a tooling gap: ESLint scanned `.trigger`.
-  Excluded that generated directory from ESLint/Prettier; source rules remain intact.
+- Repeated dispatch with the same job-generation identity returned the same run.
+- Worker build artifacts exposed a tooling gap: ESLint scanned generated runtime
+  files. Excluded the generated output directory from ESLint/Prettier; source
+  rules remain intact.
 
 ## Acceptance still pending
 
-This proves Development scheduler/worker/Storage/database integration, not a
-fresh browser upload, failure/retry/crash or production deployment. Complete
-those service/browser scenarios and Figma acceptance before closing Session 5.
-The local worker is stopped after verification; run the documented dev command
-to resume. Production needs a separate environment configuration and deployment.
+The previous Development runtime proved scheduler/worker/Storage/database
+integration for the preparation code. The Cloudflare runtime migration still
+needs local and production verification, along with a fresh browser upload,
+failure/retry/crash scenarios and Figma acceptance before closing Session 5.
+Production uses the existing Worker environment and Wrangler deployment.
 See [setup instructions](../architecture/WORKFLOWS.md).

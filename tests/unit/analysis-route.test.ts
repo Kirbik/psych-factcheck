@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
   findOwned: vi.fn(),
   dispatch: vi.fn(),
   reconcile: vi.fn(),
-  configured: vi.fn(),
   privileged: vi.fn(),
+  workflowRunner: vi.fn(),
 }));
 vi.mock("@/server/supabase/auth", () => ({
   createServerAuthClient: async () => ({
@@ -28,14 +28,13 @@ vi.mock("@/server/workflows/repository", () => ({
   }),
 }));
 vi.mock("@/server/workflows/runtime", () => ({
-  workflowConfigured: mocks.configured,
   operationalRepository: mocks.privileged,
+  workflowRunner: mocks.workflowRunner,
 }));
 vi.mock("@/server/workflows/dispatch", () => ({
   dispatchJob: mocks.dispatch,
   reconcileJob: mocks.reconcile,
 }));
-vi.mock("@/server/workflows/trigger-runner", () => ({ triggerRunner: {} }));
 import { GET, POST } from "@/app/api/analysis/route";
 
 const contentId = "33333333-3333-4333-8333-333333333333";
@@ -72,7 +71,7 @@ describe("analysis API trust boundaries", () => {
       data: { id: contentId },
       error: null,
     });
-    mocks.configured.mockReturnValue(true);
+    mocks.workflowRunner.mockReturnValue({});
     mocks.request.mockResolvedValue(job);
     mocks.findOwned.mockResolvedValue(job);
     mocks.dispatch.mockResolvedValue(job);
@@ -99,7 +98,7 @@ describe("analysis API trust boundaries", () => {
     expect(mocks.privileged).not.toHaveBeenCalled();
   });
   it("reports unavailable honestly without creating a job", async () => {
-    mocks.configured.mockReturnValue(false);
+    mocks.workflowRunner.mockReturnValue(undefined);
     expect((await post()).status).toBe(503);
     expect(mocks.request).not.toHaveBeenCalled();
   });

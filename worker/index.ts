@@ -1,4 +1,12 @@
 import handler from "vinext/server/fetch-handler";
+import {
+  createCloudflareWorkflowRunner,
+  type WorkflowBinding,
+} from "@/server/workflows/cloudflare-runner";
+import { reconcileJob } from "@/server/workflows/dispatch";
+import { workflowRepository } from "@/server/workflows/repository";
+import { createWorkerClient } from "./client";
+export { AnalysisWorkflow } from "./analysis-workflow";
 
 type WorkerExecutionContext = {
   passThroughOnException(): void;
@@ -53,6 +61,31 @@ const worker = {
     const response = await handler.fetch(request, environment, context);
     return withUtf8ContentType(response);
   },
+
+  scheduled(
+    _controller: { cron: string; scheduledTime: number },
+    environment: WorkerEnvironment,
+    context: WorkerExecutionContext,
+  ) {
+    populateSupabaseProcessEnv(environment);
+    context.waitUntil(reconcileActiveJobs(environment));
+  },
 };
+
+async function reconcileActiveJobs(environment: WorkerEnvironment) {
+  const repository = workflowRepository(createWorkerClient(environment));
+  const workflow = environment.ANALYSIS_WORKFLOW;
+  if (typeof workflow !== "object" || workflow === null)
+    throw new Error("Cloudflare Workflow binding unavailable");
+  const jobs = await repository.active();
+  const runner = createCloudflareWorkflowRunner(
+    workflow as WorkflowBinding,
+  );
+  const results = await Promise.allSettled(
+    jobs.map((job) => reconcileJob(job, repository, runner)),
+  );
+  if (results.some((result) => result.status === "rejected"))
+    throw new Error("Job reconciliation incomplete");
+}
 
 export default worker;

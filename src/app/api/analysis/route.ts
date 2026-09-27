@@ -4,10 +4,9 @@ import { readBoundedJson } from "@/server/storage/bounded-json";
 import { workflowRepository } from "@/server/workflows/repository";
 import {
   operationalRepository,
-  workflowConfigured,
+  workflowRunner,
 } from "@/server/workflows/runtime";
 import { dispatchJob, reconcileJob } from "@/server/workflows/dispatch";
-import { triggerRunner } from "@/server/workflows/trigger-runner";
 import { jobViewSchema } from "@/features/analysis/job-contract";
 
 const requestSchema = z
@@ -56,7 +55,8 @@ async function handle(request: Request, start: boolean) {
       .maybeSingle();
     if (contentError) throw new Error("Content lookup failed");
     if (!content) return json({ error: "Видео не найдено." }, 404);
-    if (!workflowConfigured())
+    const runner = workflowRunner();
+    if (!runner)
       return json(
         { error: "Фоновая обработка пока не настроена. Видео сохранено." },
         503,
@@ -70,8 +70,8 @@ async function handle(request: Request, start: boolean) {
       const repository = operationalRepository();
       // GET can recover an already-requested job, but never creates a new one.
       job = start
-        ? await dispatchJob(job, repository, triggerRunner)
-        : await reconcileJob(job, repository, triggerRunner);
+        ? await dispatchJob(job, repository, runner)
+        : await reconcileJob(job, repository, runner);
     }
     return json({ job: job ? jobViewSchema.parse(job) : null });
   } catch {

@@ -4,7 +4,7 @@
 
 Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated direct-to-Storage TUS video upload backed by a private bucket. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
 
-The applied Session 5 migration atomically queues a preparation job with uploaded content. Trigger.dev Development worker is configured; production deployment and full browser acceptance remain pending. Transcription, AI, evidence retrieval and report persistence remain future scope. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
+The applied Session 5 migration atomically queues a preparation job with uploaded content. Cloudflare Workflows provide background execution; production deployment and full browser acceptance remain pending. Transcription, AI, evidence retrieval and report persistence remain future scope. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
 
 ## Dependencies
 

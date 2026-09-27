@@ -31,6 +31,5 @@ pnpm-debug.log*
 /dist/
 .vinext/
 .wrangler/
-.trigger/
 .pnpm-store/
 e2e-session5.log
