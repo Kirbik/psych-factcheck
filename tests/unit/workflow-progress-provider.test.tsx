@@ -251,6 +251,10 @@ describe("workflow progress upload lock", () => {
     const resumeButton = await screen.findByRole("button", {
       name: "Продолжить загрузку",
     });
+    expect(resumeButton.className).toContain("resumeLink");
+    expect(resumeButton.closest("li")).toHaveTextContent(
+      "Приостановлено · 42%",
+    );
     await waitFor(() => expect(resumeButton).toBeEnabled());
     fireEvent.click(resumeButton);
 

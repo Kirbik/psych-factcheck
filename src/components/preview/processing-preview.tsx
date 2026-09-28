@@ -97,6 +97,30 @@ export function ProcessingPreview({
   }));
   const isComplete = steps.every((step) => step.status === "completed");
 
+  function handleResume() {
+    if (!resumeFile) return;
+    if (needsManualSelection) {
+      resumeInputRef.current?.click();
+      return;
+    }
+    void resumeFile
+      .onResume()
+      .then((resumed) => {
+        if (!resumed) {
+          setResumeError(
+            "Не удалось восстановить доступ к файлу. Выберите исходный файл, чтобы продолжить.",
+          );
+          setNeedsManualSelection(true);
+        }
+      })
+      .catch(() => {
+        setResumeError(
+          "Не удалось восстановить доступ к файлу. Выберите исходный файл, чтобы продолжить.",
+        );
+        setNeedsManualSelection(true);
+      });
+  }
+
   return (
     <main className={`${styles.preview} ${inter.variable} ${lora.variable}`}>
       <header className={styles.header}>
@@ -172,6 +196,18 @@ export function ProcessingPreview({
                   {index === 0 && progressPercent !== undefined
                     ? `${statusLabels[step.status]} · ${progressPercent}%`
                     : statusLabels[step.status]}
+                  {index === 0 && resumeFile ? (
+                    <button
+                      className={processingStyles.resumeLink}
+                      disabled={resumeDisabled}
+                      onClick={handleResume}
+                      type="button"
+                    >
+                      {needsManualSelection
+                        ? "Выбрать файл и продолжить"
+                        : "Продолжить загрузку"}
+                    </button>
+                  ) : null}
                 </span>
               </li>
             ))}
@@ -212,37 +248,6 @@ export function ProcessingPreview({
                   {resumeError}
                 </p>
               ) : null}
-              <button
-                className={processingStyles.reportButton}
-                disabled={resumeDisabled}
-                onClick={() => {
-                  if (needsManualSelection) {
-                    resumeInputRef.current?.click();
-                    return;
-                  }
-                  void resumeFile
-                    .onResume()
-                    .then((resumed) => {
-                      if (!resumed) {
-                        setResumeError(
-                          "Не удалось восстановить доступ к файлу. Выберите исходный файл, чтобы продолжить.",
-                        );
-                        setNeedsManualSelection(true);
-                      }
-                    })
-                    .catch(() => {
-                      setResumeError(
-                        "Не удалось восстановить доступ к файлу. Выберите исходный файл, чтобы продолжить.",
-                      );
-                      setNeedsManualSelection(true);
-                    });
-                }}
-                type="button"
-              >
-                {needsManualSelection
-                  ? "Выбрать файл и продолжить"
-                  : "Продолжить загрузку"}
-              </button>
               {onCancel ? (
                 <button
                   className={processingStyles.reportButton}

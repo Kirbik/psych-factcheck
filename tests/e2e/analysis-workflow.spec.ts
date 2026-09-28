@@ -36,7 +36,10 @@ test("restores the interrupted upload screen after a page reload", async ({
   ).toBeVisible();
   await expect(page.getByText("Приостановлено · 42%")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Продолжить загрузку" }),
+    page
+      .locator("li")
+      .filter({ hasText: "Приостановлено · 42%" })
+      .getByRole("button", { name: "Продолжить загрузку" }),
   ).toBeVisible();
 
   await page.reload();
