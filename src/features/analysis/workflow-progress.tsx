@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ProcessingPreview } from "@/components/preview/processing-preview";
+import { useVideoUpload } from "@/features/analysis/video-upload-provider";
 import {
   isActiveJob,
   jobResponseSchema,
@@ -16,6 +17,7 @@ export function WorkflowProgress({
   contentItemId: string;
   onBack?: () => void;
 }) {
+  const { updateWorkflowStatus } = useVideoUpload();
   const [job, setJob] = useState<JobView | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,6 +58,8 @@ export function WorkflowProgress({
         }
         const result = jobResponseSchema.parse(value);
         if (controller.signal.aborted) return;
+        if (result.job)
+          updateWorkflowStatus(contentItemId, result.job.status);
         setJob(result.job);
         setError("");
         if (result.job && isActiveJob(result.job))
@@ -76,7 +80,7 @@ export function WorkflowProgress({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [contentItemId, revision]);
+  }, [contentItemId, revision, updateWorkflowStatus]);
 
   return (
     <ProcessingPreview

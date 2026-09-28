@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { UploadDropzone } from "@/components/product/upload-dropzone";
 import { useVideoUpload } from "@/features/analysis/video-upload-provider";
+import { workflowMessages } from "@/features/analysis/job-contract";
 
 export function VideoUploadForm() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function VideoUploadForm() {
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState("");
   const [uploadId, setUploadId] = useState(() => crypto.randomUUID());
-  const { task, startUpload, clearTask } = useVideoUpload();
+  const { task, startUpload, clearTask, isUploadLocked } = useVideoUpload();
   const refreshedUploadId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function VideoUploadForm() {
   }, [router, task]);
 
   function submit() {
+    if (isUploadLocked) return;
     const file = inputRef.current?.files?.[0];
     if (!file) {
       setFileError("Выберите видеофайл.");
@@ -38,15 +40,20 @@ export function VideoUploadForm() {
   }
 
   const isUploading = task?.status === "processing";
+  const isWorkflowActive = isUploadLocked && task?.status === "completed";
   const status = task?.status;
-  const message = fileError || (isUploading
-    ? "Загрузка видео выполняется."
-    : status === "completed"
-      ? "Видео загружено. Запись проверки сохранена."
-      : status === "failed"
-        ? task?.error ?? "Не удалось загрузить видео."
-        : "");
-  const displayedFileName = isUploading ? task.fileName : fileName;
+  const message =
+    fileError ||
+    (isUploading
+      ? "Загрузка видео выполняется."
+      : isWorkflowActive
+        ? workflowMessages[task.workflowStatus ?? "queued"]
+        : status === "completed"
+          ? "Видео загружено. Запись проверки сохранена."
+          : status === "failed"
+            ? task?.error ?? "Не удалось загрузить видео."
+            : "");
+  const displayedFileName = isUploadLocked && task ? task.fileName : fileName;
 
   return (
     <form
@@ -66,9 +73,10 @@ export function VideoUploadForm() {
             accept="video/mp4,video/webm,video/quicktime"
             aria-describedby="video-upload-help"
             className="upload-file-input"
-            disabled={isUploading}
+            disabled={isUploadLocked}
             id="video-upload-file"
             onChange={(event) => {
+              if (isUploadLocked) return;
               setFileName(event.target.files?.[0]?.name ?? "");
               setUploadId(crypto.randomUUID());
               setFileError("");
@@ -81,7 +89,7 @@ export function VideoUploadForm() {
         <p id="video-upload-help" className="muted-text">
           {displayedFileName || "Файл ещё не выбран"}
         </p>
-        <Button disabled={isUploading} loading={isUploading} type="submit">
+        <Button disabled={isUploadLocked} loading={isUploading} type="submit">
           {isUploading ? "Загружаем…" : "Загрузить видео"}
         </Button>
       </UploadDropzone>

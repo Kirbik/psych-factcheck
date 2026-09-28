@@ -11,19 +11,37 @@ import {
   uploadVideoFile,
   type VideoUploadResult,
 } from "@/features/analysis/video-upload-client";
+import type { JobView } from "@/features/analysis/job-contract";
 
 export type VideoUploadTask = {
   uploadId: string;
   fileName: string;
   status: "processing" | "completed" | "failed";
+  workflowStatus?: JobView["status"];
   error?: string;
   result?: VideoUploadResult;
 };
 
+function isVideoUploadLocked(task: VideoUploadTask | null) {
+  if (!task) return false;
+  if (task.status === "processing") return true;
+  return (
+    task.status === "completed" &&
+    (task.workflowStatus === undefined ||
+      task.workflowStatus === "queued" ||
+      task.workflowStatus === "running")
+  );
+}
+
 type VideoUploadContextValue = {
   task: VideoUploadTask | null;
+  isUploadLocked: boolean;
   startUpload: (file: File, uploadId: string) => boolean;
   clearTask: () => void;
+  updateWorkflowStatus: (
+    contentItemId: string,
+    status: JobView["status"],
+  ) => void;
 };
 
 const VideoUploadContext = createContext<VideoUploadContextValue | null>(null);
@@ -41,7 +59,7 @@ export function VideoUploadProvider({
 
   const startUpload = useCallback(
     (file: File, uploadId: string) => {
-      if (taskRef.current?.status === "processing") return false;
+      if (isVideoUploadLocked(taskRef.current)) return false;
 
       const initialTask: VideoUploadTask = {
         uploadId,
@@ -54,7 +72,12 @@ export function VideoUploadProvider({
         .then((result) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
-            updateTask({ ...current, status: "completed", result });
+            updateTask({
+              ...current,
+              status: "completed",
+              workflowStatus: "queued",
+              result,
+            });
           }
         })
         .catch((error: unknown) => {
@@ -77,11 +100,32 @@ export function VideoUploadProvider({
   );
 
   const clearTask = useCallback(() => {
-    if (taskRef.current?.status !== "processing") updateTask(null);
+    if (!isVideoUploadLocked(taskRef.current)) updateTask(null);
   }, [updateTask]);
 
+  const updateWorkflowStatus = useCallback(
+    (contentItemId: string, workflowStatus: JobView["status"]) => {
+      const current = taskRef.current;
+      if (
+        current?.status === "completed" &&
+        current.result?.contentItemId === contentItemId
+      ) {
+        updateTask({ ...current, workflowStatus });
+      }
+    },
+    [updateTask],
+  );
+
   return (
-    <VideoUploadContext.Provider value={{ task, startUpload, clearTask }}>
+    <VideoUploadContext.Provider
+      value={{
+        task,
+        isUploadLocked: isVideoUploadLocked(task),
+        startUpload,
+        clearTask,
+        updateWorkflowStatus,
+      }}
+    >
       {children}
     </VideoUploadContext.Provider>
   );
