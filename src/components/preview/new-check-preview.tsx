@@ -26,6 +26,7 @@ export function NewCheckPreview() {
   const {
     task,
     startUpload,
+    cancelUpload,
     resumeInterruptedUpload,
     clearTask,
     isRestoring,
@@ -36,6 +37,13 @@ export function NewCheckPreview() {
     if (!videoFile) return;
     clearTask();
     startUpload(videoFile, uploadId);
+  }
+
+  function handleCancelUpload() {
+    if (!cancelUpload()) return;
+    setVideoFile(null);
+    setUploadId(crypto.randomUUID());
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handleFilePickerClick(event: MouseEvent<HTMLInputElement>) {
@@ -77,6 +85,7 @@ export function NewCheckPreview() {
     if (task.status === "interrupted") {
       return (
         <ProcessingPreview
+          onCancel={handleCancelUpload}
           uploadStatus="interrupted"
           resumeDisabled={isResumeHandleLoading}
           progressPercent={task.progressPercent}
@@ -93,6 +102,7 @@ export function NewCheckPreview() {
     }
     return (
       <ProcessingPreview
+        onCancel={handleCancelUpload}
         onBack={() => {
           if (task.status !== "processing") clearTask();
         }}

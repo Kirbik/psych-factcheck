@@ -5,7 +5,10 @@ type MockTusOptions = {
   headers?: Record<string, string>;
   metadata?: Record<string, string>;
   chunkSize?: number;
+  onError?: (error: Error) => void;
+  onProgress?: (bytesUploaded: number, bytesTotal: number) => void;
   fingerprint?: (file: File, options: MockTusOptions) => Promise<string>;
+  removeFingerprintOnSuccess?: boolean;
   storeFingerprintForResuming?: boolean;
   onSuccess?: (payload: { lastResponse: object }) => void;
 };
@@ -19,6 +22,8 @@ const previousUploads = vi.hoisted(
     }>,
 );
 const resumedUploads = vi.hoisted(() => [] as string[]);
+const abortedUploads = vi.hoisted(() => [] as boolean[]);
+const holdTusSuccess = vi.hoisted(() => ({ value: false }));
 
 vi.mock("tus-js-client", () => ({
   Upload: class {
@@ -30,7 +35,14 @@ vi.mock("tus-js-client", () => ({
     }
 
     start() {
-      this.options.onSuccess?.({ lastResponse: {} });
+      if (!holdTusSuccess.value) {
+        this.options.onSuccess?.({ lastResponse: {} });
+      }
+    }
+
+    abort(shouldTerminate = false) {
+      abortedUploads.push(shouldTerminate);
+      return Promise.resolve();
     }
 
     findPreviousUploads() {
@@ -52,6 +64,8 @@ describe("direct video upload client", () => {
     tusOptions.length = 0;
     previousUploads.length = 0;
     resumedUploads.length = 0;
+    abortedUploads.length = 0;
+    holdTusSuccess.value = false;
   });
 
   it("prepares a signed upload, sends via TUS, then requests server verification", async () => {
@@ -152,5 +166,35 @@ describe("direct video upload client", () => {
         uploadId: "upload-id",
       }),
     });
+  });
+
+  it("aborts and terminates an active TUS upload without finalizing it", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        duplicate: false,
+        fileMimeType: "video/mp4",
+        storageApiKey: "public-test-key",
+        storageUploadEndpoint:
+          "https://project.supabase.co/storage/v1/upload/resumable/sign",
+        storagePath: "owner-id/object-id.mp4",
+        token: "single-object-token",
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    holdTusSuccess.value = true;
+    const controller = new AbortController();
+    const upload = uploadVideoFile(
+      new File(["video bytes"], "lesson.mp4", { type: "video/mp4" }),
+      "upload-id",
+      undefined,
+      controller.signal,
+    );
+
+    await vi.waitFor(() => expect(tusOptions).toHaveLength(1));
+    controller.abort();
+
+    await expect(upload).rejects.toMatchObject({ name: "AbortError" });
+    expect(abortedUploads).toEqual([true]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

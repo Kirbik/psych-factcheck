@@ -209,6 +209,7 @@ describe("workflow progress upload lock", () => {
       file,
       uploadId,
       expect.any(Function),
+      expect.any(AbortSignal),
     );
 
     onProgress(68);
@@ -288,6 +289,7 @@ describe("workflow progress upload lock", () => {
       file,
       expect.any(String),
       expect.any(Function),
+      expect.any(AbortSignal),
     ));
   });
 
@@ -334,6 +336,52 @@ describe("workflow progress upload lock", () => {
         file,
         uploadId,
         expect.any(Function),
+        expect.any(AbortSignal),
+      ),
+    );
+  });
+
+  it("cancels a restored upload and starts a new file", async () => {
+    window.sessionStorage.setItem(
+      "psych-factcheck:active-content-item:v1",
+      JSON.stringify({
+        kind: "uploading",
+        uploadId: "55555555-5555-4555-8555-555555555555",
+        fileName: "previous.mp4",
+        fileSizeBytes: 13,
+        lastModified: 1234,
+        progressPercent: 42,
+      }),
+    );
+    fileAccess.getStoredVideoFileHandle.mockResolvedValue(null);
+    uploadVideoFile.mockImplementation(() => new Promise(() => undefined));
+
+    render(
+      <VideoUploadProvider>
+        <VideoUploadForm />
+      </VideoUploadProvider>,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Отменить загрузку" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Отменить загрузку" }));
+
+    const file = new File(["new video"], "replacement.mp4", {
+      type: "video/mp4",
+      lastModified: 5678,
+    });
+    fireEvent.change(screen.getByLabelText("Выбрать файл"), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Загрузить видео" }));
+
+    await waitFor(() =>
+      expect(uploadVideoFile).toHaveBeenCalledWith(
+        file,
+        expect.any(String),
+        expect.any(Function),
+        expect.any(AbortSignal),
       ),
     );
   });

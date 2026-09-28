@@ -24,6 +24,7 @@ export function VideoUploadForm() {
   const {
     task,
     startUpload,
+    cancelUpload,
     resumeInterruptedUpload,
     clearTask,
     isUploadLocked,
@@ -173,6 +174,21 @@ export function VideoUploadForm() {
               ? "Продолжить загрузку"
               : "Загрузить видео"}
         </Button>
+        {isUploading || isInterrupted ? (
+          <Button
+            onClick={() => {
+              if (!cancelUpload()) return;
+              setSelectedFile(null);
+              setFileName("");
+              setUploadId(crypto.randomUUID());
+              if (inputRef.current) inputRef.current.value = "";
+            }}
+            type="button"
+            variant="secondary"
+          >
+            Отменить загрузку
+          </Button>
+        ) : null}
       </UploadDropzone>
       {message ? (
         <p

@@ -118,7 +118,9 @@ the user to grant read access again. Browsers without this API, or denied
 permissions, require selecting the source file again. The server reissues a
 signed token for the stable path derived from the upload ID. The upload URL
 expires after 24 hours, and bytes are not transferred while the page is
-unloaded. After TUS completion,
+unloaded. Cancel clears an active or interrupted upload and allows a new file
+to be selected. During an active TUS transfer, it also aborts the client
+request and asks TUS to terminate the partial upload. After TUS completion,
 `POST /api/uploads/video/complete` verifies the path belongs to the caller,
 reads Storage's actual object size and checks a server-fetched byte-range
 signature before writing an idempotent owned `content_items` record. MIME is

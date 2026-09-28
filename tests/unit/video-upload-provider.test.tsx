@@ -23,6 +23,7 @@ function NewCheckRoute({ onNavigate }: { onNavigate: () => void }) {
   const {
     task,
     startUpload,
+    cancelUpload,
     clearTask,
     updateWorkflowStatus,
     isUploadLocked,
@@ -39,6 +40,9 @@ function NewCheckRoute({ onNavigate }: { onNavigate: () => void }) {
         type="button"
       >
         Продолжить
+      </button>
+      <button onClick={cancelUpload} type="button">
+        Отменить загрузку
       </button>
       <button
         onClick={() => {
@@ -193,6 +197,43 @@ describe("video upload provider", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Очистить текущую проверку" }),
     );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Начать вторую загрузку" }),
+    );
+    expect(uploadVideoFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancels the active transfer and unlocks a new upload", async () => {
+    let firstSignal: AbortSignal | undefined;
+    uploadVideoFile.mockImplementation(
+      (_file, uploadId, _onProgress, signal) => {
+        if (uploadId === "upload-id") firstSignal = signal;
+        return new Promise((_resolve, reject) => {
+          signal?.addEventListener("abort", () => {
+            reject(new DOMException("Загрузка отменена.", "AbortError"));
+          });
+        });
+      },
+    );
+
+    render(
+      <VideoUploadProvider>
+        <RouteSwitcher />
+      </VideoUploadProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
+    expect(screen.getByTestId("upload-lock")).toHaveTextContent(
+      "Загрузка заблокирована",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Отменить загрузку" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("upload-lock")).toHaveTextContent(
+        "Можно загрузить",
+      ),
+    );
+    expect(firstSignal?.aborted).toBe(true);
     fireEvent.click(
       screen.getByRole("button", { name: "Начать вторую загрузку" }),
     );

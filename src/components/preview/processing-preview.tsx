@@ -28,6 +28,7 @@ type ProcessingPreviewProps = {
   uploadStatus?: UploadProgressStatus;
   workflowMessage?: string;
   onRetry?: () => void;
+  onCancel?: () => void;
   retryDisabled?: boolean;
   resumeDisabled?: boolean;
   progressPercent?: number;
@@ -81,6 +82,7 @@ export function ProcessingPreview({
   uploadStatus = "pending",
   workflowMessage,
   onRetry,
+  onCancel,
   retryDisabled,
   resumeDisabled,
   progressPercent,
@@ -241,6 +243,15 @@ export function ProcessingPreview({
                   ? "Выбрать файл и продолжить"
                   : "Продолжить загрузку"}
               </button>
+              {onCancel ? (
+                <button
+                  className={processingStyles.reportButton}
+                  onClick={onCancel}
+                  type="button"
+                >
+                  Отменить загрузку
+                </button>
+              ) : null}
             </>
           ) : onRetry ? (
             <button
@@ -250,6 +261,14 @@ export function ProcessingPreview({
               disabled={retryDisabled}
             >
               Повторить запуск
+            </button>
+          ) : uploadStatus === "processing" && onCancel ? (
+            <button
+              className={processingStyles.reportButton}
+              onClick={onCancel}
+              type="button"
+            >
+              Отменить загрузку
             </button>
           ) : (
             <Link

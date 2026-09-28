@@ -158,6 +158,7 @@ type VideoUploadContextValue = {
   isResumeHandleLoading: boolean;
   isUploadLocked: boolean;
   startUpload: (file: File, uploadId: string) => boolean;
+  cancelUpload: () => boolean;
   resumeInterruptedUpload: () => Promise<boolean>;
   clearTask: () => void;
   updateWorkflowStatus: (
@@ -173,6 +174,10 @@ export function VideoUploadProvider({
 }: Readonly<{ children: React.ReactNode }>) {
   const [task, setTask] = useState<VideoUploadTask | null>(null);
   const taskRef = useRef<VideoUploadTask | null>(null);
+  const uploadControllerRef = useRef<{
+    uploadId: string;
+    controller: AbortController;
+  } | null>(null);
   const resumeInProgress = useRef(false);
   const resumeHandleRef = useRef<{
     uploadId: string;
@@ -261,6 +266,8 @@ export function VideoUploadProvider({
         progressPercent: isMatchingResume ? current.progressPercent : 0,
       };
       updateTask(initialTask);
+      const controller = new AbortController();
+      uploadControllerRef.current = { uploadId, controller };
       saveActiveUploadState({
         kind: "uploading",
         uploadId,
@@ -272,7 +279,7 @@ export function VideoUploadProvider({
 
       void uploadVideoFile(file, uploadId, (progressPercent) => {
         updateUploadProgress(uploadId, progressPercent);
-      })
+      }, controller.signal)
         .then((result) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
@@ -296,14 +303,26 @@ export function VideoUploadProvider({
           if (current?.uploadId === uploadId) {
             void deleteVideoFileHandle(uploadId);
             clearActiveUploadState(uploadId);
-            updateTask({
-              ...current,
-              status: "failed",
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Не удалось загрузить видео.",
-            });
+            if (
+              controller.signal.aborted ||
+              (error instanceof DOMException && error.name === "AbortError")
+            ) {
+              updateTask(null);
+            } else {
+              updateTask({
+                ...current,
+                status: "failed",
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Не удалось загрузить видео.",
+              });
+            }
+          }
+        })
+        .finally(() => {
+          if (uploadControllerRef.current?.uploadId === uploadId) {
+            uploadControllerRef.current = null;
           }
         });
 
@@ -341,6 +360,20 @@ export function VideoUploadProvider({
       resumeInProgress.current = false;
     }
   }, [isRestoring, restoredTask, startUpload]);
+
+  const cancelUpload = useCallback(() => {
+    const current = taskRef.current ?? restoredTask;
+    const active = uploadControllerRef.current;
+    if (!current || (current.status !== "processing" && current.status !== "interrupted")) return false;
+    if (current.status === "processing") {
+      if (!active || active.uploadId !== current.uploadId) return false;
+      active.controller.abort();
+    }
+    void deleteVideoFileHandle(current.uploadId);
+    clearActiveUploadState(current.uploadId);
+    updateTask(null);
+    return true;
+  }, [restoredTask, updateTask]);
 
   const clearTask = useCallback(() => {
     const current = taskRef.current ?? restoredTask;
@@ -383,6 +416,7 @@ export function VideoUploadProvider({
           loadedResumeHandleId !== interruptedUploadId,
         isUploadLocked: isRestoring || isVideoUploadLocked(currentTask),
         startUpload,
+        cancelUpload,
         resumeInterruptedUpload,
         clearTask,
         updateWorkflowStatus,

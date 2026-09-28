@@ -55,15 +55,23 @@ export async function readVideoUploadResponse(
   };
 }
 
-async function postJson(path: string, value: unknown) {
+async function postJson(
+  path: string,
+  value: unknown,
+  signal?: AbortSignal,
+) {
   let response: Response;
   try {
     response = await fetch(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(value),
+      signal,
     });
   } catch {
+    if (signal?.aborted) {
+      throw new DOMException("Загрузка отменена.", "AbortError");
+    }
     throw new Error(
       "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз.",
     );
@@ -75,6 +83,7 @@ async function uploadWithTus(
   file: File,
   preparation: SignedUploadPreparation,
   onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
 ) {
   await new Promise<void>((resolve, reject) => {
     const upload = new TusUpload(file, {
@@ -110,33 +119,74 @@ async function uploadWithTus(
         }
       },
       onError(error) {
-        reject(new Error(error.message || genericUploadError));
+        finish(() => reject(
+          signal?.aborted
+            ? new DOMException("Загрузка отменена.", "AbortError")
+            : new Error(error.message || genericUploadError),
+        ));
       },
       onSuccess() {
-        resolve();
+        finish(resolve);
       },
     });
+    let settled = false;
+    function finish(callback: () => void) {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", abortUpload);
+      callback();
+    }
+    function abortUpload() {
+      void upload
+        .abort(true)
+        .catch(() => undefined)
+        .finally(() =>
+          finish(() =>
+            reject(new DOMException("Загрузка отменена.", "AbortError")),
+          ),
+        );
+    }
+    signal?.addEventListener("abort", abortUpload, { once: true });
+    if (signal?.aborted) {
+      abortUpload();
+    }
     void upload.findPreviousUploads().then((previousUploads) => {
       const previousUpload = previousUploads.find(
         (candidate) =>
           candidate.metadata.objectName === preparation.storagePath,
       );
       if (previousUpload) upload.resumeFromPreviousUpload(previousUpload);
+      if (signal?.aborted) {
+        if (previousUpload) abortUpload();
+        return;
+      }
       upload.start();
-    }, reject);
+    }, (error: unknown) => finish(() => reject(error)));
   });
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw new DOMException("Загрузка отменена.", "AbortError");
+  }
 }
 
 export async function uploadVideoFile(
   file: File,
   uploadId: string,
   onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
 ): Promise<VideoUploadResult> {
-  const preparation = await postJson("/api/uploads/video", {
-    fileName: file.name,
-    fileSizeBytes: file.size,
-    uploadId,
-  });
+  const preparation = await postJson(
+    "/api/uploads/video",
+    {
+      fileName: file.name,
+      fileSizeBytes: file.size,
+      uploadId,
+    },
+    signal,
+  );
+  throwIfAborted(signal);
 
   if (preparation.duplicate === true) {
     if (typeof preparation.contentItemId !== "string") {
@@ -176,14 +226,20 @@ export async function uploadVideoFile(
         token: preparation.token,
       },
       onProgress,
+      signal,
     );
   }
 
-  const completed = await postJson("/api/uploads/video/complete", {
-    fileName: file.name,
-    storagePath: preparation.storagePath,
-    uploadId,
-  });
+  throwIfAborted(signal);
+  const completed = await postJson(
+    "/api/uploads/video/complete",
+    {
+      fileName: file.name,
+      storagePath: preparation.storagePath,
+      uploadId,
+    },
+    signal,
+  );
   if (
     typeof completed.contentItemId !== "string" ||
     typeof completed.duplicate !== "boolean"
