@@ -81,9 +81,9 @@ export function NewCheckPreview() {
 
   if (isRestoring) {
     return (
-      <ProcessingPreview
-        uploadStatus="completed"
-        workflowMessage="Видео сохранено. Получаем состояние подготовки."
+      <main
+        className={`${styles.preview} ${inter.variable} ${lora.variable}`}
+        aria-busy="true"
       />
     );
   }

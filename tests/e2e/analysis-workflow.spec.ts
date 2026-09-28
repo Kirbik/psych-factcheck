@@ -14,6 +14,10 @@ test("restores the interrupted upload screen after a page reload", async ({
   page,
 }) => {
   const uploadId = "55555555-5555-4555-8555-555555555555";
+  const serverResponse = await page.request.get("/new-check");
+  expect(await serverResponse.text()).not.toContain(
+    "Видео сохранено. Получаем состояние подготовки.",
+  );
   await page.addInitScript(
     ({ key, state }) =>
       window.sessionStorage.setItem(key, JSON.stringify(state)),
