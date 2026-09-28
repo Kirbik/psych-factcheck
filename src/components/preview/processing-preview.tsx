@@ -34,6 +34,7 @@ type ProcessingPreviewProps = {
     fileName: string;
     fileSizeBytes: number;
     lastModified: number;
+    onResume: () => Promise<boolean>;
     onSelect: (file: File) => boolean;
   };
 };
@@ -68,7 +69,7 @@ const titleByUploadStatus: Record<UploadProgressStatus, string> = {
 const subtitleByUploadStatus: Record<UploadProgressStatus, string> = {
   pending: "Загрузка видео ещё не начата.",
   processing: "Загрузка видео в защищённое хранилище выполняется.",
-  interrupted: "Выберите исходный файл, чтобы продолжить загрузку.",
+  interrupted: "Нажмите «Продолжить загрузку», чтобы возобновить её.",
   completed: "Видео загружено. Следующие этапы пока не запущены.",
   failed: "Проверьте файл и попробуйте загрузить его ещё раз.",
 };
@@ -205,10 +206,17 @@ export function ProcessingPreview({
               ) : null}
               <button
                 className={processingStyles.reportButton}
-                onClick={() => resumeInputRef.current?.click()}
+                onClick={() => {
+                  void resumeFile
+                    .onResume()
+                    .then((resumed) => {
+                      if (!resumed) resumeInputRef.current?.click();
+                    })
+                    .catch(() => resumeInputRef.current?.click());
+                }}
                 type="button"
               >
-                Выбрать файл и продолжить
+                Продолжить загрузку
               </button>
             </>
           ) : onRetry ? (

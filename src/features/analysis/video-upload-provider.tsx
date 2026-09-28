@@ -13,6 +13,10 @@ import {
   type VideoUploadResult,
 } from "@/features/analysis/video-upload-client";
 import type { JobView } from "@/features/analysis/job-contract";
+import {
+  deleteVideoFileHandle,
+  getVideoFileFromHandle,
+} from "@/features/analysis/video-file-access";
 import { z } from "zod";
 
 const activeContentItemStorageKey = "psych-factcheck:active-content-item:v1";
@@ -150,6 +154,7 @@ type VideoUploadContextValue = {
   isRestoring: boolean;
   isUploadLocked: boolean;
   startUpload: (file: File, uploadId: string) => boolean;
+  resumeInterruptedUpload: () => Promise<boolean>;
   clearTask: () => void;
   updateWorkflowStatus: (
     contentItemId: string,
@@ -164,6 +169,7 @@ export function VideoUploadProvider({
 }: Readonly<{ children: React.ReactNode }>) {
   const [task, setTask] = useState<VideoUploadTask | null>(null);
   const taskRef = useRef<VideoUploadTask | null>(null);
+  const resumeInProgress = useRef(false);
   const activeContentItemSnapshot = useSyncExternalStore(
     subscribeToActiveContentItem,
     getActiveContentItemSnapshot,
@@ -241,6 +247,7 @@ export function VideoUploadProvider({
         .then((result) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
+            void deleteVideoFileHandle(uploadId);
             if (contentItemIdSchema.safeParse(result.contentItemId).success) {
               saveActiveUploadState({
                 kind: "analysis",
@@ -258,6 +265,7 @@ export function VideoUploadProvider({
         .catch((error: unknown) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
+            void deleteVideoFileHandle(uploadId);
             clearActiveUploadState(uploadId);
             updateTask({
               ...current,
@@ -275,10 +283,38 @@ export function VideoUploadProvider({
     [isRestoring, restoredTask, updateTask, updateUploadProgress],
   );
 
+  const resumeInterruptedUpload = useCallback(async () => {
+    const current = taskRef.current ?? restoredTask;
+    if (
+      resumeInProgress.current ||
+      current?.status !== "interrupted" ||
+      isRestoring
+    ) {
+      return false;
+    }
+    resumeInProgress.current = true;
+    try {
+      const file = await getVideoFileFromHandle(current.uploadId);
+      if (
+        !file ||
+        file.name !== current.fileName ||
+        file.size !== current.fileSizeBytes ||
+        file.lastModified !== current.lastModified
+      ) {
+        return false;
+      }
+      return startUpload(file, current.uploadId);
+    } finally {
+      resumeInProgress.current = false;
+    }
+  }, [isRestoring, restoredTask, startUpload]);
+
   const clearTask = useCallback(() => {
-    if (!isVideoUploadLocked(taskRef.current ?? restoredTask)) {
-      const contentItemId = (taskRef.current ?? restoredTask)?.result
-        ?.contentItemId;
+    const current = taskRef.current ?? restoredTask;
+    if (!isVideoUploadLocked(current)) {
+      if (current?.status === "completed" || current?.status === "failed")
+        void deleteVideoFileHandle(current.uploadId);
+      const contentItemId = current?.result?.contentItemId;
       if (contentItemId) clearActiveUploadState(contentItemId);
       updateTask(null);
     }
@@ -311,6 +347,7 @@ export function VideoUploadProvider({
         isRestoring,
         isUploadLocked: isRestoring || isVideoUploadLocked(currentTask),
         startUpload,
+        resumeInterruptedUpload,
         clearTask,
         updateWorkflowStatus,
       }}

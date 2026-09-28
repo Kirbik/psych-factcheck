@@ -110,11 +110,15 @@ signed TUS endpoint `/storage/v1/upload/resumable/sign` and 6 MiB chunks, so
 video payloads do not pass through the application host or its Cloudflare
 body-size limit. The root-layout upload provider keeps the task alive through
 in-app route navigation. A full page reload interrupts byte transfer, then the
-same tab restores the paused progress screen from `sessionStorage`. Selecting
-the same file resumes the TUS upload from the locally stored upload URL; the
-server reissues a signed token for the stable path derived from the upload ID.
-The upload URL expires after 24 hours, and bytes are not transferred while the
-page is unloaded. After TUS completion,
+same tab restores the paused progress screen from `sessionStorage`. On browsers
+with the File System Access API, the app stores the user-granted file handle in
+IndexedDB, not a copy of the video. Pressing Continue reacquires the file and
+resumes the TUS upload from the locally stored upload URL; the browser may ask
+the user to grant read access again. Browsers without this API, or denied
+permissions, require selecting the source file again. The server reissues a
+signed token for the stable path derived from the upload ID. The upload URL
+expires after 24 hours, and bytes are not transferred while the page is
+unloaded. After TUS completion,
 `POST /api/uploads/video/complete` verifies the path belongs to the caller,
 reads Storage's actual object size and checks a server-fetched byte-range
 signature before writing an idempotent owned `content_items` record. MIME is

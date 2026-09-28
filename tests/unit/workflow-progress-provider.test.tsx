@@ -8,6 +8,13 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const uploadVideoFile = vi.hoisted(() => vi.fn());
+const fileAccess = vi.hoisted(() => ({
+  deleteVideoFileHandle: vi.fn(),
+  getVideoFileFromHandle: vi.fn(),
+  pickVideoFileWithHandle: vi.fn(),
+  saveVideoFileHandle: vi.fn(),
+  supportsPersistentVideoAccess: vi.fn(() => false),
+}));
 const realtime = vi.hoisted(() => ({
   onChange: null as ((payload: { new: unknown }) => void) | null,
   onStatus: null as ((status: string) => void) | null,
@@ -17,6 +24,7 @@ const realtime = vi.hoisted(() => ({
 vi.mock("@/features/analysis/video-upload-client", () => ({
   uploadVideoFile,
 }));
+vi.mock("@/features/analysis/video-file-access", () => fileAccess);
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
@@ -85,6 +93,8 @@ afterEach(() => {
   cleanup();
   window.sessionStorage.clear();
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
+  fileAccess.supportsPersistentVideoAccess.mockReturnValue(false);
   realtime.onChange = null;
   realtime.onStatus = null;
   realtime.removeChannel.mockClear();
@@ -169,8 +179,9 @@ describe("workflow progress upload lock", () => {
       onProgress = reportProgress;
       return new Promise(() => undefined);
     });
+    fileAccess.getVideoFileFromHandle.mockResolvedValue(file);
 
-    const { container } = render(
+    render(
       <VideoUploadProvider>
         <NewCheckPreview />
       </VideoUploadProvider>,
@@ -181,11 +192,12 @@ describe("workflow progress upload lock", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Приостановлено · 42%")).toBeInTheDocument();
 
-    const input = container.querySelector('input[type="file"]');
-    expect(input).not.toBeNull();
-    fireEvent.change(input!, { target: { files: [file] } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Продолжить загрузку" }),
+    );
 
     await waitFor(() => expect(uploadVideoFile).toHaveBeenCalledTimes(1));
+    expect(fileAccess.getVideoFileFromHandle).toHaveBeenCalledWith(uploadId);
     expect(uploadVideoFile).toHaveBeenCalledWith(
       file,
       uploadId,
@@ -201,6 +213,81 @@ describe("workflow progress upload lock", () => {
         ) ?? "null",
       ),
     ).toMatchObject({ kind: "uploading", uploadId, progressPercent: 68 });
+  });
+
+  it("keeps a file handle, not a file copy, when the browser supports it", async () => {
+    const file = new File(["video bytes"], "lesson.mp4", {
+      type: "video/mp4",
+      lastModified: 1234,
+    });
+    const handle = { kind: "file", name: file.name };
+    fileAccess.supportsPersistentVideoAccess.mockReturnValue(true);
+    fileAccess.pickVideoFileWithHandle.mockResolvedValue({ file, handle });
+    fileAccess.saveVideoFileHandle.mockResolvedValue(true);
+    uploadVideoFile.mockImplementation(() => new Promise(() => undefined));
+
+    const { container } = render(
+      <VideoUploadProvider>
+        <NewCheckPreview />
+      </VideoUploadProvider>,
+    );
+
+    fireEvent.click(container.querySelector("#video-file")!);
+    await waitFor(() => expect(fileAccess.saveVideoFileHandle).toHaveBeenCalled());
+    expect(fileAccess.saveVideoFileHandle).toHaveBeenCalledWith(
+      expect.any(String),
+      handle,
+    );
+    expect(await screen.findByText("lesson.mp4")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
+    await waitFor(() => expect(uploadVideoFile).toHaveBeenCalledWith(
+      file,
+      expect.any(String),
+      expect.any(Function),
+    ));
+  });
+
+  it("resumes an interrupted dashboard upload with a manually reselected file", async () => {
+    const uploadId = "55555555-5555-4555-8555-555555555555";
+    const file = new File(["video bytes"], "lesson.mp4", {
+      type: "video/mp4",
+      lastModified: 1234,
+    });
+    window.sessionStorage.setItem(
+      "psych-factcheck:active-content-item:v1",
+      JSON.stringify({
+        kind: "uploading",
+        uploadId,
+        fileName: file.name,
+        fileSizeBytes: file.size,
+        lastModified: file.lastModified,
+        progressPercent: 42,
+      }),
+    );
+    fileAccess.getVideoFileFromHandle.mockResolvedValue(null);
+    uploadVideoFile.mockImplementation(() => new Promise(() => undefined));
+
+    render(
+      <VideoUploadProvider>
+        <VideoUploadForm />
+      </VideoUploadProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText("Выбрать файл"), {
+      target: { files: [file] },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Продолжить загрузку" }),
+    );
+
+    await waitFor(() =>
+      expect(uploadVideoFile).toHaveBeenCalledWith(
+        file,
+        uploadId,
+        expect.any(Function),
+      ),
+    );
   });
 
   it("restores a saved video after reload instead of showing the new-upload form", async () => {

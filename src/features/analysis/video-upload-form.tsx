@@ -7,14 +7,27 @@ import { Button } from "@/components/ui/button";
 import { UploadDropzone } from "@/components/product/upload-dropzone";
 import { useVideoUpload } from "@/features/analysis/video-upload-provider";
 import { workflowMessages } from "@/features/analysis/job-contract";
+import {
+  deleteVideoFileHandle,
+  pickVideoFileWithHandle,
+  saveVideoFileHandle,
+  supportsPersistentVideoAccess,
+} from "@/features/analysis/video-file-access";
 
 export function VideoUploadForm() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [uploadId, setUploadId] = useState(() => crypto.randomUUID());
-  const { task, startUpload, clearTask, isUploadLocked } = useVideoUpload();
+  const {
+    task,
+    startUpload,
+    resumeInterruptedUpload,
+    clearTask,
+    isUploadLocked,
+  } = useVideoUpload();
   const refreshedUploadId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -27,30 +40,36 @@ export function VideoUploadForm() {
     }
   }, [router, task]);
 
-  function submit() {
+  async function submit() {
     const isInterrupted = task?.status === "interrupted";
     if (isUploadLocked && !isInterrupted) return;
-    const file = inputRef.current?.files?.[0];
+    if (isInterrupted) {
+      if (await resumeInterruptedUpload()) return;
+      const file = selectedFile ?? inputRef.current?.files?.[0];
+      if (!file) {
+        setFileError("Не найден доступ к файлу. Выберите его ещё раз.");
+        return;
+      }
+      if (
+        file.name !== task.fileName ||
+        file.size !== task.fileSizeBytes ||
+        file.lastModified !== task.lastModified
+      ) {
+        setFileError(`Выберите исходный файл «${task.fileName}».`);
+        return;
+      }
+      setFileError("");
+      startUpload(file, task.uploadId);
+      return;
+    }
+    const file = selectedFile ?? inputRef.current?.files?.[0];
     if (!file) {
       setFileError("Выберите видеофайл.");
       return;
     }
-    if (
-      isInterrupted &&
-      (file.name !== task.fileName ||
-        file.size !== task.fileSizeBytes ||
-        file.lastModified !== task.lastModified)
-    ) {
-      setFileError(`Выберите исходный файл «${task.fileName}».`);
-      return;
-    }
     setFileError("");
-    if (isInterrupted) {
-      startUpload(file, task.uploadId);
-    } else {
-      clearTask();
-      startUpload(file, uploadId);
-    }
+    clearTask();
+    startUpload(file, uploadId);
   }
 
   const isUploading = task?.status === "processing";
@@ -62,7 +81,7 @@ export function VideoUploadForm() {
     (isUploading
       ? "Загрузка видео выполняется."
       : isInterrupted
-        ? "Загрузка остановилась после перезагрузки. Выберите исходный файл, чтобы продолжить."
+        ? "Загрузка остановилась после перезагрузки. Нажмите «Продолжить загрузку», чтобы возобновить её."
         : isWorkflowActive
           ? workflowMessages[task.workflowStatus ?? "queued"]
           : status === "completed"
@@ -92,10 +111,43 @@ export function VideoUploadForm() {
             className="upload-file-input"
             disabled={isUploadLocked && !isInterrupted}
             id="video-upload-file"
+            onClick={(event) => {
+              if (!supportsPersistentVideoAccess()) return;
+              event.preventDefault();
+              void pickVideoFileWithHandle()
+                .then(async (selection) => {
+                  if (!selection) return;
+                  const currentUpload = isInterrupted ? task : null;
+                  const nextUploadId =
+                    currentUpload?.uploadId ?? crypto.randomUUID();
+                  if (!currentUpload) void deleteVideoFileHandle(uploadId);
+                  const saved = await saveVideoFileHandle(
+                    nextUploadId,
+                    selection.handle,
+                  );
+                  setUploadId(nextUploadId);
+                  setSelectedFile(selection.file);
+                  setFileName(selection.file.name);
+                  setFileError(
+                    saved
+                      ? ""
+                      : "Браузер не сохранил доступ к файлу для продолжения после перезагрузки.",
+                  );
+                  if (!currentUpload) clearTask();
+                })
+                .catch(() =>
+                  setFileError("Не удалось открыть выбранный видеофайл."),
+                );
+            }}
             onChange={(event) => {
               if (isUploadLocked && !isInterrupted) return;
-              setFileName(event.target.files?.[0]?.name ?? "");
-              if (!isInterrupted) setUploadId(crypto.randomUUID());
+              const file = event.target.files?.[0] ?? null;
+              setSelectedFile(file);
+              setFileName(file?.name ?? "");
+              if (!isInterrupted) {
+                void deleteVideoFileHandle(uploadId);
+                setUploadId(crypto.randomUUID());
+              }
               setFileError("");
               if (!isInterrupted) clearTask();
             }}
