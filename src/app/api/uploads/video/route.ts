@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getPublicSupabaseConfig } from "@/lib/supabase-config";
 import { contentItemsRepository } from "@/server/db/content-items-repository";
@@ -81,12 +80,20 @@ export async function POST(request: Request) {
     });
   }
 
-  const storagePath = `${userId}/${randomUUID()}${metadata.extension}`;
+  const storagePath = `${userId}/${parsed.data.uploadId}${metadata.extension}`;
+  const storage = supabase.storage.from(VIDEO_BUCKET);
+  const { data: existingObject } = await storage.info(storagePath);
+  if (existingObject) {
+    return Response.json({
+      duplicate: false,
+      uploaded: true,
+      storagePath,
+    });
+  }
+
   const publicConfig = getPublicSupabaseConfig();
   const { data: signedUpload, error: signedUploadError } =
-    await supabase.storage
-      .from(VIDEO_BUCKET)
-      .createSignedUploadUrl(storagePath, { upsert: false });
+    await storage.createSignedUploadUrl(storagePath, { upsert: false });
   if (signedUploadError || !signedUpload) {
     return jsonError("Не удалось подготовить защищённую загрузку.", 502);
   }

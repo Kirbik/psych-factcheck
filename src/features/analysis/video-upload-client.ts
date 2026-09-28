@@ -6,16 +6,14 @@ export type VideoUploadResult = {
   duplicate: boolean;
 };
 
-type UploadPreparation =
-  | VideoUploadResult
-  | {
-      duplicate: false;
-      fileMimeType: string;
-      storageApiKey: string;
-      storageUploadEndpoint: string;
-      storagePath: string;
-      token: string;
-    };
+type SignedUploadPreparation = {
+  duplicate: false;
+  fileMimeType: string;
+  storageApiKey: string;
+  storageUploadEndpoint: string;
+  storagePath: string;
+  token: string;
+};
 
 const genericUploadError = "Не удалось загрузить видео. Попробуйте ещё раз.";
 
@@ -75,7 +73,8 @@ async function postJson(path: string, value: unknown) {
 
 async function uploadWithTus(
   file: File,
-  preparation: Extract<UploadPreparation, { token: string }>,
+  preparation: SignedUploadPreparation,
+  onProgress?: (percent: number) => void,
 ) {
   await new Promise<void>((resolve, reject) => {
     const upload = new TusUpload(file, {
@@ -93,8 +92,23 @@ async function uploadWithTus(
         cacheControl: "3600",
       },
       uploadDataDuringCreation: true,
-      storeFingerprintForResuming: false,
+      fingerprint: async (uploadFile, options) =>
+        [
+          "psych-factcheck",
+          uploadFile.name,
+          uploadFile.type,
+          uploadFile.size,
+          uploadFile.lastModified,
+          options.endpoint,
+          options.metadata?.objectName,
+        ].join(":"),
+      storeFingerprintForResuming: true,
       removeFingerprintOnSuccess: true,
+      onProgress(bytesUploaded, bytesTotal) {
+        if (bytesTotal > 0) {
+          onProgress?.(Math.floor((bytesUploaded / bytesTotal) * 100));
+        }
+      },
       onError(error) {
         reject(new Error(error.message || genericUploadError));
       },
@@ -102,13 +116,21 @@ async function uploadWithTus(
         resolve();
       },
     });
-    upload.start();
+    void upload.findPreviousUploads().then((previousUploads) => {
+      const previousUpload = previousUploads.find(
+        (candidate) =>
+          candidate.metadata.objectName === preparation.storagePath,
+      );
+      if (previousUpload) upload.resumeFromPreviousUpload(previousUpload);
+      upload.start();
+    }, reject);
   });
 }
 
 export async function uploadVideoFile(
   file: File,
   uploadId: string,
+  onProgress?: (percent: number) => void,
 ): Promise<VideoUploadResult> {
   const preparation = await postJson("/api/uploads/video", {
     fileName: file.name,
@@ -128,23 +150,34 @@ export async function uploadVideoFile(
 
   if (
     preparation.duplicate !== false ||
-    typeof preparation.storageApiKey !== "string" ||
-    typeof preparation.storageUploadEndpoint !== "string" ||
-    typeof preparation.storagePath !== "string" ||
-    typeof preparation.token !== "string" ||
-    typeof preparation.fileMimeType !== "string"
+    typeof preparation.storagePath !== "string"
   ) {
     throw new Error("Сервер вернул некорректный ответ.");
   }
 
-  await uploadWithTus(file, {
-    duplicate: false,
-    fileMimeType: preparation.fileMimeType,
-    storageApiKey: preparation.storageApiKey,
-    storageUploadEndpoint: preparation.storageUploadEndpoint,
-    storagePath: preparation.storagePath,
-    token: preparation.token,
-  });
+  if (preparation.uploaded !== true) {
+    if (
+      typeof preparation.storageApiKey !== "string" ||
+      typeof preparation.storageUploadEndpoint !== "string" ||
+      typeof preparation.token !== "string" ||
+      typeof preparation.fileMimeType !== "string"
+    ) {
+      throw new Error("Сервер вернул некорректный ответ.");
+    }
+
+    await uploadWithTus(
+      file,
+      {
+        duplicate: false,
+        fileMimeType: preparation.fileMimeType,
+        storageApiKey: preparation.storageApiKey,
+        storageUploadEndpoint: preparation.storageUploadEndpoint,
+        storagePath: preparation.storagePath,
+        token: preparation.token,
+      },
+      onProgress,
+    );
+  }
 
   const completed = await postJson("/api/uploads/video/complete", {
     fileName: file.name,

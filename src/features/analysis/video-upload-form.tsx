@@ -28,31 +28,48 @@ export function VideoUploadForm() {
   }, [router, task]);
 
   function submit() {
-    if (isUploadLocked) return;
+    const isInterrupted = task?.status === "interrupted";
+    if (isUploadLocked && !isInterrupted) return;
     const file = inputRef.current?.files?.[0];
     if (!file) {
       setFileError("Выберите видеофайл.");
       return;
     }
+    if (
+      isInterrupted &&
+      (file.name !== task.fileName ||
+        file.size !== task.fileSizeBytes ||
+        file.lastModified !== task.lastModified)
+    ) {
+      setFileError(`Выберите исходный файл «${task.fileName}».`);
+      return;
+    }
     setFileError("");
-    clearTask();
-    startUpload(file, uploadId);
+    if (isInterrupted) {
+      startUpload(file, task.uploadId);
+    } else {
+      clearTask();
+      startUpload(file, uploadId);
+    }
   }
 
   const isUploading = task?.status === "processing";
+  const isInterrupted = task?.status === "interrupted";
   const isWorkflowActive = isUploadLocked && task?.status === "completed";
   const status = task?.status;
   const message =
     fileError ||
     (isUploading
       ? "Загрузка видео выполняется."
-      : isWorkflowActive
-        ? workflowMessages[task.workflowStatus ?? "queued"]
-        : status === "completed"
-          ? "Видео загружено. Запись проверки сохранена."
-          : status === "failed"
-            ? task?.error ?? "Не удалось загрузить видео."
-            : "");
+      : isInterrupted
+        ? "Загрузка остановилась после перезагрузки. Выберите исходный файл, чтобы продолжить."
+        : isWorkflowActive
+          ? workflowMessages[task.workflowStatus ?? "queued"]
+          : status === "completed"
+            ? "Видео загружено. Запись проверки сохранена."
+            : status === "failed"
+              ? (task?.error ?? "Не удалось загрузить видео.")
+              : "");
   const displayedFileName = isUploadLocked && task ? task.fileName : fileName;
 
   return (
@@ -73,14 +90,14 @@ export function VideoUploadForm() {
             accept="video/mp4,video/webm,video/quicktime"
             aria-describedby="video-upload-help"
             className="upload-file-input"
-            disabled={isUploadLocked}
+            disabled={isUploadLocked && !isInterrupted}
             id="video-upload-file"
             onChange={(event) => {
-              if (isUploadLocked) return;
+              if (isUploadLocked && !isInterrupted) return;
               setFileName(event.target.files?.[0]?.name ?? "");
-              setUploadId(crypto.randomUUID());
+              if (!isInterrupted) setUploadId(crypto.randomUUID());
               setFileError("");
-              clearTask();
+              if (!isInterrupted) clearTask();
             }}
             ref={inputRef}
             type="file"
@@ -89,8 +106,16 @@ export function VideoUploadForm() {
         <p id="video-upload-help" className="muted-text">
           {displayedFileName || "Файл ещё не выбран"}
         </p>
-        <Button disabled={isUploadLocked} loading={isUploading} type="submit">
-          {isUploading ? "Загружаем…" : "Загрузить видео"}
+        <Button
+          disabled={isUploadLocked && !isInterrupted}
+          loading={isUploading}
+          type="submit"
+        >
+          {isUploading
+            ? "Загружаем…"
+            : isInterrupted
+              ? "Продолжить загрузку"
+              : "Загрузить видео"}
         </Button>
       </UploadDropzone>
       {message ? (
@@ -107,7 +132,10 @@ export function VideoUploadForm() {
         </p>
       ) : null}
       {task?.status === "completed" && task.result ? (
-        <Link className="button button--secondary" href={`/processing?contentItemId=${task.result.contentItemId}`}>
+        <Link
+          className="button button--secondary"
+          href={`/processing?contentItemId=${task.result.contentItemId}`}
+        >
           Продолжить
         </Link>
       ) : null}

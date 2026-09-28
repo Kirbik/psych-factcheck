@@ -10,6 +10,46 @@ const job = {
   error_code: null,
 };
 
+test("restores the interrupted upload screen after a page reload", async ({
+  page,
+}) => {
+  const uploadId = "55555555-5555-4555-8555-555555555555";
+  await page.addInitScript(
+    ({ key, state }) =>
+      window.sessionStorage.setItem(key, JSON.stringify(state)),
+    {
+      key: "psych-factcheck:active-content-item:v1",
+      state: {
+        kind: "uploading",
+        uploadId,
+        fileName: "lesson.mp4",
+        fileSizeBytes: 12_000,
+        lastModified: 1_234,
+        progressPercent: 42,
+      },
+    },
+  );
+
+  await page.goto("/new-check");
+  await expect(
+    page.getByRole("heading", { name: "Загрузка приостановлена" }),
+  ).toBeVisible();
+  await expect(page.getByText("Приостановлено · 42%")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Выбрать файл и продолжить" }),
+  ).toBeVisible();
+
+  await page.reload();
+
+  await expect(
+    page.getByRole("heading", { name: "Загрузка приостановлена" }),
+  ).toBeVisible();
+  await expect(page.getByText("Приостановлено · 42%")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Новая проверка" }),
+  ).toHaveCount(0);
+});
+
 test("shows durable progress after reload without claiming AI completion", async ({
   page,
 }) => {
@@ -83,7 +123,9 @@ test("keeps upload success separate from unavailable workflow", async ({
     }),
   );
   await page.goto(`/processing?contentItemId=${contentId}`);
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("Видео сохранено");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Видео сохранено",
+  );
   await expect(
     page.getByRole("button", { name: "Повторить запуск" }),
   ).toBeEnabled();

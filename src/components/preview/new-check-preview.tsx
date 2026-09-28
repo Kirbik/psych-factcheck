@@ -38,6 +38,21 @@ export function NewCheckPreview() {
     if (task.status === "completed" && task.result) {
       return <WorkflowProgress contentItemId={task.result.contentItemId} onBack={clearTask} />;
     }
+    if (task.status === "interrupted") {
+      return (
+        <ProcessingPreview
+          uploadStatus="interrupted"
+          progressPercent={task.progressPercent}
+          workflowMessage={`Загрузка остановилась после перезагрузки. Выберите исходный файл «${task.fileName}», чтобы продолжить.`}
+          resumeFile={{
+            fileName: task.fileName,
+            fileSizeBytes: task.fileSizeBytes ?? 0,
+            lastModified: task.lastModified ?? 0,
+            onSelect: (file) => startUpload(file, task.uploadId),
+          }}
+        />
+      );
+    }
     return (
       <ProcessingPreview
         onBack={() => {
@@ -45,6 +60,7 @@ export function NewCheckPreview() {
         }}
         uploadError={task.error}
         uploadStatus={task.status === "processing" ? "processing" : task.status}
+        progressPercent={task.progressPercent}
       />
     );
   }

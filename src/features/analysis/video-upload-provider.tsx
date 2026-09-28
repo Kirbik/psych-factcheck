@@ -19,6 +19,21 @@ const activeContentItemStorageKey = "psych-factcheck:active-content-item:v1";
 const contentItemIdSchema = z.uuid();
 const restoringSnapshot = "restoring";
 const storageListeners = new Set<() => void>();
+const storedUploadStateSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("uploading"),
+    uploadId: z.uuid(),
+    fileName: z.string(),
+    fileSizeBytes: z.number().int().nonnegative(),
+    lastModified: z.number().nonnegative(),
+    progressPercent: z.number().int().min(0).max(100),
+  }),
+  z.object({
+    kind: z.literal("analysis"),
+    contentItemId: z.uuid(),
+  }),
+]);
+type StoredUploadState = z.infer<typeof storedUploadStateSchema>;
 
 function subscribeToActiveContentItem(onChange: () => void) {
   storageListeners.add(onChange);
@@ -29,10 +44,27 @@ function subscribeToActiveContentItem(onChange: () => void) {
 
 function getActiveContentItemSnapshot() {
   try {
-    const storedId = window.sessionStorage.getItem(activeContentItemStorageKey);
-    return storedId && contentItemIdSchema.safeParse(storedId).success
-      ? storedId
-      : null;
+    const snapshot = window.sessionStorage.getItem(activeContentItemStorageKey);
+    if (!snapshot) return null;
+    if (contentItemIdSchema.safeParse(snapshot).success) return snapshot;
+    const parsed: unknown = JSON.parse(snapshot);
+    return storedUploadStateSchema.safeParse(parsed).success ? snapshot : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseStoredUploadState(
+  snapshot: string | null | typeof restoringSnapshot,
+): StoredUploadState | null {
+  if (!snapshot || snapshot === restoringSnapshot) return null;
+  if (contentItemIdSchema.safeParse(snapshot).success) {
+    return { kind: "analysis", contentItemId: snapshot };
+  }
+  try {
+    const parsed: unknown = JSON.parse(snapshot);
+    const result = storedUploadStateSchema.safeParse(parsed);
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
@@ -42,21 +74,25 @@ function notifyActiveContentItemChanged() {
   for (const listener of storageListeners) listener();
 }
 
-function saveActiveContentItem(contentItemId: string) {
+function saveActiveUploadState(state: StoredUploadState) {
   try {
-    window.sessionStorage.setItem(activeContentItemStorageKey, contentItemId);
+    window.sessionStorage.setItem(
+      activeContentItemStorageKey,
+      JSON.stringify(state),
+    );
   } catch {
     // Preserve the active workflow in memory if storage is unavailable.
   }
   notifyActiveContentItemChanged();
 }
 
-function clearActiveContentItem(contentItemId: string) {
+function clearActiveUploadState(expectedId: string) {
   try {
-    if (
-      window.sessionStorage.getItem(activeContentItemStorageKey) ===
-      contentItemId
-    ) {
+    const snapshot = window.sessionStorage.getItem(activeContentItemStorageKey);
+    const state = parseStoredUploadState(snapshot);
+    const currentId =
+      state?.kind === "analysis" ? state.contentItemId : state?.uploadId;
+    if (currentId === expectedId) {
       window.sessionStorage.removeItem(activeContentItemStorageKey);
     }
   } catch {
@@ -65,28 +101,42 @@ function clearActiveContentItem(contentItemId: string) {
   notifyActiveContentItemChanged();
 }
 
-function createRestoredTask(contentItemId: string): VideoUploadTask {
-  return {
-    uploadId: contentItemId,
-    fileName: "Видео",
-    status: "completed",
-    workflowStatus: "queued",
-    result: { contentItemId, duplicate: false },
-  };
-}
-
 export type VideoUploadTask = {
   uploadId: string;
   fileName: string;
-  status: "processing" | "completed" | "failed";
+  status: "processing" | "interrupted" | "completed" | "failed";
+  fileSizeBytes?: number;
+  lastModified?: number;
+  progressPercent?: number;
   workflowStatus?: JobView["status"];
   error?: string;
   result?: VideoUploadResult;
 };
 
+function createRestoredTask(state: StoredUploadState): VideoUploadTask {
+  if (state.kind === "uploading") {
+    return {
+      uploadId: state.uploadId,
+      fileName: state.fileName,
+      fileSizeBytes: state.fileSizeBytes,
+      lastModified: state.lastModified,
+      progressPercent: state.progressPercent,
+      status: "interrupted",
+    };
+  }
+  return {
+    uploadId: state.contentItemId,
+    fileName: "Видео",
+    status: "completed",
+    workflowStatus: "queued",
+    result: { contentItemId: state.contentItemId, duplicate: false },
+  };
+}
+
 function isVideoUploadLocked(task: VideoUploadTask | null) {
   if (!task) return false;
-  if (task.status === "processing") return true;
+  if (task.status === "processing" || task.status === "interrupted")
+    return true;
   return (
     task.status === "completed" &&
     (task.workflowStatus === undefined ||
@@ -120,10 +170,10 @@ export function VideoUploadProvider({
     () => restoringSnapshot,
   );
   const isRestoring = activeContentItemSnapshot === restoringSnapshot;
-  const restoredTask =
-    !isRestoring && activeContentItemSnapshot
-      ? createRestoredTask(activeContentItemSnapshot)
-      : null;
+  const storedUploadState = parseStoredUploadState(activeContentItemSnapshot);
+  const restoredTask = storedUploadState
+    ? createRestoredTask(storedUploadState)
+    : null;
   const currentTask = task ?? restoredTask;
 
   const updateTask = useCallback((nextTask: VideoUploadTask | null) => {
@@ -131,24 +181,71 @@ export function VideoUploadProvider({
     setTask(nextTask);
   }, []);
 
+  const updateUploadProgress = useCallback(
+    (uploadId: string, progressPercent: number) => {
+      const current = taskRef.current;
+      if (
+        current?.uploadId !== uploadId ||
+        current.status !== "processing" ||
+        current.progressPercent === progressPercent
+      ) {
+        return;
+      }
+      const next = { ...current, progressPercent };
+      updateTask(next);
+      saveActiveUploadState({
+        kind: "uploading",
+        uploadId,
+        fileName: current.fileName,
+        fileSizeBytes: current.fileSizeBytes ?? 0,
+        lastModified: current.lastModified ?? 0,
+        progressPercent,
+      });
+    },
+    [updateTask],
+  );
+
   const startUpload = useCallback(
     (file: File, uploadId: string) => {
-      if (isRestoring || isVideoUploadLocked(taskRef.current ?? restoredTask))
+      const current = taskRef.current ?? restoredTask;
+      const isMatchingResume =
+        current?.status === "interrupted" &&
+        current.uploadId === uploadId &&
+        current.fileName === file.name &&
+        current.fileSizeBytes === file.size &&
+        current.lastModified === file.lastModified;
+      if (isRestoring || (isVideoUploadLocked(current) && !isMatchingResume))
         return false;
 
       const initialTask: VideoUploadTask = {
         uploadId,
         fileName: file.name,
         status: "processing",
+        fileSizeBytes: file.size,
+        lastModified: file.lastModified,
+        progressPercent: isMatchingResume ? current.progressPercent : 0,
       };
       updateTask(initialTask);
+      saveActiveUploadState({
+        kind: "uploading",
+        uploadId,
+        fileName: file.name,
+        fileSizeBytes: file.size,
+        lastModified: file.lastModified,
+        progressPercent: initialTask.progressPercent ?? 0,
+      });
 
-      void uploadVideoFile(file, uploadId)
+      void uploadVideoFile(file, uploadId, (progressPercent) => {
+        updateUploadProgress(uploadId, progressPercent);
+      })
         .then((result) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
             if (contentItemIdSchema.safeParse(result.contentItemId).success) {
-              saveActiveContentItem(result.contentItemId);
+              saveActiveUploadState({
+                kind: "analysis",
+                contentItemId: result.contentItemId,
+              });
             }
             updateTask({
               ...current,
@@ -161,6 +258,7 @@ export function VideoUploadProvider({
         .catch((error: unknown) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
+            clearActiveUploadState(uploadId);
             updateTask({
               ...current,
               status: "failed",
@@ -174,14 +272,14 @@ export function VideoUploadProvider({
 
       return true;
     },
-    [isRestoring, restoredTask, updateTask],
+    [isRestoring, restoredTask, updateTask, updateUploadProgress],
   );
 
   const clearTask = useCallback(() => {
     if (!isVideoUploadLocked(taskRef.current ?? restoredTask)) {
       const contentItemId = (taskRef.current ?? restoredTask)?.result
         ?.contentItemId;
-      if (contentItemId) clearActiveContentItem(contentItemId);
+      if (contentItemId) clearActiveUploadState(contentItemId);
       updateTask(null);
     }
   }, [restoredTask, updateTask]);
@@ -199,7 +297,7 @@ export function VideoUploadProvider({
           workflowStatus === "failed" ||
           workflowStatus === "cancelled"
         ) {
-          clearActiveContentItem(contentItemId);
+          clearActiveUploadState(contentItemId);
         }
       }
     },

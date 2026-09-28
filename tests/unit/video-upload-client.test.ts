@@ -5,10 +5,20 @@ type MockTusOptions = {
   headers?: Record<string, string>;
   metadata?: Record<string, string>;
   chunkSize?: number;
+  fingerprint?: (file: File, options: MockTusOptions) => Promise<string>;
+  storeFingerprintForResuming?: boolean;
   onSuccess?: (payload: { lastResponse: object }) => void;
 };
 
 const tusOptions = vi.hoisted(() => [] as MockTusOptions[]);
+const previousUploads = vi.hoisted(
+  () =>
+    [] as Array<{
+      metadata: Record<string, string>;
+      uploadUrl: string;
+    }>,
+);
+const resumedUploads = vi.hoisted(() => [] as string[]);
 
 vi.mock("tus-js-client", () => ({
   Upload: class {
@@ -22,6 +32,14 @@ vi.mock("tus-js-client", () => ({
     start() {
       this.options.onSuccess?.({ lastResponse: {} });
     }
+
+    findPreviousUploads() {
+      return Promise.resolve(previousUploads);
+    }
+
+    resumeFromPreviousUpload(upload: { uploadUrl: string }) {
+      resumedUploads.push(upload.uploadUrl);
+    }
   },
 }));
 
@@ -32,6 +50,8 @@ describe("direct video upload client", () => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     tusOptions.length = 0;
+    previousUploads.length = 0;
+    resumedUploads.length = 0;
   });
 
   it("prepares a signed upload, sends via TUS, then requests server verification", async () => {
@@ -81,6 +101,7 @@ describe("direct video upload client", () => {
     expect(tusOptions[0]).toMatchObject({
       endpoint: "https://project.supabase.co/storage/v1/upload/resumable/sign",
       chunkSize: 6 * 1024 * 1024,
+      storeFingerprintForResuming: true,
       headers: {
         apikey: "public-test-key",
         "x-signature": "single-object-token",
@@ -90,6 +111,46 @@ describe("direct video upload client", () => {
         objectName: "owner-id/object-id.mp4",
         contentType: "video/mp4",
       },
+    });
+  });
+
+  it("resumes a matching stored TUS upload before completing the request", async () => {
+    previousUploads.push({
+      metadata: { objectName: "owner-id/object-id.mp4" },
+      uploadUrl: "https://project.supabase.co/upload/previous-session",
+    });
+    const fetchMock = vi.fn<typeof fetch>();
+    fetchMock
+      .mockResolvedValueOnce(
+        Response.json({
+          duplicate: false,
+          fileMimeType: "video/mp4",
+          storageApiKey: "public-test-key",
+          storageUploadEndpoint:
+            "https://project.supabase.co/storage/v1/upload/resumable/sign",
+          storagePath: "owner-id/object-id.mp4",
+          token: "fresh-signature-for-same-object",
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ contentItemId: "content-item-id", duplicate: false }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const file = new File(["video bytes"], "lesson.mp4", {
+      type: "video/mp4",
+    });
+    await uploadVideoFile(file, "upload-id");
+
+    expect(resumedUploads).toEqual([
+      "https://project.supabase.co/upload/previous-session",
+    ]);
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      body: JSON.stringify({
+        fileName: "lesson.mp4",
+        storagePath: "owner-id/object-id.mp4",
+        uploadId: "upload-id",
+      }),
     });
   });
 });

@@ -91,7 +91,7 @@ The test connects to real local PostgreSQL, temporarily assumes Supabase `authen
 
 The private `videos` Storage bucket is created by
 `20260913000000_video_upload.sql`. Objects use the server-generated path
-`<auth-user-id>/<random-id>.<extension>`. Storage RLS scopes insert, select,
+`<auth-user-id>/<upload-id>.<extension>`. Storage RLS scopes insert, select,
 update, and delete to the first path segment matching `auth.uid()`.
 
 The hosted project was rechecked on 2026-09-27: the bucket is private,
@@ -109,9 +109,12 @@ path. The browser sends video bytes directly to Supabase Storage using the
 signed TUS endpoint `/storage/v1/upload/resumable/sign` and 6 MiB chunks, so
 video payloads do not pass through the application host or its Cloudflare
 body-size limit. The root-layout upload provider keeps the task alive through
-in-app route navigation only; a full page reload, closed tab, or browser restart
-interrupts the in-memory task, and durable resume is not implemented. After
-TUS completion,
+in-app route navigation. A full page reload interrupts byte transfer, then the
+same tab restores the paused progress screen from `sessionStorage`. Selecting
+the same file resumes the TUS upload from the locally stored upload URL; the
+server reissues a signed token for the stable path derived from the upload ID.
+The upload URL expires after 24 hours, and bytes are not transferred while the
+page is unloaded. After TUS completion,
 `POST /api/uploads/video/complete` verifies the path belongs to the caller,
 reads Storage's actual object size and checks a server-fetched byte-range
 signature before writing an idempotent owned `content_items` record. MIME is

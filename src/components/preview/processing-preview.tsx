@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
 import styles from "./history-preview.module.css";
@@ -19,7 +20,7 @@ const lora = Lora({
 });
 
 export type UploadProgressStatus =
-  "pending" | "processing" | "completed" | "failed";
+  "pending" | "processing" | "interrupted" | "completed" | "failed";
 
 type ProcessingPreviewProps = {
   onBack?: () => void;
@@ -28,6 +29,13 @@ type ProcessingPreviewProps = {
   workflowMessage?: string;
   onRetry?: () => void;
   retryDisabled?: boolean;
+  progressPercent?: number;
+  resumeFile?: {
+    fileName: string;
+    fileSizeBytes: number;
+    lastModified: number;
+    onSelect: (file: File) => boolean;
+  };
 };
 
 type ProcessingStep = { label: string; status: UploadProgressStatus };
@@ -35,6 +43,7 @@ type ProcessingStep = { label: string; status: UploadProgressStatus };
 const statusLabels: Record<UploadProgressStatus, string> = {
   completed: "Готово",
   processing: "Выполняется",
+  interrupted: "Приостановлено",
   pending: "Ожидает",
   failed: "Ошибка",
 };
@@ -51,6 +60,7 @@ const stepLabels = [
 const titleByUploadStatus: Record<UploadProgressStatus, string> = {
   pending: "Прогресс проверки видео",
   processing: "Загружаем видео",
+  interrupted: "Загрузка приостановлена",
   completed: "Видео загружено",
   failed: "Не удалось загрузить видео",
 };
@@ -58,6 +68,7 @@ const titleByUploadStatus: Record<UploadProgressStatus, string> = {
 const subtitleByUploadStatus: Record<UploadProgressStatus, string> = {
   pending: "Загрузка видео ещё не начата.",
   processing: "Загрузка видео в защищённое хранилище выполняется.",
+  interrupted: "Выберите исходный файл, чтобы продолжить загрузку.",
   completed: "Видео загружено. Следующие этапы пока не запущены.",
   failed: "Проверьте файл и попробуйте загрузить его ещё раз.",
 };
@@ -69,7 +80,11 @@ export function ProcessingPreview({
   workflowMessage,
   onRetry,
   retryDisabled,
+  progressPercent,
+  resumeFile,
 }: ProcessingPreviewProps) {
+  const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [resumeError, setResumeError] = useState("");
   const steps: ProcessingStep[] = stepLabels.map((label, index) => ({
     label,
     status: index === 0 ? uploadStatus : "pending",
@@ -134,9 +149,9 @@ export function ProcessingPreview({
             className={processingStyles.steps}
             aria-label="Прогресс проверки видео"
           >
-            {steps.map((step) => (
+            {steps.map((step, index) => (
               <li
-                className={`${processingStyles.step} ${processingStyles[`step-${step.status}`]}`}
+                className={`${processingStyles.step} ${processingStyles[`step-${step.status === "interrupted" ? "pending" : step.status}`]}`}
                 key={step.label}
               >
                 <span className={processingStyles.indicator} aria-hidden="true">
@@ -148,12 +163,55 @@ export function ProcessingPreview({
                 </span>
                 <span className={processingStyles.stepLabel}>{step.label}</span>
                 <span className={processingStyles.stepStatus}>
-                  {statusLabels[step.status]}
+                  {index === 0 && progressPercent !== undefined
+                    ? `${statusLabels[step.status]} · ${progressPercent}%`
+                    : statusLabels[step.status]}
                 </span>
               </li>
             ))}
           </ol>
-          {onRetry ? (
+          {resumeFile ? (
+            <>
+              <input
+                accept="video/mp4,video/webm,video/quicktime"
+                hidden
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (!file) return;
+                  if (
+                    file.name !== resumeFile.fileName ||
+                    file.size !== resumeFile.fileSizeBytes ||
+                    file.lastModified !== resumeFile.lastModified
+                  ) {
+                    setResumeError(
+                      `Выберите исходный файл «${resumeFile.fileName}».`,
+                    );
+                    return;
+                  }
+                  setResumeError(
+                    resumeFile.onSelect(file)
+                      ? ""
+                      : "Не удалось продолжить загрузку. Попробуйте выбрать исходный файл ещё раз.",
+                  );
+                }}
+                ref={resumeInputRef}
+                type="file"
+              />
+              {resumeError ? (
+                <p className={processingStyles.subtitle} role="alert">
+                  {resumeError}
+                </p>
+              ) : null}
+              <button
+                className={processingStyles.reportButton}
+                onClick={() => resumeInputRef.current?.click()}
+                type="button"
+              >
+                Выбрать файл и продолжить
+              </button>
+            </>
+          ) : onRetry ? (
             <button
               className={processingStyles.reportButton}
               type="button"
