@@ -15,7 +15,12 @@ vi.mock("@/features/analysis/video-upload-client", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
+vi.mock("next/font/google", () => ({
+  Inter: () => ({ variable: "" }),
+  Lora: () => ({ variable: "" }),
+}));
 
+import { NewCheckPreview } from "@/components/preview/new-check-preview";
 import { WorkflowProgress } from "@/features/analysis/workflow-progress";
 import { VideoUploadForm } from "@/features/analysis/video-upload-form";
 import {
@@ -50,10 +55,71 @@ function UploadAndWorkflow() {
 
 afterEach(() => {
   cleanup();
+  window.sessionStorage.clear();
   vi.unstubAllGlobals();
 });
 
 describe("workflow progress upload lock", () => {
+  it("restores a saved video after reload instead of showing the new-upload form", async () => {
+    const contentItemId = "33333333-3333-4333-8333-333333333333";
+    window.sessionStorage.setItem(
+      "psych-factcheck:active-content-item:v1",
+      contentItemId,
+    );
+
+    let completeStatusRequest: (response: {
+      ok: boolean;
+      json: () => Promise<unknown>;
+    }) => void = () => undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            completeStatusRequest = resolve;
+          }),
+      ),
+    );
+
+    render(
+      <VideoUploadProvider>
+        <NewCheckPreview />
+      </VideoUploadProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Видео загружено" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Продолжить" })).toBeNull();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/analysis",
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    completeStatusRequest({
+      ok: true,
+      json: async () => ({
+        job: {
+          id: "44444444-4444-4444-8444-444444444444",
+          generation: 1,
+          status: "queued",
+          stage: "queued",
+          attempt: 0,
+          error_code: null,
+        },
+      }),
+    });
+
+    expect(
+      await screen.findByText(
+        "Видео загружено. Подготовка к анализу ожидает запуска.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      window.sessionStorage.getItem("psych-factcheck:active-content-item:v1"),
+    ).toBe(contentItemId);
+  });
+
   it("keeps the upload locked until the persisted workflow reports a terminal state", async () => {
     uploadVideoFile.mockResolvedValue({
       contentItemId: "33333333-3333-4333-8333-333333333333",
@@ -105,6 +171,9 @@ describe("workflow progress upload lock", () => {
     await waitFor(() =>
       expect(screen.getByTestId("upload-lock")).toHaveTextContent("available"),
     );
+    expect(
+      window.sessionStorage.getItem("psych-factcheck:active-content-item:v1"),
+    ).toBeNull();
     expect(screen.getByLabelText("Выбрать файл")).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Загрузить видео" }),

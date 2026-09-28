@@ -17,12 +17,21 @@ export function NewCheckPreview() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadId, setUploadId] = useState(() => crypto.randomUUID());
-  const { task, startUpload, clearTask } = useVideoUpload();
+  const { task, startUpload, clearTask, isRestoring } = useVideoUpload();
 
   function submitUpload() {
     if (!videoFile) return;
     clearTask();
     startUpload(videoFile, uploadId);
+  }
+
+  if (isRestoring) {
+    return (
+      <ProcessingPreview
+        uploadStatus="completed"
+        workflowMessage="Видео сохранено. Получаем состояние подготовки."
+      />
+    );
   }
 
   if (task) {
