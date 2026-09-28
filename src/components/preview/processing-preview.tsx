@@ -29,6 +29,7 @@ type ProcessingPreviewProps = {
   workflowMessage?: string;
   onRetry?: () => void;
   retryDisabled?: boolean;
+  resumeDisabled?: boolean;
   progressPercent?: number;
   resumeFile?: {
     fileName: string;
@@ -81,11 +82,13 @@ export function ProcessingPreview({
   workflowMessage,
   onRetry,
   retryDisabled,
+  resumeDisabled,
   progressPercent,
   resumeFile,
 }: ProcessingPreviewProps) {
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const [resumeError, setResumeError] = useState("");
+  const [needsManualSelection, setNeedsManualSelection] = useState(false);
   const steps: ProcessingStep[] = stepLabels.map((label, index) => ({
     label,
     status: index === 0 ? uploadStatus : "pending",
@@ -188,13 +191,16 @@ export function ProcessingPreview({
                     setResumeError(
                       `Выберите исходный файл «${resumeFile.fileName}».`,
                     );
+                    setNeedsManualSelection(true);
                     return;
                   }
+                  const resumed = resumeFile.onSelect(file);
                   setResumeError(
-                    resumeFile.onSelect(file)
+                    resumed
                       ? ""
                       : "Не удалось продолжить загрузку. Попробуйте выбрать исходный файл ещё раз.",
                   );
+                  setNeedsManualSelection(!resumed);
                 }}
                 ref={resumeInputRef}
                 type="file"
@@ -206,17 +212,34 @@ export function ProcessingPreview({
               ) : null}
               <button
                 className={processingStyles.reportButton}
+                disabled={resumeDisabled}
                 onClick={() => {
+                  if (needsManualSelection) {
+                    resumeInputRef.current?.click();
+                    return;
+                  }
                   void resumeFile
                     .onResume()
                     .then((resumed) => {
-                      if (!resumed) resumeInputRef.current?.click();
+                      if (!resumed) {
+                        setResumeError(
+                          "Не удалось восстановить доступ к файлу. Выберите исходный файл, чтобы продолжить.",
+                        );
+                        setNeedsManualSelection(true);
+                      }
                     })
-                    .catch(() => resumeInputRef.current?.click());
+                    .catch(() => {
+                      setResumeError(
+                        "Не удалось восстановить доступ к файлу. Выберите исходный файл, чтобы продолжить.",
+                      );
+                      setNeedsManualSelection(true);
+                    });
                 }}
                 type="button"
               >
-                Продолжить загрузку
+                {needsManualSelection
+                  ? "Выбрать файл и продолжить"
+                  : "Продолжить загрузку"}
               </button>
             </>
           ) : onRetry ? (

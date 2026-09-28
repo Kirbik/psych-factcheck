@@ -11,6 +11,7 @@ const uploadVideoFile = vi.hoisted(() => vi.fn());
 const fileAccess = vi.hoisted(() => ({
   deleteVideoFileHandle: vi.fn(),
   getVideoFileFromHandle: vi.fn(),
+  getStoredVideoFileHandle: vi.fn(),
   pickVideoFileWithHandle: vi.fn(),
   saveVideoFileHandle: vi.fn(),
   supportsPersistentVideoAccess: vi.fn(() => false),
@@ -93,6 +94,7 @@ afterEach(() => {
   cleanup();
   window.sessionStorage.clear();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
   fileAccess.supportsPersistentVideoAccess.mockReturnValue(false);
   realtime.onChange = null;
@@ -180,6 +182,8 @@ describe("workflow progress upload lock", () => {
       return new Promise(() => undefined);
     });
     fileAccess.getVideoFileFromHandle.mockResolvedValue(file);
+    const handle = { kind: "file", name: file.name };
+    fileAccess.getStoredVideoFileHandle.mockResolvedValue(handle);
 
     render(
       <VideoUploadProvider>
@@ -192,12 +196,15 @@ describe("workflow progress upload lock", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Приостановлено · 42%")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Продолжить загрузку" }),
-    );
+    const resumeButton = await screen.findByRole("button", {
+      name: "Продолжить загрузку",
+    });
+    await waitFor(() => expect(resumeButton).toBeEnabled());
+    fireEvent.click(resumeButton);
 
     await waitFor(() => expect(uploadVideoFile).toHaveBeenCalledTimes(1));
-    expect(fileAccess.getVideoFileFromHandle).toHaveBeenCalledWith(uploadId);
+    expect(fileAccess.getStoredVideoFileHandle).toHaveBeenCalledWith(uploadId);
+    expect(fileAccess.getVideoFileFromHandle).toHaveBeenCalledWith(handle);
     expect(uploadVideoFile).toHaveBeenCalledWith(
       file,
       uploadId,
@@ -213,6 +220,42 @@ describe("workflow progress upload lock", () => {
         ) ?? "null",
       ),
     ).toMatchObject({ kind: "uploading", uploadId, progressPercent: 68 });
+  });
+
+  it("does not open the file picker automatically when no saved handle exists", async () => {
+    const uploadId = "55555555-5555-4555-8555-555555555555";
+    window.sessionStorage.setItem(
+      "psych-factcheck:active-content-item:v1",
+      JSON.stringify({
+        kind: "uploading",
+        uploadId,
+        fileName: "lesson.mp4",
+        fileSizeBytes: 11,
+        lastModified: 1234,
+        progressPercent: 42,
+      }),
+    );
+    fileAccess.getStoredVideoFileHandle.mockResolvedValue(null);
+    const pickerClick = vi.spyOn(HTMLInputElement.prototype, "click");
+
+    render(
+      <VideoUploadProvider>
+        <NewCheckPreview />
+      </VideoUploadProvider>,
+    );
+
+    const continueButton = await screen.findByRole("button", {
+      name: "Продолжить загрузку",
+    });
+    await waitFor(() => expect(continueButton).toBeEnabled());
+    fireEvent.click(continueButton);
+
+    expect(
+      await screen.findByRole("button", {
+        name: "Выбрать файл и продолжить",
+      }),
+    ).toBeInTheDocument();
+    expect(pickerClick).not.toHaveBeenCalled();
   });
 
   it("keeps a file handle, not a file copy, when the browser supports it", async () => {
@@ -274,6 +317,11 @@ describe("workflow progress upload lock", () => {
       </VideoUploadProvider>,
     );
 
+    expect(
+      await screen.findByText(
+        "Загрузка остановилась после перезагрузки. Нажмите «Продолжить загрузку», чтобы возобновить её.",
+      ),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Выбрать файл"), {
       target: { files: [file] },
     });

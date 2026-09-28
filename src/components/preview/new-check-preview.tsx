@@ -29,6 +29,7 @@ export function NewCheckPreview() {
     resumeInterruptedUpload,
     clearTask,
     isRestoring,
+    isResumeHandleLoading,
   } = useVideoUpload();
 
   function submitUpload() {
@@ -77,6 +78,7 @@ export function NewCheckPreview() {
       return (
         <ProcessingPreview
           uploadStatus="interrupted"
+          resumeDisabled={isResumeHandleLoading}
           progressPercent={task.progressPercent}
           workflowMessage="Загрузка остановилась после перезагрузки. Нажмите «Продолжить загрузку», чтобы возобновить её."
           resumeFile={{

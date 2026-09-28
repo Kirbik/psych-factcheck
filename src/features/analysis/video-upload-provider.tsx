@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -16,6 +17,8 @@ import type { JobView } from "@/features/analysis/job-contract";
 import {
   deleteVideoFileHandle,
   getVideoFileFromHandle,
+  getStoredVideoFileHandle,
+  type PersistentFileHandle,
 } from "@/features/analysis/video-file-access";
 import { z } from "zod";
 
@@ -152,6 +155,7 @@ function isVideoUploadLocked(task: VideoUploadTask | null) {
 type VideoUploadContextValue = {
   task: VideoUploadTask | null;
   isRestoring: boolean;
+  isResumeHandleLoading: boolean;
   isUploadLocked: boolean;
   startUpload: (file: File, uploadId: string) => boolean;
   resumeInterruptedUpload: () => Promise<boolean>;
@@ -170,6 +174,13 @@ export function VideoUploadProvider({
   const [task, setTask] = useState<VideoUploadTask | null>(null);
   const taskRef = useRef<VideoUploadTask | null>(null);
   const resumeInProgress = useRef(false);
+  const resumeHandleRef = useRef<{
+    uploadId: string;
+    handle: PersistentFileHandle;
+  } | null>(null);
+  const [loadedResumeHandleId, setLoadedResumeHandleId] = useState<
+    string | null
+  >(null);
   const activeContentItemSnapshot = useSyncExternalStore(
     subscribeToActiveContentItem,
     getActiveContentItemSnapshot,
@@ -181,6 +192,24 @@ export function VideoUploadProvider({
     ? createRestoredTask(storedUploadState)
     : null;
   const currentTask = task ?? restoredTask;
+  const interruptedUploadId =
+    currentTask?.status === "interrupted" ? currentTask.uploadId : null;
+
+  useEffect(() => {
+    resumeHandleRef.current = null;
+    if (!interruptedUploadId) return;
+    let active = true;
+    void getStoredVideoFileHandle(interruptedUploadId).then((handle) => {
+      if (!active) return;
+      resumeHandleRef.current = handle
+        ? { uploadId: interruptedUploadId, handle }
+        : null;
+      setLoadedResumeHandleId(interruptedUploadId);
+    });
+    return () => {
+      active = false;
+    };
+  }, [interruptedUploadId]);
 
   const updateTask = useCallback((nextTask: VideoUploadTask | null) => {
     taskRef.current = nextTask;
@@ -294,7 +323,11 @@ export function VideoUploadProvider({
     }
     resumeInProgress.current = true;
     try {
-      const file = await getVideoFileFromHandle(current.uploadId);
+      const storedHandle = resumeHandleRef.current;
+      if (!storedHandle || storedHandle.uploadId !== current.uploadId) {
+        return false;
+      }
+      const file = await getVideoFileFromHandle(storedHandle.handle);
       if (
         !file ||
         file.name !== current.fileName ||
@@ -345,6 +378,9 @@ export function VideoUploadProvider({
       value={{
         task: currentTask,
         isRestoring,
+        isResumeHandleLoading:
+          interruptedUploadId !== null &&
+          loadedResumeHandleId !== interruptedUploadId,
         isUploadLocked: isRestoring || isVideoUploadLocked(currentTask),
         startUpload,
         resumeInterruptedUpload,

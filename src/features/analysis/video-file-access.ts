@@ -4,7 +4,7 @@ const databaseName = "psych-factcheck-file-handles";
 const storeName = "uploads";
 const handleTtlMs = 24 * 60 * 60 * 1000;
 
-type PersistentFileHandle = {
+export type PersistentFileHandle = {
   kind: "file";
   name: string;
   getFile(): Promise<File>;
@@ -102,7 +102,7 @@ export async function saveVideoFileHandle(
   });
 }
 
-export async function getVideoFileFromHandle(uploadId: string) {
+export async function getStoredVideoFileHandle(uploadId: string) {
   const database = await openHandleDatabase();
   if (!database) return null;
   const stored = await new Promise<unknown>((resolve) => {
@@ -145,12 +145,14 @@ export async function getVideoFileFromHandle(uploadId: string) {
   ) {
     return null;
   }
-  const handle = stored.handle as PersistentFileHandle;
+  return stored.handle as PersistentFileHandle;
+}
+
+export async function getVideoFileFromHandle(
+  handle: PersistentFileHandle,
+) {
   try {
-    let permission = await handle.queryPermission({ mode: "read" });
-    if (permission !== "granted") {
-      permission = await handle.requestPermission({ mode: "read" });
-    }
+    const permission = await handle.requestPermission({ mode: "read" });
     return permission === "granted" ? await handle.getFile() : null;
   } catch {
     return null;

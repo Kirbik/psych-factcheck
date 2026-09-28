@@ -27,6 +27,7 @@ export function VideoUploadForm() {
     resumeInterruptedUpload,
     clearTask,
     isUploadLocked,
+    isResumeHandleLoading,
   } = useVideoUpload();
   const refreshedUploadId = useRef<string | null>(null);
 
@@ -159,7 +160,10 @@ export function VideoUploadForm() {
           {displayedFileName || "Файл ещё не выбран"}
         </p>
         <Button
-          disabled={isUploadLocked && !isInterrupted}
+          disabled={
+            (isUploadLocked && !isInterrupted) ||
+            (isInterrupted && isResumeHandleLoading)
+          }
           loading={isUploading}
           type="submit"
         >
