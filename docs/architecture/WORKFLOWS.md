@@ -53,21 +53,25 @@ Storage fetches have a 15-second timeout and the step has a 60-second timeout.
 same origin, session, bounded JSON and ownership using a user-context client
 before privileged dispatch. `GET /api/analysis?contentItemId=...` reads and
 reconciles an existing owned job. Responses are private/no-store and expose
-only job ID, generation, status, stage, attempt and a safe error code.
+only job ID, generation, status, stage, attempt, a safe error code, and the
+public Supabase URL/key needed to connect to Realtime at Worker runtime. The
+anonymous key is public; table access remains protected by RLS.
 
 After upload, `/new-check` displays progress and requests immediate dispatch.
 `/dashboard` links to `/processing?contentItemId=...` for saved uploads.
-Reloads read the durable job. The UI polls every two seconds while active,
-stops on a terminal state/error, and offers an explicit retry. The existing
-analysis steps remain pending after upload, and report navigation stays
-disabled.
+Reloads read the durable job, then listen for `analysis_jobs` changes through
+Supabase Realtime. Owner RLS applies to the subscription. If the socket is
+disconnected, the UI checks status every ten seconds until the subscription
+recovers; returning to a visible tab triggers a fresh read. An explicit retry
+still goes through the API. The existing analysis steps remain pending after
+upload, and report navigation stays disabled.
 
 No UI or CSS changes are part of the workflow runtime migration.
 
 ## Setup and deployment
 
-1. Apply the reviewed Supabase migrations for the upload and analysis-job
-   schema. The current hosted project already has these migrations applied.
+1. Apply the reviewed Supabase migrations for upload, analysis jobs, and the
+   Realtime publication (`20260928100000_analysis_jobs_realtime.sql`).
 2. Configure `NEXT_PUBLIC_SUPABASE_URL` and the server-only
    `SUPABASE_SERVICE_ROLE_KEY` in the Cloudflare Worker environment. Keep the
    service-role value as a Worker secret; do not put it in client code or task

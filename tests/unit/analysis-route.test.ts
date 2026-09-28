@@ -63,6 +63,8 @@ function post(
 describe("analysis API trust boundaries", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "public-test-key");
     mocks.getClaims.mockResolvedValue({
       data: { claims: { sub: "owner" } },
       error: null,
@@ -113,6 +115,10 @@ describe("analysis API trust boundaries", () => {
     const result = await response.json();
     expect(result.job).not.toHaveProperty("user_id");
     expect(result.job).not.toHaveProperty("run_id");
+    expect(result.realtime).toEqual({
+      supabaseUrl: "https://example.supabase.co",
+      supabaseAnonKey: "public-test-key",
+    });
   });
   it("hides provider diagnostics on ambiguous enqueue failure", async () => {
     mocks.dispatch.mockRejectedValue(new Error("secret-provider-token"));

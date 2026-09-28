@@ -8,6 +8,7 @@ import {
 } from "@/server/workflows/runtime";
 import { dispatchJob, reconcileJob } from "@/server/workflows/dispatch";
 import { jobViewSchema } from "@/features/analysis/job-contract";
+import { getPublicSupabaseConfig } from "@/lib/supabase-config";
 
 const requestSchema = z
   .object({
@@ -73,7 +74,14 @@ async function handle(request: Request, start: boolean) {
         ? await dispatchJob(job, repository, runner)
         : await reconcileJob(job, repository, runner);
     }
-    return json({ job: job ? jobViewSchema.parse(job) : null });
+    const publicConfig = getPublicSupabaseConfig();
+    return json({
+      job: job ? jobViewSchema.parse(job) : null,
+      realtime: {
+        supabaseUrl: publicConfig.NEXT_PUBLIC_SUPABASE_URL,
+        supabaseAnonKey: publicConfig.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      },
+    });
   } catch {
     // Do not expose provider diagnostics, payloads, or credentials to the browser.
     return json(

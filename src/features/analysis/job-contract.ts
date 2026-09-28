@@ -19,7 +19,14 @@ export const jobViewSchema = z.object({
   error_code: z.string().nullable(),
 });
 export type JobView = z.infer<typeof jobViewSchema>;
-export const jobResponseSchema = z.object({ job: jobViewSchema.nullable() });
+export const realtimeConfigSchema = z.object({
+  supabaseUrl: z.url(),
+  supabaseAnonKey: z.string().min(1),
+});
+export const jobResponseSchema = z.object({
+  job: jobViewSchema.nullable(),
+  realtime: realtimeConfigSchema.optional(),
+});
 export const isActiveJob = (job: Pick<JobView, "status">) =>
   job.status === "queued" || job.status === "running";
 

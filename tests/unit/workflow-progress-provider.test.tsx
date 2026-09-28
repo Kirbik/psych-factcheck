@@ -8,6 +8,11 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const uploadVideoFile = vi.hoisted(() => vi.fn());
+const realtime = vi.hoisted(() => ({
+  onChange: null as ((payload: { new: unknown }) => void) | null,
+  onStatus: null as ((status: string) => void) | null,
+  removeChannel: vi.fn(),
+}));
 
 vi.mock("@/features/analysis/video-upload-client", () => ({
   uploadVideoFile,
@@ -18,6 +23,29 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/font/google", () => ({
   Inter: () => ({ variable: "" }),
   Lora: () => ({ variable: "" }),
+}));
+vi.mock("@/lib/supabase/browser", () => ({
+  createBrowserSupabaseClient: () => {
+    const channel = {
+      on: (
+        _event: string,
+        _filter: unknown,
+        callback: (payload: { new: unknown }) => void,
+      ) => {
+        realtime.onChange = callback;
+        return channel;
+      },
+      subscribe: (callback: (status: string) => void) => {
+        realtime.onStatus = callback;
+        callback("SUBSCRIBED");
+        return channel;
+      },
+    };
+    return {
+      channel: () => channel,
+      removeChannel: realtime.removeChannel,
+    };
+  },
 }));
 
 import { NewCheckPreview } from "@/components/preview/new-check-preview";
@@ -57,9 +85,67 @@ afterEach(() => {
   cleanup();
   window.sessionStorage.clear();
   vi.unstubAllGlobals();
+  realtime.onChange = null;
+  realtime.onStatus = null;
+  realtime.removeChannel.mockClear();
 });
 
 describe("workflow progress upload lock", () => {
+  it("updates workflow progress from a Supabase Realtime event", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          realtime: {
+            supabaseUrl: "https://example.supabase.co",
+            supabaseAnonKey: "public-test-key",
+          },
+          job: {
+            id: "44444444-4444-4444-8444-444444444444",
+            generation: 1,
+            status: "queued",
+            stage: "queued",
+            attempt: 0,
+            error_code: null,
+          },
+        }),
+      }),
+    );
+
+    const { unmount } = render(
+      <VideoUploadProvider>
+        <WorkflowProgress contentItemId="33333333-3333-4333-8333-333333333333" />
+      </VideoUploadProvider>,
+    );
+
+    expect(
+      await screen.findByText(
+        "Видео загружено. Подготовка к анализу ожидает запуска.",
+      ),
+    ).toBeInTheDocument();
+    expect(realtime.onChange).toBeTypeOf("function");
+    realtime.onChange?.({
+      new: {
+        id: "44444444-4444-4444-8444-444444444444",
+        generation: 1,
+        status: "completed",
+        stage: "complete",
+        attempt: 1,
+        error_code: null,
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+      ),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    unmount();
+    expect(realtime.removeChannel).toHaveBeenCalled();
+  });
+
   it("restores interrupted upload progress and resumes with the original file", async () => {
     const uploadId = "55555555-5555-4555-8555-555555555555";
     const file = new File(["video bytes"], "lesson.mp4", {

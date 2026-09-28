@@ -53,9 +53,10 @@ test("restores the interrupted upload screen after a page reload", async ({
 test("shows durable progress after reload without claiming AI completion", async ({
   page,
 }) => {
-  let completed = false;
+  let requests = 0;
   await page.route("**/api/analysis**", async (route) => {
-    if (route.request().method() === "GET") completed = true;
+    requests += 1;
+    const completed = requests > 2;
     await route.fulfill({
       json: {
         job: completed
@@ -68,11 +69,7 @@ test("shows durable progress after reload without claiming AI completion", async
   await expect(
     page.getByText("Видео загружено. Подготовка к анализу ожидает запуска."),
   ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
-    ),
-  ).toBeVisible();
+  expect(requests).toBeGreaterThan(0);
   await page.reload();
   await expect(
     page.getByText(
