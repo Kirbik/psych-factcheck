@@ -91,7 +91,7 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** the Session 5 migration queues a job atomically on uploaded content insertion. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. The Trigger worker validates the uploaded object and completes preparation only; content remains pending and no AI result is produced. Live deployment is pending; see [Workflows](WORKFLOWS.md).
+- **Lifecycle:** the Session 5 migration queues a job atomically on uploaded content insertion. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. The Cloudflare Workflow validates the uploaded object and completes preparation only; content remains pending and no AI result is produced. Production workflow verification is pending; see [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 

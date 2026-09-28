@@ -83,7 +83,7 @@ The repository contains implementation work through Session 5: foundation/toolin
 
 ## Session 5 — Background Workflow
 
-**Status:** Development integration verified on 2026-09-27. Trigger task, atomic upload/job creation, guarded lifecycle/retry RPCs, scheduled recovery, API and persisted progress UI are present. Hosted migrations were applied, DB types regenerated, Development secrets configured and a real uploaded WebM reached `completed`; duplicate dispatch reused the same run. Production deployment, fresh browser upload/retry/crash checks and Figma acceptance remain. See [workflow setup and limits](../architecture/WORKFLOWS.md) and [live verification](../testing/SESSION_5.md).
+**Status:** The application uses Cloudflare Workflows; the earlier Development integration was verified on 2026-09-27 before the runtime migration. Atomic upload/job creation, guarded lifecycle/retry RPCs, scheduled recovery, API and persisted progress UI are present. Hosted migrations were applied and DB types regenerated. The earlier uploaded WebM reached `completed`, and duplicate dispatch reused the same run; that result does not verify the Cloudflare runtime. Production binding, minute cron and one completed Workflow instance are visible in the Cloudflare dashboard. Confirm the persisted job state, then run a fresh browser upload/retry/crash check and complete Figma acceptance. See [workflow setup and limits](../architecture/WORKFLOWS.md) and [live verification](../testing/SESSION_5.md).
 
 - **Goal:** Add an idempotent Cloudflare preparation workflow without AI.
 - **Why:** Long-running work must not depend on an HTTP request.

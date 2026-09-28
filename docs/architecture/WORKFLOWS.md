@@ -11,10 +11,12 @@ evidence, or report is produced.
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
-source of truth for job state and ownership. Production workflow deployment
-and browser end-to-end acceptance remain pending. If the Worker binding is
-unavailable, the API returns HTTP 503 with an explicit unavailable message;
-uploads remain saved. There is no fake executor in production.
+source of truth for job state and ownership. The Production dashboard has the
+binding and cron configured and records one completed Workflow instance;
+verification of the corresponding Supabase job state and browser end-to-end
+acceptance remain pending. If the Worker binding is unavailable, the API
+returns HTTP 503 with an explicit unavailable message; uploads remain saved.
+There is no fake executor in production.
 
 ## Durable state and concurrency
 
@@ -76,11 +78,11 @@ No UI or CSS changes are part of the workflow runtime migration.
 4. Run `pnpm build:vinext`, then deploy with the project's Cloudflare Worker
    deployment pipeline. No separate workflow service, project, or API key is
    required.
-5. Verify the `analysis-preparation-v1` Workflow binding and minute cron are
-   active in the Cloudflare dashboard.
-6. Verify upload → one queued job → running → completed, duplicate start,
-   worker failure, explicit retry and reload. Check that the content remains
-   pending and no report is advertised.
+5. The Production dashboard has confirmed the `analysis-preparation-v1`
+   Workflow binding, minute cron and one completed instance.
+6. Verify the corresponding Supabase job reached `completed`, then test a fresh
+   upload, duplicate start, worker failure, explicit retry and reload. Check
+   that the content remains pending and no report is advertised.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,

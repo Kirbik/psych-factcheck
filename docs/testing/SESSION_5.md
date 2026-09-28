@@ -51,7 +51,11 @@ The approved Figma URL/source was not supplied. These screenshots establish
 readability and behavior, not Figma/Preline visual acceptance. Visual alignment
 remains pending and was not expanded into a redesign in this backend session.
 
-## Live Development verification — 2026-09-27
+## Earlier Development verification — 2026-09-27
+
+This records the Development runtime before migration to Cloudflare Workflows.
+It is historical evidence for the database and upload/job lifecycle, not a
+verification of the current Cloudflare runtime.
 
 - Verified the configured workflow and Supabase server credentials without
   printing their values. Stored worker credentials as secret Development variables.
@@ -73,9 +77,19 @@ remains pending and was not expanded into a redesign in this backend session.
 
 ## Acceptance still pending
 
-The previous Development runtime proved scheduler/worker/Storage/database
-integration for the preparation code. The Cloudflare runtime migration still
-needs local and production verification, along with a fresh browser upload,
-failure/retry/crash scenarios and Figma acceptance before closing Session 5.
+The earlier Development runtime proved scheduler/worker/Storage/database
+integration for the preparation code. The Cloudflare implementation needs
+production verification, including a fresh browser upload and failure/retry
+checks, before closing Session 5. Figma acceptance also remains pending.
 Production uses the existing Worker environment and Wrangler deployment.
 See [setup instructions](../architecture/WORKFLOWS.md).
+
+## Production dashboard check — 2026-09-28
+
+- Confirmed the Production Worker has the `ANALYSIS_WORKFLOW` binding to
+  `analysis-preparation-v1` and a minute cron trigger.
+- The Cloudflare Workflow dashboard shows one completed instance and zero
+  errored, queued or running instances.
+- The dashboard instance details did not expose its input/output or persisted
+  Supabase job state. A fresh browser upload and failure/retry checks remain
+  necessary for application-level acceptance.
