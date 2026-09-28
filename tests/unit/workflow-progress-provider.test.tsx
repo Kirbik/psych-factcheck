@@ -103,6 +103,58 @@ afterEach(() => {
 });
 
 describe("workflow progress upload lock", () => {
+  it("clears the selected video when returning from progress to a new check", async () => {
+    uploadVideoFile.mockResolvedValue({
+      contentItemId: "33333333-3333-4333-8333-333333333333",
+      duplicate: false,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          job: {
+            id: "44444444-4444-4444-8444-444444444444",
+            generation: 1,
+            status: "completed",
+            stage: "complete",
+            attempt: 1,
+            error_code: null,
+          },
+        }),
+      }),
+    );
+
+    render(
+      <VideoUploadProvider>
+        <NewCheckPreview />
+      </VideoUploadProvider>,
+    );
+
+    const file = new File(["old video"], "old-video.mp4", {
+      type: "video/mp4",
+      lastModified: 1234,
+    });
+    fireEvent.change(screen.getByLabelText(/Перетащите файл сюда/), {
+      target: { files: [file] },
+    });
+    expect(screen.getByText("old-video.mp4")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
+
+    expect(
+      await screen.findByText(
+        "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Новая проверка" }));
+
+    expect(
+      await screen.findByText("Перетащите файл сюда или выберите его"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("old-video.mp4")).toBeNull();
+    expect(screen.getByRole("button", { name: "Продолжить" })).toBeDisabled();
+  });
+
   it("updates workflow progress from a Supabase Realtime event", async () => {
     vi.stubGlobal(
       "fetch",

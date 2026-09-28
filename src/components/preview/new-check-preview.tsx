@@ -39,11 +39,21 @@ export function NewCheckPreview() {
     startUpload(videoFile, uploadId);
   }
 
-  function handleCancelUpload() {
-    if (!cancelUpload()) return;
+  function resetSelectedVideo() {
+    void deleteVideoFileHandle(uploadId);
     setVideoFile(null);
     setUploadId(crypto.randomUUID());
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleCancelUpload() {
+    if (!cancelUpload()) return;
+    resetSelectedVideo();
+  }
+
+  function handleBackFromWorkflow() {
+    clearTask();
+    resetSelectedVideo();
   }
 
   function handleFilePickerClick(event: MouseEvent<HTMLInputElement>) {
@@ -80,11 +90,16 @@ export function NewCheckPreview() {
 
   if (task) {
     if (task.status === "completed" && task.result) {
-      return <WorkflowProgress contentItemId={task.result.contentItemId} onBack={clearTask} />;
+      return (
+        <WorkflowProgress
+          contentItemId={task.result.contentItemId}
+          onBack={handleBackFromWorkflow}
+        />
+      );
     }
     if (task.status === "interrupted") {
       return (
-        <ProcessingPreview
+      <ProcessingPreview
           onCancel={handleCancelUpload}
           uploadStatus="interrupted"
           resumeDisabled={isResumeHandleLoading}
@@ -101,10 +116,10 @@ export function NewCheckPreview() {
       );
     }
     return (
-      <ProcessingPreview
+        <ProcessingPreview
         onCancel={handleCancelUpload}
         onBack={() => {
-          if (task.status !== "processing") clearTask();
+          if (task.status !== "processing") handleBackFromWorkflow();
         }}
         uploadError={task.error}
         uploadStatus={task.status === "processing" ? "processing" : task.status}
