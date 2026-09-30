@@ -78,10 +78,11 @@ verification of the current Cloudflare runtime.
 ## Acceptance still pending
 
 The earlier Development runtime proved scheduler/worker/Storage/database
-integration for the preparation code. The Cloudflare implementation needs
-production verification, including a fresh browser upload and failure/retry
-checks, before closing Session 5. Figma acceptance also remains pending.
-Production uses the existing Worker environment and Wrangler deployment.
+integration for the preparation code. The Production Worker binding and
+schedule are configured, but the matching persisted Supabase job state and a
+fresh browser upload plus failure/retry checks remain before closing Session 5.
+Figma acceptance also remains pending. Production uses the existing Worker
+environment and Wrangler deployment.
 See [setup instructions](../architecture/WORKFLOWS.md).
 
 ## Production dashboard check — 2026-09-28
@@ -93,3 +94,18 @@ See [setup instructions](../architecture/WORKFLOWS.md).
 - The dashboard instance details did not expose its input/output or persisted
   Supabase job state. A fresh browser upload and failure/retry checks remain
   necessary for application-level acceptance.
+
+## Upload restore UI follow-up — 2026-09-30
+
+- Reloading during byte transfer interrupts the TUS upload. In the same tab,
+  the saved upload metadata restores the paused progress screen; the browser
+  reuses its user-granted file handle when available, otherwise the user must
+  reselect the original file.
+- The restore branch no longer renders the analysis-stage screen while
+  client-side session state is being read. The resume control appears as a
+  text link below the paused percentage. Cancel remains available to clear the
+  upload and select a replacement file.
+- Playwright's `restores the interrupted upload screen after a page reload`
+  case checks that server-rendered HTML omits the transient preparation-stage
+  screen and that the paused upload is restored. This is a mocked/UI check, not
+  a test of live Cloudflare or Supabase connectivity.

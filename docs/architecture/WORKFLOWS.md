@@ -66,6 +66,15 @@ recovers; returning to a visible tab triggers a fresh read. An explicit retry
 still goes through the API. The existing analysis steps remain pending after
 upload, and report navigation stays disabled.
 
+During a video byte upload, reloading the page interrupts the TUS transfer.
+The same tab restores the paused upload from `sessionStorage` and then shows
+the saved progress, without rendering the analysis-stage screen during client
+state restoration. The user resumes the original file when the browser's
+stored file handle and TUS upload URL remain available; otherwise they select
+the original file again. Cancel clears the upload state so another file can be
+chosen. Returning from completed progress to a new check also clears the old
+file selection.
+
 No UI or CSS changes are part of the workflow runtime migration.
 
 ## Setup and deployment

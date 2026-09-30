@@ -4,7 +4,7 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 ## Repository progress (2026-09-27)
 
-The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Cloudflare Workflows preparation process. Production deployment, browser failure/retry scenarios and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
+The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Cloudflare Workflows preparation process. Matching Production job state, browser failure/retry scenarios and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
 
 ## Session 0 — Foundation
 
@@ -79,7 +79,7 @@ The repository contains implementation work through Session 5: foundation/toolin
 - **QA requirements:** Security-oriented Reviewer and failure-case Test Engineer.
 - **Definition of Done:** One private untrusted video can be uploaded safely.
 
-**Status:** Implemented; hosted bucket configuration verified. The authenticated upload preparation route issues a signed, owner-scoped TUS upload to the private `videos` bucket at `/storage/v1/upload/resumable/sign`. A separate finalizer verifies actual object ownership, size, and container signature before persisting the owner-scoped content row, using a per-user upload ID for idempotency. An app-root upload manager preserves active transfers across client-side navigation only; the selected file and task state are in memory, so reload/closed-tab resume is not supported. The direct-upload migration version conflict was resolved after checking hosted migration history. Bucket size and MIME restrictions are applied. See [Supabase foundation](../architecture/SUPABASE.md).
+**Status:** Implemented; hosted bucket configuration verified. The authenticated upload preparation route issues a signed, owner-scoped TUS upload to the private `videos` bucket at `/storage/v1/upload/resumable/sign`. A separate finalizer verifies actual object ownership, size, and container signature before persisting the owner-scoped content row, using a per-user upload ID for idempotency. An app-root upload manager preserves active transfers across client-side navigation. Reloading interrupts byte transfer; in the same tab the app restores an interrupted progress screen and supports resuming the original file while its TUS upload URL is valid. Supported browsers retain a user-granted file handle rather than video bytes; otherwise the user must select the original file again. Canceling clears the task and allows a replacement file. The direct-upload migration version conflict was resolved after checking hosted migration history. Bucket size and MIME restrictions are applied. See [Supabase foundation](../architecture/SUPABASE.md).
 
 ## Session 5 — Background Workflow
 

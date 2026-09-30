@@ -1,6 +1,6 @@
 # Psych Factcheck
 
-An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 5 adds a Cloudflare Workflows preparation process with durable jobs and retry/status UI. Production workflow deployment and browser acceptance remain. Transcription, claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
+An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 5 adds a Cloudflare Workflows preparation process with durable jobs and retry/status UI. The Production Worker binding and schedule are configured; matching database state and fresh browser upload/retry acceptance remain to be verified. Transcription, claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
 
 ## Stack
 
@@ -56,7 +56,7 @@ The suite includes unit tests for auth validation/actions, Supabase configuratio
 
 ## Deployment concept
 
-The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address, but that does not constitute production workflow verification. The authenticated video upload has not been end-to-end verified against the hosted project, and the hosted `videos` bucket currently lacks its intended file-size and allowed-MIME restrictions; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, and private Storage are already used by server routes. pgvector remains future work. The Cloudflare Workflow binding and Worker secrets must be configured in Wrangler/Cloudflare before deployment.
+The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. The Production Worker has a configured workflow binding and scheduled recovery; a completed Workflow instance has been observed, but its matching Supabase job state and a fresh browser upload/retry flow have not yet been verified. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, and private Storage are used by server routes. pgvector remains future work.
 
 ## Documentation
 

@@ -4,7 +4,7 @@
 
 Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated direct-to-Storage TUS video upload backed by a private bucket. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
 
-The applied Session 5 migration atomically queues a preparation job with uploaded content. Cloudflare Workflows provide background execution; production deployment and full browser acceptance remain pending. Transcription, AI, evidence retrieval and report persistence remain future scope. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
+The applied Session 5 migration atomically queues a preparation job with uploaded content. Cloudflare Workflows provide background execution; the Production binding and schedule are configured and one completed instance has been observed. Verification of its matching Supabase job state and full browser acceptance remain pending. Transcription, AI, evidence retrieval and report persistence remain future scope. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
 
 ## Dependencies
 
@@ -110,7 +110,8 @@ signed TUS endpoint `/storage/v1/upload/resumable/sign` and 6 MiB chunks, so
 video payloads do not pass through the application host or its Cloudflare
 body-size limit. The root-layout upload provider keeps the task alive through
 in-app route navigation. A full page reload interrupts byte transfer, then the
-same tab restores the paused progress screen from `sessionStorage`. On browsers
+same tab restores the paused progress screen from `sessionStorage` without
+briefly rendering the later analysis-stage screen. On browsers
 with the File System Access API, the app stores the user-granted file handle in
 IndexedDB, not a copy of the video. Pressing Continue reacquires the file and
 resumes the TUS upload from the locally stored upload URL; the browser may ask

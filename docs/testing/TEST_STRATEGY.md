@@ -9,7 +9,7 @@ Tests use real behavior at the smallest practical boundary. Unit tests stay dete
 - **Integration:** Supabase Auth session/profile lifecycle and PostgreSQL schema/RLS tests. Each suite is environment-gated and skips when its required test service variables are absent.
 - **E2E:** Playwright covers the token-auth entry/registration interactions and UI preview routes. Authenticated registration, login/logout, protected route, and video-upload flows run only when a dedicated Supabase test environment and test token are configured.
 - **AI evals:** currently one synthetic fixture schema check only; there are no provider calls, retrieval evaluations, or verdict-quality scores.
-- **Session 5 workflow:** unit tests cover dispatch/reconciliation and retry races; PGlite runs the actual workflow migration in isolated PostgreSQL for RLS, RPC grants, transitions and fencing; API tests verify ownership and safe responses; Playwright mocks the workflow API for progress/reload/retry. These do not verify hosted Trigger/Supabase connectivity. See [Session 5 QA](SESSION_5.md).
+- **Session 5 workflow:** unit tests cover dispatch/reconciliation and retry races; PGlite runs the actual workflow migration in isolated PostgreSQL for RLS, RPC grants, transitions and fencing; API tests verify ownership and safe responses; Playwright mocks the workflow API for progress/reload/retry. These do not verify hosted Cloudflare/Supabase connectivity. See [Session 5 QA](SESSION_5.md).
 
 Coverage is not proof that an unconfigured external service or skipped flow works. Consult [Supabase foundation](../architecture/SUPABASE.md) and [Authentication](../architecture/AUTH.md) for exact integration variables.
 
