@@ -4,6 +4,7 @@ import {
   VideoScreeningProviderError,
 } from "@/server/ai/openai-video-screening-provider";
 import {
+  getAudioTrackDuration,
   getScreeningSampleRanges,
   SCREENING_CLASSIFIER_MODEL,
   SCREENING_SAMPLE_MODEL,
@@ -49,6 +50,30 @@ function sampleExtractor() {
 }
 
 describe("video topic screening", () => {
+  it("computes audio duration from packets when container metadata omits it", async () => {
+    const computeDuration = vi.fn().mockResolvedValue(37.5);
+
+    await expect(
+      getAudioTrackDuration({
+        getDurationFromMetadata: vi.fn().mockResolvedValue(null),
+        computeDuration,
+      }),
+    ).resolves.toBe(37.5);
+    expect(computeDuration).toHaveBeenCalledOnce();
+  });
+
+  it("uses valid metadata duration without scanning packets", async () => {
+    const computeDuration = vi.fn();
+
+    await expect(
+      getAudioTrackDuration({
+        getDurationFromMetadata: vi.fn().mockResolvedValue(37.5),
+        computeDuration,
+      }),
+    ).resolves.toBe(37.5);
+    expect(computeDuration).not.toHaveBeenCalled();
+  });
+
   it("screens short videos in full and uses three samples for longer videos", () => {
     expect(getScreeningSampleRanges(0)).toEqual([]);
     expect(getScreeningSampleRanges(8)).toEqual([

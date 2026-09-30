@@ -89,6 +89,18 @@ export function getScreeningSampleRanges(durationSeconds: number) {
   }));
 }
 
+export async function getAudioTrackDuration(track: {
+  getDurationFromMetadata: () => Promise<number | null>;
+  computeDuration: () => Promise<number>;
+}): Promise<number | null> {
+  const durationSeconds =
+    (await track.getDurationFromMetadata()) ?? (await track.computeDuration());
+
+  return Number.isFinite(durationSeconds) && durationSeconds > 0
+    ? durationSeconds
+    : null;
+}
+
 /**
  * Remuxes only three short ranges from the video's existing compressed audio track.
  * It does not decode video/audio, invoke a system binary, or send source video bytes
@@ -118,7 +130,7 @@ export async function extractScreeningAudioSample(
       return null;
     }
 
-    const durationSeconds = await track.getDurationFromMetadata();
+    const durationSeconds = await getAudioTrackDuration(track);
     if (durationSeconds === null) return null;
     const ranges = getScreeningSampleRanges(durationSeconds);
     if (ranges.length === 0) return null;
