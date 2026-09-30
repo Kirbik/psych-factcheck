@@ -119,6 +119,9 @@ test("shows a screened-out outcome without marking transcription complete", asyn
       "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено содержательного материала о психологии.",
     ),
   ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено содержательного материала о психологии.",
+  );
   await expect(
     page.locator("li").filter({ hasText: "Создание транскрипта" }),
   ).not.toContainText("Готово");

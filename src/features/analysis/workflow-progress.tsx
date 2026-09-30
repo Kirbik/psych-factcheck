@@ -215,6 +215,13 @@ export function WorkflowProgress({
               ? "failed"
               : "pending"
       }
+      workflowActive={busy || job?.status === "running"}
+      workflowMessageTone={
+        job?.status === "completed" &&
+        job.error_code === SCREENED_OUT_ERROR_CODE
+          ? "warning"
+          : undefined
+      }
       onBack={onBack}
       uploadError={error || undefined}
       workflowMessage={

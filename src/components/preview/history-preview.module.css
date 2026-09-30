@@ -8,3 +8,4 @@
 .table thead th:nth-child(1){width:36%}.table thead th:nth-child(2){width:22%}.table thead th:nth-child(3){width:14%}.table thead th:nth-child(4){width:20%}.table thead th:nth-child(5){width:8%}
 .header{padding-left:max(32px,calc((100% - 1184px)/2 + 32px));padding-right:max(32px,calc((100% - 1184px)/2 + 32px))}
 @media(max-width:760px){.header{padding-left:20px;padding-right:20px}}
+.preview{--warning:#96670f;--warning-soft:#faeede}

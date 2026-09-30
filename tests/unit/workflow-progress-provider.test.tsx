@@ -196,6 +196,22 @@ describe("workflow progress upload lock", () => {
         id: "44444444-4444-4444-8444-444444444444",
         generation: 1,
         status: "running",
+        stage: "screen_video",
+        attempt: 1,
+        error_code: null,
+      },
+    });
+
+    expect(
+      await screen.findByText("Проверяем тему по коротким фрагментам видео."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+
+    realtime.onChange?.({
+      new: {
+        id: "44444444-4444-4444-8444-444444444444",
+        generation: 1,
+        status: "running",
         stage: "transcribe_video",
         attempt: 1,
         error_code: null,

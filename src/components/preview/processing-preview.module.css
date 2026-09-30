@@ -7,3 +7,8 @@
 .steps:before{display:none}.steps{margin-top:0}.step{min-height:98px}.step:not(:last-child):after{display:none}
 @keyframes processingPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.45);opacity:.45}}@keyframes processingRing{0%,100%{box-shadow:0 0 0 4px var(--accent-soft)}50%{box-shadow:0 0 0 8px rgba(23,96,76,.08)}}.step-processing .indicator{animation:processingRing 1.6s ease-in-out infinite}.step-processing .indicator:after{animation:processingPulse 1.6s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.step-processing .indicator,.step-processing .indicator:after{animation:none}}
 .resumeLink{background:none;border:0;color:var(--accent);cursor:pointer;display:block;font:500 13px/20px var(--history-preview-inter),Arial,sans-serif;margin:4px 0 0;padding:0;text-decoration:underline}.resumeLink:disabled{color:var(--muted);cursor:not-allowed}.resumeLink:focus-visible{outline:3.5px solid rgba(23,96,76,.13);outline-offset:2px}
+/* Workflow activity follows the existing animated processing marker and semantic tokens. */
+.subtitleActive{align-items:flex-start;color:var(--warning);display:flex;gap:8px;justify-content:center}
+.subtitleActive:before{animation:processingPulse 1.6s ease-in-out infinite;background:var(--accent);border-radius:50%;content:"";flex:0 0 8px;height:8px;margin-top:8px}
+.screeningAlert{margin:24px auto 0;max-width:640px;text-align:left}
+@media(prefers-reduced-motion:reduce){.subtitleActive:before{animation:none}}

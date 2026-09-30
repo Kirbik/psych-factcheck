@@ -992,3 +992,5 @@ body h3 {
 .auth-page.auth-page--product .auth-form .validation-error { color: var(--danger, #b4551f); font-size: 0.8125rem; font-weight: 500; margin: 0.25rem 0 0; }
 .auth-page.auth-page--product .auth-form .input[aria-invalid="true"] { border-color: var(--danger, #b4551f); }
 .auth-page.auth-page--product .auth-form .input[aria-invalid="true"]:focus-visible { outline: 3px solid color-mix(in srgb, var(--danger, #b4551f) 28%, transparent); }
+.alert--warning { background: var(--warning-soft, #faeede); border-color: color-mix(in srgb, var(--warning, #96670f) 24%, transparent); border-left-color: var(--warning, #96670f); color: var(--ink, #1b1916); }
+.alert--warning > span { color: var(--warning, #96670f); }

@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
 type AlertProps = HTMLAttributes<HTMLDivElement> & {
-  tone?: "info" | "error";
+  tone?: "info" | "warning" | "error";
 };
 
 export function Alert({ children, className, tone = "info", ...props }: AlertProps) {
@@ -11,7 +11,7 @@ export function Alert({ children, className, tone = "info", ...props }: AlertPro
       role={tone === "error" ? "alert" : "status"}
       {...props}
     >
-      <span aria-hidden="true">{tone === "error" ? "!" : "i"}</span>
+      <span aria-hidden="true">{tone === "info" ? "i" : "!"}</span>
       <div>{children}</div>
     </div>
   );

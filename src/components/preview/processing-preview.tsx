@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { Inter, Lora } from "next/font/google";
+import { Alert } from "@/components/ui/alert";
 import styles from "./history-preview.module.css";
 import processingStyles from "./processing-preview.module.css";
 
@@ -29,6 +30,8 @@ type ProcessingPreviewProps = {
   transcriptionStatus?: UploadProgressStatus;
   claimExtractionStatus?: UploadProgressStatus;
   workflowMessage?: string;
+  workflowMessageTone?: "warning";
+  workflowActive?: boolean;
   onRetry?: () => void;
   onCancel?: () => void;
   retryDisabled?: boolean;
@@ -85,6 +88,8 @@ export function ProcessingPreview({
   transcriptionStatus = "pending",
   claimExtractionStatus = "pending",
   workflowMessage,
+  workflowMessageTone,
+  workflowActive = false,
   onRetry,
   onCancel,
   retryDisabled,
@@ -177,9 +182,20 @@ export function ProcessingPreview({
         <h1 className={processingStyles.title} id="processing-title">
           {titleByUploadStatus[uploadStatus]}
         </h1>
-        <p className={processingStyles.subtitle} aria-live="polite">
-          {workflowMessage ?? subtitleByUploadStatus[uploadStatus]}
-        </p>
+        {workflowMessageTone === "warning" ? (
+          <Alert className={processingStyles.screeningAlert} tone="warning">
+            {workflowMessage}
+          </Alert>
+        ) : (
+          <p
+            className={`${processingStyles.subtitle} ${workflowActive ? processingStyles.subtitleActive : ""}`}
+            aria-live="polite"
+            aria-busy={workflowActive}
+            role="status"
+          >
+            {workflowMessage ?? subtitleByUploadStatus[uploadStatus]}
+          </p>
+        )}
         {uploadError ? (
           <p className={processingStyles.subtitle} role="alert">
             {uploadError}
