@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, three token-auth tables, and a private video bucket. Transcript, claim, evidence, fact-check, and billing entities below remain future schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `transcripts`, three token-auth tables, and a private video bucket. Claim, evidence, fact-check, and billing entities below remain future schema.
 
 ## Identity and content
 

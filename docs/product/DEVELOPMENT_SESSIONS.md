@@ -2,9 +2,9 @@
 
 Use one session per bounded objective. Do not begin a later session until the user accepts the current one. Every session starts with `AGENTS.md`, `ARCHITECTURE.md`, relevant documents, tests, and `git status`, and ends with actual check results plus `git diff --stat`.
 
-## Repository progress (2026-09-27)
+## Repository progress (2026-09-30)
 
-Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. The user explicitly directed work to proceed to Session 6 despite those open acceptance items. Session 6 implementation now exists locally; migration/deployment and a live OpenAI request remain unverified. This is not a claim that the MVP is release-ready.
+Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. The user explicitly directed work to proceed to Session 6 despite those open acceptance items. Session 6's migration, Worker deployment/secret, and live transcription are now verified in Production; a completed job and persisted transcript row were checked on 2026-09-30. Session 6 is ready to close; this is not a claim that the MVP is release-ready.
 
 ## Session 0 — Foundation
 
@@ -98,7 +98,7 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 6 — Transcription
 
-**Status:** Implemented locally. Provider selected: OpenAI `whisper-1` for segment timestamps. The migration, Worker secret/deployment, and live provider verification remain pending. See [Session 6 verification](../testing/SESSION_6.md).
+**Status:** Implemented and live-verified in Production. Provider selected: OpenAI `whisper-1` for segment timestamps. The migration, Worker binding and secret are deployed; a completed job and its persisted transcript row were verified on 2026-09-30. Local checks and remaining limits are recorded in [Session 6 verification](../testing/SESSION_6.md).
 
 - **Goal:** Implement `TranscriptionProvider` adapter and timestamped transcript persistence.
 - **Why:** Claims require auditable source text and timing.

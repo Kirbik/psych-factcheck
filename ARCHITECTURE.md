@@ -9,12 +9,12 @@ Psych Factcheck is a modular monolith for evidence-grounded analysis of psycholo
 - Next.js App Router and strict TypeScript for the web application and server code
 - React for UI, Zod for runtime validation
 - Supabase PostgreSQL, Auth, and private Storage (current); pgvector is future scope
-- Cloudflare Workflows and a Worker cron (Session 6 adds OpenAI transcription; Production binding, secret and migration remain pending)
+- Cloudflare Workflows and a Worker cron (Session 6 OpenAI transcription is deployed and live-verified in Production)
 - Vitest, Playwright, ESLint, and Prettier
 - pnpm for package management
 - Next.js toolchain plus an experimental Vinext/Vite/Cloudflare Workers target
 
-The current app is a Next.js modular monolith backed by Supabase. Standard Next.js scripts coexist with a Vinext/Vite/Cloudflare Worker path (`dev:vinext`, `build:vinext`, `start:vinext`, `deploy:vinext`), which has been deployed to the project's `workers.dev` address. The Cloudflare Worker hosts the app, durable background workflow, and scheduled recovery; Supabase remains the source of truth for jobs and content. The Production Session 5 preparation workflow and minute cron were verified against matching persisted job states. The Session 6 source now defines a new transcription workflow, but its migration, binding deployment, OpenAI Worker secret, and a live authenticated upload remain unverified. No separate Python backend, Redis/Celery queue, Docker/Kubernetes stack, or external vector database is used. pgvector, claim extraction, retrieval, and judgment are not connected.
+The current app is a Next.js modular monolith backed by Supabase. Standard Next.js scripts coexist with a Vinext/Vite/Cloudflare Worker path (`dev:vinext`, `build:vinext`, `start:vinext`, `deploy:vinext`), which has been deployed to the project's `workers.dev` address. The Cloudflare Worker hosts the app, durable background workflow, and scheduled recovery; Supabase remains the source of truth for jobs and content. The Production Session 5 preparation workflow and minute cron were verified against matching persisted job states. Session 6's migration and Worker binding/secret are deployed; a completed Production job with its transcript row was verified on 2026-09-30. No separate Python backend, Redis/Celery queue, Docker/Kubernetes stack, or external vector database is used. pgvector, claim extraction, retrieval, and judgment are not connected.
 
 ## System flow
 
@@ -62,11 +62,11 @@ Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrati
 
 ## Workflow boundary
 
-Session 6 extends the Cloudflare workflow. A database trigger atomically queues an `analysis_jobs` row with each uploaded content row; a Worker cron and an owner-authorized API start or reconcile the workflow. Generation/run fencing protects retries and persisted progress. Supported MP4/WebM files up to 25 MB are transcribed through OpenAI `whisper-1`; validated segments are persisted once per pipeline version. Content remains pending and claim/evidence/report stages do not run. The Session 6 migration, Worker binding, `OPENAI_API_KEY` secret, and live run must be configured and verified. See [Background workflows](docs/architecture/WORKFLOWS.md).
+Session 6 extends the Cloudflare workflow. A database trigger atomically queues an `analysis_jobs` row with each uploaded content row; a Worker cron and an owner-authorized API start or reconcile the workflow. Generation/run fencing protects retries and persisted progress. Supported MP4/WebM files up to 25 MB are transcribed through OpenAI `whisper-1`; validated segments are persisted once per pipeline version. Content remains pending and claim/evidence/report stages do not run. The Session 6 migration, Worker binding, `OPENAI_API_KEY` secret, and live run are configured and verified in Production. See [Background workflows](docs/architecture/WORKFLOWS.md) and [Session 6 verification](docs/testing/SESSION_6.md).
 
 ## AI and Evidence Base
 
-The intended AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and validated timestamped persistence are implemented in source, pending migration/deployment/live verification. There is no claim extraction, embedding, retrieval, reranking, judgment, or report-generation runtime. Structured outputs must be parsed as `unknown` and validated with Zod; retrieved text is untrusted data, never instructions.
+The intended AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and validated timestamped persistence are implemented in source and live-verified in Production. There is no claim extraction, embedding, retrieval, reranking, judgment, or report-generation runtime. Structured outputs must be parsed as `unknown` and validated with Zod; retrieved text is untrusted data, never instructions.
 
 There are no `sources`, `evidence_chunks`, or fact-check persistence tables yet. The future Evidence Base must use real source metadata and traceable chunks; retrieval may use pgvector and metadata filters, followed by reranking. Judgment receives a bounded Evidence Package, and every cited identifier must resolve to a real stored source.
 

@@ -13,10 +13,12 @@ transcript per content item and `transcription-v1` version. Content remains
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
-source of truth for job state and ownership. The Production dashboard had the
-Session 5 binding and cron configured, with matching completed Workflow/Supabase
-runs. The Session 6 binding, migration, Worker `OPENAI_API_KEY` secret and live
-browser transcription remain pending. If the Worker binding is unavailable, the API
+source of truth for job state and ownership. The Production dashboard has the
+Session 6 binding and cron configured, and the transcription migration and
+`OPENAI_API_KEY` Worker secret are deployed. On 2026-09-30, a Production job
+completed with `stage = complete` and its matching `transcripts` row. The user
+confirmed a successful live transcription. The automated E2E suite uses mocked
+workflow APIs and skips dedicated live auth/upload cases. If the Worker binding is unavailable, the API
 returns HTTP 503 with an explicit unavailable message; uploads remain saved.
 There is no fake executor in production.
 
@@ -97,11 +99,12 @@ Session 6 changes only the existing workflow progress text/state mapping; it add
    required.
 5. Apply `20260930120000_transcription_v1.sql`, deploy the Worker with the
    `analysis-transcription-v1` binding, and set `OPENAI_API_KEY` with
-   `wrangler secret put OPENAI_API_KEY`.
-6. Verify a fresh authorized MP4/WebM upload no larger than 25 MB produces a
-   transcript and completed `transcription-v1` job. Test duplicate start,
-   retry, provider failure and reload. Content must remain pending with no
-   report. MOV and larger files currently fail explicitly.
+   `wrangler secret put OPENAI_API_KEY`. **Completed for Production on 2026-09-30.**
+6. **Production live verification completed on 2026-09-30:** the user confirmed
+   a successful transcription and the matching completed job/transcript row
+   were verified in Supabase. Automated tests cover duplicate start, retry,
+   provider failure and reload. Content remains pending with no report; MOV
+   and larger files currently fail explicitly.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,

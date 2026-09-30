@@ -2,10 +2,32 @@
 
 ## Result
 
-The OpenAI transcription workflow is implemented locally. Automated checks
-cover the adapter contract, response validation, timeout/provider errors,
-transcript persistence, RLS, stage fencing, retry behavior and existing UI
-progress states.
+**PASS — Session 6 Definition of Done met.** The OpenAI transcription workflow
+is implemented and deployed. Automated checks cover the adapter contract,
+response validation, timeout/provider errors, transcript persistence, RLS,
+stage fencing, retry behavior and existing UI progress states. On 2026-09-30,
+the user confirmed a successful live transcription; a read-only Production
+query then confirmed a `completed` job at `complete` with its transcript row
+saved.
+
+## Latest stage gate — 2026-09-30
+
+- `pnpm lint`: PASS; two existing Next navigation warnings remain in
+  `src/components/preview/history-preview.tsx`.
+- `node node_modules/next/dist/bin/next typegen`: PASS; required to refresh
+  `.next` route types after the Vinext build.
+- `pnpm typecheck`: PASS after route type generation. The first run against
+  stale `.next` files failed with missing generated route exports.
+- `pnpm test`: 148 passed, 4 skipped; 23 files passed, 2 environment-gated
+  files skipped.
+- `pnpm evals`: 2 passed; shape validation only, not transcription quality.
+- `pnpm test:e2e`: 11 passed, 5 skipped; live auth/upload E2E cases need a
+  dedicated test account/token.
+- `pnpm build`: PASS.
+- `pnpm build:vinext`: PASS (exit code 0); Wrangler emitted an `EPERM` warning
+  when writing its debug log outside the workspace.
+- Hosted verification: latest transcription job query returned `completed`,
+  stage `complete`, and `transcript_saved = true`.
 
 ## Checks
 
@@ -28,14 +50,10 @@ progress states.
   Vinext reported `Build complete`.
 - `git diff --check`: PASS; Git emitted line-ending normalization warnings.
 
-## Not verified
+## Limits and remaining verification
 
-- The `20260930120000_transcription_v1.sql` migration has not been applied to a
-  hosted Supabase project.
-- The Production Worker has not been deployed with the new
-  `analysis-transcription-v1` binding and `OPENAI_API_KEY` secret.
-- No live OpenAI request or fresh authenticated Production upload was run; no
-  API key was provided for this session.
+- Automated E2E uses mocked workflow APIs and skips dedicated live auth/upload
+  cases; the user completed the live Production upload/transcription manually.
 - OpenAI currently accepts MP4/WebM files up to 25 MB in this integration.
   MOV and larger videos fail with explicit job errors; audio extraction and
   chunking are not implemented.
