@@ -112,18 +112,25 @@ See [setup instructions](../architecture/WORKFLOWS.md).
 
 ## Session 5 follow-up verification — 2026-09-30
 
-- A read-only Supabase check found the five most recently updated
-  `analysis_jobs` rows in `completed` / `complete`, with `run_id` set. Every
-  row had a matching `content_items` row whose status remained `pending`.
-  This verifies persisted job-to-content linkage and expected non-AI status;
-  the run IDs were not cross-checked against Cloudflare's dashboard instances.
+- The seven Production Cloudflare instances visible for
+  `analysis-preparation-v1` were `Completed`; errored, queued, running, paused,
+  waiting and rolling-back counts were all zero.
+- All seven instance IDs matched the seven latest Supabase
+  `analysis_jobs.run_id` values exactly. Each corresponding job was
+  `completed` / `complete`, generation 1, attempt 1; each linked
+  `content_items` row existed and remained `pending`. One instance's details
+  showed input `{ jobId, generation: 1 }`, output `{ outcome: "prepared" }`,
+  and the `prepare uploaded video` step completed.
+- The latest ten Production cron events (`* * * * *`) all showed `Success`.
+  This confirms the scheduler is running, but does not itself simulate recovery
+  of a crashed workflow.
 - `pnpm test:e2e`: 11 passed, 5 skipped. The mocked browser tests for restored
   upload UI, durable workflow progress, explicit retry, and unavailable worker
   passed. Live auth/upload cases were skipped because no E2E test token was
   configured.
 - `pnpm test`: 138 passed, 4 skipped; `pnpm typecheck`: passed; `pnpm lint`:
   passed with two existing navigation warnings in `history-preview.tsx`.
-- A fresh TUS upload and a live Cloudflare crash/recovery/retry scenario were
-  not run: this workspace has no configured E2E user token or Cloudflare CLI
-  credentials. Session 5 acceptance remains pending those environment-backed
-  checks and Figma comparison.
+- A fresh authenticated TUS upload and live failure/retry/recovery scenario
+  were not run. The application tab is logged out, no E2E user token is
+  configured, and these checks would create Production Storage/database state.
+  Session 5 acceptance remains pending those checks and Figma comparison.
