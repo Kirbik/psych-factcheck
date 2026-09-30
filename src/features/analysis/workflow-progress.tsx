@@ -187,7 +187,11 @@ export function WorkflowProgress({
       uploadError={error || undefined}
       workflowMessage={
         job
-          ? workflowMessages[job.status]
+          ? job.status === "running" && job.stage === "transcribe_video"
+            ? "Транскрибируем видео через OpenAI."
+            : job.status === "running" && job.stage === "validate_upload"
+              ? "Проверяем загруженное видео."
+              : workflowMessages[job.status]
           : "Видео сохранено. Получаем состояние подготовки."
       }
       onRetry={
