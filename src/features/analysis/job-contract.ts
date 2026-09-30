@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-export const PIPELINE_VERSION = "transcription-v1";
-export const ANALYSIS_WORKFLOW_NAME = "analysis-transcription-v1";
+export const PIPELINE_VERSION = "claim-extraction-v1";
+export const TRANSCRIPTION_VERSION = "transcription-v1";
+export const ANALYSIS_WORKFLOW_NAME = "analysis-claim-extraction-v1";
 export const jobPayloadSchema = z
   .object({
     jobId: z.uuid(),
@@ -19,6 +20,7 @@ export const jobViewSchema = z.object({
     "validate_upload",
     "screen_video",
     "transcribe_video",
+    "extract_claims",
     "complete",
   ]),
   attempt: z.number().int().nonnegative(),
@@ -40,7 +42,7 @@ export const workflowMessages = {
   queued: "Видео загружено. Подготовка к анализу ожидает запуска.",
   running: "Проверяем видео и создаём транскрипт.",
   completed:
-    "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
+    "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
   failed:
     "Подготовка не завершена. Повторите запуск; если ошибка повторяется, загрузите видео заново.",
   cancelled: "Подготовка остановлена. Можно повторить запуск.",

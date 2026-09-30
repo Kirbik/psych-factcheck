@@ -80,7 +80,7 @@ test("shows durable progress after reload without claiming AI completion", async
   await page.reload();
   await expect(
     page.getByText(
-      "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
+      "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
     ),
   ).toBeVisible();
   await expect(
@@ -91,7 +91,9 @@ test("shows durable progress after reload without claiming AI completion", async
   ).toContainText("Готово");
 });
 
-test("shows a screened-out outcome without marking transcription complete", async ({ page }) => {
+test("shows a screened-out outcome without marking transcription complete", async ({
+  page,
+}) => {
   await page.route("**/api/analysis**", (route) =>
     route.fulfill({
       json: {
@@ -136,7 +138,7 @@ test("retries a failed generation explicitly", async ({ page }) => {
   await page.getByRole("button", { name: "Повторить запуск" }).click();
   await expect(
     page.getByText(
-      "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
+      "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
     ),
   ).toBeVisible();
   expect(retried).toBe(true);

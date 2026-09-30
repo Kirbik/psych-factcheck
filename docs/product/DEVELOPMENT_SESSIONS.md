@@ -126,16 +126,19 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 7 — Claim Extraction
 
-- **Goal:** Extract, normalize, and classify claims via `LLMProvider` structured output.
+**Status:** Implemented locally with OpenAI `gpt-4o-mini`; automated extraction quality and Production verification remain outstanding.
+
+- **Goal:** Extract, normalize, and classify claims via the OpenAI `ClaimExtractionProvider` structured output.
 - **Why:** Retrieval needs faithful standalone propositions.
 - **Scope:** Prompt/schema/versioning, Zod validation, claim persistence, bounded repair/error behavior.
 - **Out of scope:** Retrieval, verdicts, using model knowledge as evidence.
 - **Expected files:** AI schemas/prompts/provider adapter, claims repository, tests/evals.
-- **Acceptance criteria:** Original text/timestamp remain traceable; normalization does not strengthen claims.
+- **Acceptance criteria:** Exact source excerpts map to transcript segments; timestamps derive from those segments; normalization preserves qualification and causal strength.
 - **Required tests:** schema/domain unit, adapter/workflow integration, claim evals, build.
 - **Suggested Codex model:** Sol for design; Terra for implementation.
 - **QA requirements:** Reviewer, Test Engineer, independent AI QA.
-- **Definition of Done:** Versioned validated claims are persisted with measurable extraction quality.
+- **Definition of Done:** Versioned validated claims are persisted with measurable extraction quality. This local implementation has not yet met the AI quality measurement or Production verification parts of this gate.
+- **Verification record:** [Session 7 checks and limits](../testing/SESSION_7.md).
 
 ## Session 8 — Evidence Base v0
 

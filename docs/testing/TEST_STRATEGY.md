@@ -44,7 +44,7 @@ pnpm test:db
 
 Playwright uses the stable Google Chrome channel. Install Chrome locally; CI may install the matching Playwright browser. The current suite covers public token-auth UI states and prototype routes. Supabase-backed signup and protected-route coverage needs the public URL/key plus the server service-role key. Existing-user login/logout/upload additionally need `E2E_SUPABASE_TOKEN` for a dedicated confirmed test user. Missing credentials cause explicit skips.
 
-Future critical flows include actual upload persistence, analysis start/progress, report viewing, and history. The root-level prototype screens are not substitutes for those flows.
+The current E2E suite mocks persisted analysis progress and retry behavior; authenticated live upload still requires the dedicated Supabase test environment. The root-level prototype screens are not substitutes for hosted integration coverage.
 
 ```bash
 pnpm test:e2e
@@ -52,7 +52,7 @@ pnpm test:e2e
 
 ## Level 5 — AI evals
 
-The current `pnpm evals` command checks the Zod shape of a single synthetic fixture. It does not call a model or establish fact-check accuracy. Future versioned evals will assess claim extraction/normalization, retrieval relevance, verdict quality, citation accuracy, unsupported claims, hallucinations, and correlation/causation errors. See [AI eval plan](AI_EVALS.md).
+The current `pnpm evals` command checks the Zod shape of synthetic fact-check, topic-screening, and claim-extraction fixtures. It does not call a model or establish extraction or fact-check quality. Future versioned evals will assess claim extraction/normalization, retrieval relevance, verdict quality, citation accuracy, unsupported claims, hallucinations, and correlation/causation errors. See [AI eval plan](AI_EVALS.md).
 
 ```bash
 pnpm evals

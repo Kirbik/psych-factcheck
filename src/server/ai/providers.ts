@@ -9,7 +9,36 @@ export interface TranscriptSegment {
 export interface ExtractedClaim {
   readonly original: string;
   readonly normalized: string;
-  readonly timestampSeconds: number;
+  readonly startSeconds: number;
+  readonly endSeconds: number;
+  readonly claimType: ClaimType;
+}
+
+export const claimTypes = [
+  "descriptive_prevalence",
+  "causal_mechanistic",
+  "intervention",
+  "diagnostic_classification",
+  "prognostic",
+  "consensus_theory",
+  "historical",
+] as const;
+
+export type ClaimType = (typeof claimTypes)[number];
+
+export interface ClaimExtractionResult {
+  readonly extractionVersion: string;
+  readonly provider: "openai";
+  readonly model: string;
+  readonly instructionsVersion: string;
+  readonly schemaVersion: string;
+  readonly claims: readonly ExtractedClaim[];
+}
+
+export interface ClaimExtractionProvider {
+  extractClaims(
+    transcript: readonly TranscriptSegment[],
+  ): Promise<ClaimExtractionResult>;
 }
 
 export interface EvidenceItem {
@@ -31,10 +60,7 @@ export interface FactCheckJudgment {
   readonly citedChunkIds: readonly string[];
 }
 
-export interface LLMProvider {
-  extractClaims(
-    transcript: readonly TranscriptSegment[],
-  ): Promise<readonly ExtractedClaim[]>;
+export interface LLMProvider extends ClaimExtractionProvider {
   judge(evidencePackage: EvidencePackage): Promise<FactCheckJudgment>;
 }
 

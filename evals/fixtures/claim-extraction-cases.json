@@ -1,0 +1,61 @@
+[
+  {
+    "id": "causal-vs-associational-language",
+    "segments": [
+      {
+        "startSeconds": 0,
+        "endSeconds": 3,
+        "text": "Недосып связан с ухудшением памяти."
+      }
+    ],
+    "expected": [
+      {
+        "original": "Недосып связан с ухудшением памяти.",
+        "normalized": "Недосып связан с ухудшением памяти.",
+        "claimType": "descriptive_prevalence",
+        "startSeconds": 0,
+        "endSeconds": 3
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "id": "split-independent-claims",
+    "segments": [
+      {
+        "startSeconds": 4,
+        "endSeconds": 9,
+        "text": "Недосып ухудшает память и повышает тревожность."
+      }
+    ],
+    "expected": [
+      {
+        "original": "Недосып ухудшает память",
+        "normalized": "Недосып ухудшает память.",
+        "claimType": "causal_mechanistic",
+        "startSeconds": 4,
+        "endSeconds": 9
+      },
+      {
+        "original": "Недосып повышает тревожность",
+        "normalized": "Недосып повышает тревожность.",
+        "claimType": "causal_mechanistic",
+        "startSeconds": 4,
+        "endSeconds": 9
+      }
+    ],
+    "synthetic": true
+  },
+  {
+    "id": "exclude-question-and-advice",
+    "segments": [
+      {
+        "startSeconds": 10,
+        "endSeconds": 14,
+        "text": "Попробуйте медитировать. Разве это не улучшает настроение?"
+      }
+    ],
+    "expected": [],
+    "synthetic": true
+  }
+]

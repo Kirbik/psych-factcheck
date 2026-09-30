@@ -179,9 +179,21 @@ export function WorkflowProgress({
         job?.status === "completed" &&
         job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
-          : job?.stage === "transcribe_video" && job.status === "running"
+          : job?.stage === "extract_claims"
+            ? "completed"
+            : job?.stage === "transcribe_video" && job.status === "running"
+              ? "processing"
+              : job?.stage === "transcribe_video" && job.status === "failed"
+                ? "failed"
+                : "pending"
+      }
+      claimExtractionStatus={
+        job?.status === "completed" &&
+        job.error_code !== SCREENED_OUT_ERROR_CODE
+          ? "completed"
+          : job?.stage === "extract_claims" && job.status === "running"
             ? "processing"
-            : job?.stage === "transcribe_video" && job.status === "failed"
+            : job?.stage === "extract_claims" && job.status === "failed"
               ? "failed"
               : "pending"
       }
@@ -196,9 +208,11 @@ export function WorkflowProgress({
               ? "Проверяем тему по коротким фрагментам видео."
               : job.status === "running" && job.stage === "transcribe_video"
                 ? "Транскрибируем видео через OpenAI."
-                : job.status === "running" && job.stage === "validate_upload"
-                  ? "Проверяем загруженное видео."
-                  : workflowMessages[job.status]
+                : job.status === "running" && job.stage === "extract_claims"
+                  ? "Выделяем и классифицируем утверждения."
+                  : job.status === "running" && job.stage === "validate_upload"
+                    ? "Проверяем загруженное видео."
+                    : workflowMessages[job.status]
           : "Видео сохранено. Получаем состояние подготовки."
       }
       onRetry={

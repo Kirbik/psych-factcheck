@@ -2,9 +2,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import {
   PIPELINE_VERSION,
+  TRANSCRIPTION_VERSION,
   type JobPayload,
 } from "@/features/analysis/job-contract";
-import type { TranscriptionResult } from "@/server/ai/providers";
+import type {
+  ClaimExtractionResult,
+  TranscriptionResult,
+} from "@/server/ai/providers";
+import {
+  CLAIM_EXTRACTION_VERSION,
+  transcriptSegmentsSchema,
+} from "@/server/ai/claim-extraction";
 import {
   SCREENING_VERSION,
   videoScreeningSchema,
@@ -86,7 +94,7 @@ export function workflowRepository(client: WorkflowClient) {
         .from("transcripts")
         .select("id")
         .eq("content_item_id", contentItemId)
-        .eq("pipeline_version", PIPELINE_VERSION)
+        .eq("pipeline_version", TRANSCRIPTION_VERSION)
         .maybeSingle();
       if (error) throw new Error("Transcript read failed");
       return Boolean(data);
@@ -100,7 +108,7 @@ export function workflowRepository(client: WorkflowClient) {
       const { error } = await client.from("transcripts").upsert(
         {
           content_item_id: contentItemId,
-          pipeline_version: PIPELINE_VERSION,
+          pipeline_version: TRANSCRIPTION_VERSION,
           provider,
           model,
           language: result.language,
@@ -112,6 +120,55 @@ export function workflowRepository(client: WorkflowClient) {
         },
       );
       if (error) throw new Error("Transcript write failed");
+    },
+    async getTranscript(
+      contentItemId: string,
+    ): Promise<{ id: string; result: TranscriptionResult } | null> {
+      const { data, error } = await client
+        .from("transcripts")
+        .select("id, language, segments")
+        .eq("content_item_id", contentItemId)
+        .eq("pipeline_version", TRANSCRIPTION_VERSION)
+        .maybeSingle();
+      if (error) throw new Error("Transcript read failed");
+      if (!data) return null;
+      const segments = transcriptSegmentsSchema.safeParse(data.segments);
+      if (!segments.success) throw new Error("Transcript record invalid");
+      return {
+        id: data.id,
+        result: { language: data.language, segments: segments.data },
+      };
+    },
+    async hasClaimExtraction(transcriptId: string) {
+      const { data, error } = await client
+        .from("claim_extractions")
+        .select("id")
+        .eq("transcript_id", transcriptId)
+        .eq("extraction_version", CLAIM_EXTRACTION_VERSION)
+        .maybeSingle();
+      if (error) throw new Error("Claim extraction read failed");
+      return Boolean(data);
+    },
+    async saveClaimExtraction(
+      transcriptId: string,
+      result: ClaimExtractionResult,
+    ) {
+      const { data, error } = await client.rpc("save_claim_extraction", {
+        p_transcript_id: transcriptId,
+        p_extraction_version: result.extractionVersion,
+        p_provider: result.provider,
+        p_model: result.model,
+        p_instructions_version: result.instructionsVersion,
+        p_schema_version: result.schemaVersion,
+        p_claims: result.claims.map((claim) => ({
+          original: claim.original,
+          normalized: claim.normalized,
+          startSeconds: claim.startSeconds,
+          endSeconds: claim.endSeconds,
+          claimType: claim.claimType,
+        })),
+      });
+      if (error || !data) throw new Error("Claim extraction write failed");
     },
     async getScreening(contentItemId: string): Promise<VideoScreening | null> {
       const { data, error } = await client

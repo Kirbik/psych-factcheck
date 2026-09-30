@@ -111,6 +111,91 @@ export type Database = {
           },
         ];
       };
+      claim_extractions: {
+        Row: {
+          created_at: string;
+          extraction_version: string;
+          id: string;
+          instructions_version: string;
+          model: string;
+          provider: string;
+          schema_version: string;
+          transcript_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          extraction_version: string;
+          id?: string;
+          instructions_version: string;
+          model: string;
+          provider: string;
+          schema_version: string;
+          transcript_id: string;
+        };
+        Update: {
+          created_at?: string;
+          extraction_version?: string;
+          id?: string;
+          instructions_version?: string;
+          model?: string;
+          provider?: string;
+          schema_version?: string;
+          transcript_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "claim_extractions_transcript_id_fkey";
+            columns: ["transcript_id"];
+            isOneToOne: false;
+            referencedRelation: "transcripts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      claims: {
+        Row: {
+          claim_extraction_id: string;
+          claim_type: string;
+          created_at: string;
+          end_seconds: number;
+          id: string;
+          normalized_text: string;
+          ordinal: number;
+          original_text: string;
+          start_seconds: number;
+        };
+        Insert: {
+          claim_extraction_id: string;
+          claim_type: string;
+          created_at?: string;
+          end_seconds: number;
+          id?: string;
+          normalized_text: string;
+          ordinal: number;
+          original_text: string;
+          start_seconds: number;
+        };
+        Update: {
+          claim_extraction_id?: string;
+          claim_type?: string;
+          created_at?: string;
+          end_seconds?: number;
+          id?: string;
+          normalized_text?: string;
+          ordinal?: number;
+          original_text?: string;
+          start_seconds?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "claims_claim_extraction_id_fkey";
+            columns: ["claim_extraction_id"];
+            isOneToOne: false;
+            referencedRelation: "claim_extractions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       analysis_jobs: {
         Row: {
           attempt: number;
@@ -348,6 +433,18 @@ export type Database = {
           p_stage: string;
         };
         Returns: boolean;
+      };
+      save_claim_extraction: {
+        Args: {
+          p_claims: Json;
+          p_extraction_version: string;
+          p_instructions_version: string;
+          p_model: string;
+          p_provider: string;
+          p_schema_version: string;
+          p_transcript_id: string;
+        };
+        Returns: string;
       };
       request_analysis_job: {
         Args: { p_content_item_id: string; p_retry_generation?: number };

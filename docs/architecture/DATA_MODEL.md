@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, three token-auth tables, and a private video bucket. Claim, evidence, fact-check, and billing entities below remain future schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, three token-auth tables, and a private video bucket. Evidence, fact-check, and billing entities remain future schema.
 
 ## Identity and content
 
@@ -57,9 +57,16 @@ This document distinguishes the current Supabase schema from the planned analysi
 ### `claims`
 
 - **Purpose:** checkable proposition extracted from a transcript.
-- **Important fields:** `id`, `transcript_id`, original text, normalized text, start/end timestamps, claim type, extraction version.
-- **Relations/ownership:** belongs to transcript; has fact checks. Ownership derives from content item.
-- **Lifecycle:** written idempotently per pipeline version; superseded rather than silently rewritten.
+- **Implemented fields:** `id`, `claim_extraction_id`, ordinal, exact source excerpt, normalized text, start/end seconds, claim type, and `created_at`.
+- **Relations/ownership:** belongs to a versioned `claim_extractions` row; ownership derives through extraction, transcript, and content item.
+- **Lifecycle:** immutable and idempotent per extraction version. An extraction marker is stored even when the model returns no claims. The Worker-only atomic save function prevents duplicate or partial child rows on workflow retries.
+
+### `claim_extractions`
+
+- **Purpose:** record completed extraction, including empty results, and preserve the model/prompt/schema versions used.
+- **Implemented fields:** transcript ID, extraction version, provider, model, instructions version, schema version, and `created_at`.
+- **Relations/ownership:** belongs to a transcript; owner reads follow the transcript's content item. The service role writes.
+- **Lifecycle:** unique by `(transcript_id, extraction_version)` and reused on retry.
 
 ## Evidence and fact checks
 
@@ -98,7 +105,7 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video` before `transcribe_video`; a high-confidence out-of-scope result completes with `VIDEO_OUT_OF_SCOPE`. Content remains pending after transcription; no claims, evidence, or report are produced. See [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`; other jobs complete after claims are validated and persisted. Content remains pending; evidence and reports are not produced. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 

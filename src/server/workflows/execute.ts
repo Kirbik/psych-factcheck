@@ -6,6 +6,7 @@ import {
 } from "@/server/storage/video-validator";
 import type { JobPayload } from "@/features/analysis/job-contract";
 import type {
+  ClaimExtractionProvider,
   TranscriptionResult,
 } from "@/server/ai/providers";
 import { MAX_OPENAI_TRANSCRIPTION_BYTES } from "@/server/ai/openai-transcription-provider";
@@ -47,7 +48,10 @@ async function inspectOwnedUpload(
   if (actual.size > MAX_OPENAI_TRANSCRIPTION_BYTES)
     throw new PermanentWorkflowError("TRANSCRIPTION_FILE_TOO_LARGE");
   try {
-    const metadata = validateVideoMetadata(content.original_file_name, actual.size);
+    const metadata = validateVideoMetadata(
+      content.original_file_name,
+      actual.size,
+    );
     validateVideoBytes(actual.header, metadata.extension);
     if (!content.storage_path.endsWith(metadata.extension))
       throw new PermanentWorkflowError("INVALID_UPLOAD");
@@ -95,8 +99,7 @@ export async function executeScreeningStage(
   if (!inspected) return { outcome: "obsolete" } as const;
   const { job, content, actual } = inspected;
   if (await repository.hasTranscript(job.content_item_id)) {
-    await repository.advance(payload, runId, "completed", attempt);
-    return { outcome: "transcribed" } as const;
+    return { outcome: "ready_for_claim_extraction" } as const;
   }
   if (!(await repository.setStage(payload, runId, "screen_video", attempt)))
     return { outcome: "obsolete" } as const;
@@ -121,7 +124,10 @@ export async function executeScreeningStage(
       screening = uncertainScreening("provider_error");
     }
     try {
-      screening = await repository.saveScreening(job.content_item_id, screening);
+      screening = await repository.saveScreening(
+        job.content_item_id,
+        screening,
+      );
     } catch {
       // If diagnostic persistence is temporarily unavailable, fail open.
       screening = uncertainScreening("provider_error");
@@ -175,16 +181,39 @@ export async function executeTranscriptionStage(
       transcript,
     );
   }
+  return { outcome: "ready_for_claim_extraction" } as const;
+}
+
+export async function executeClaimExtractionStage(
+  payload: JobPayload,
+  runId: string,
+  attempt: number,
+  repository: WorkflowRepository,
+  claimExtractor: ClaimExtractionProvider,
+) {
+  const job = await repository.advance(payload, runId, "running", attempt);
+  if (!job) return { outcome: "obsolete" } as const;
+  const transcript = await repository.getTranscript(job.content_item_id);
+  if (!transcript) throw new PermanentWorkflowError("TRANSCRIPT_MISSING");
+  if (!(await repository.setStage(payload, runId, "extract_claims", attempt)))
+    return { outcome: "obsolete" } as const;
+
+  if (!(await repository.hasClaimExtraction(transcript.id))) {
+    const result = await claimExtractor.extractClaims(
+      transcript.result.segments,
+    );
+    await repository.saveClaimExtraction(transcript.id, result);
+  }
   const completed = await repository.advance(
     payload,
     runId,
     "completed",
     attempt,
   );
-  return { outcome: completed ? "transcribed" : "obsolete" } as const;
+  return { outcome: completed ? "claims_extracted" : "obsolete" } as const;
 }
 
-/** Convenience runner retained for focused unit tests and non-Cloudflare callers. */
+/** Test helper for the screening/transcription stages; production uses the staged Worker entrypoint. */
 export async function executeWorkflow(
   payload: JobPayload,
   runId: string,

@@ -9,6 +9,7 @@ import {
   type JobPayload,
 } from "@/features/analysis/job-contract";
 import {
+  executeClaimExtractionStage,
   executeScreeningStage,
   executeTranscriptionStage,
   PermanentWorkflowError,
@@ -24,6 +25,10 @@ import {
   createOpenAIVideoScreeningProvider,
   uncertainScreening,
 } from "@/server/ai/openai-video-screening-provider";
+import {
+  createOpenAIClaimExtractionProvider,
+  ClaimExtractionProviderError,
+} from "@/server/ai/openai-claim-extraction-provider";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
 import { createWorkerClient } from "./client";
@@ -41,13 +46,20 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         : undefined;
     const transcriptionProvider = createOpenAITranscriptionProvider(apiKey);
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
+    const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
     let attempt = 1;
 
     const inspectVideo = async (path: string) => {
       const client = createWorkerClient(this.env);
-      const { data, error } = await client.storage.from(VIDEO_BUCKET).info(path);
+      const { data, error } = await client.storage
+        .from(VIDEO_BUCKET)
+        .info(path);
       if (error || !data) {
-        if (error && "statusCode" in error && String(error.statusCode) === "404")
+        if (
+          error &&
+          "statusCode" in error &&
+          String(error.statusCode) === "404"
+        )
           throw new PermanentWorkflowError("UPLOAD_MISSING");
         throw new Error("Storage unavailable");
       }
@@ -69,7 +81,10 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         .createSignedUrl(storagePath, ttlSeconds);
       if (signed.error || !signed.data)
         throw new Error("Video download unavailable");
-      return readWorkflowVideo(signed.data.signedUrl, MAX_OPENAI_TRANSCRIPTION_BYTES);
+      return readWorkflowVideo(
+        signed.data.signedUrl,
+        MAX_OPENAI_TRANSCRIPTION_BYTES,
+      );
     };
 
     try {
@@ -113,10 +128,63 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
           }
         },
       );
-      if (screening.outcome !== "ready_for_transcription") return screening;
+      if (
+        screening.outcome === "obsolete" ||
+        screening.outcome === "screened_out"
+      )
+        return screening;
+
+      if (screening.outcome === "ready_for_transcription") {
+        const transcription = await step.do(
+          "transcribe screened video",
+          {
+            retries: {
+              limit: 2,
+              delay: "1 second",
+              backoff: "exponential",
+            },
+            timeout: "4 minutes",
+          },
+          async (context) => {
+            attempt = context.attempt;
+            try {
+              return await executeTranscriptionStage(
+                payload,
+                event.instanceId,
+                context.attempt,
+                repository,
+                inspectVideo,
+                async (input) => {
+                  try {
+                    const bytes = await downloadVideo(input.storagePath, 300);
+                    return await transcriptionProvider.transcribe({
+                      fileName: input.fileName,
+                      contentType: input.contentType,
+                      bytes,
+                    });
+                  } catch (error) {
+                    if (error instanceof TranscriptionProviderError) {
+                      if (!error.retryable)
+                        throw new NonRetryableError(error.code);
+                      throw error;
+                    }
+                    throw error;
+                  }
+                },
+              );
+            } catch (error) {
+              if (error instanceof PermanentWorkflowError)
+                throw new NonRetryableError(error.message);
+              throw error;
+            }
+          },
+        );
+        if (transcription.outcome !== "ready_for_claim_extraction")
+          return transcription;
+      }
 
       return await step.do(
-        "transcribe screened video",
+        "extract claims from transcript",
         {
           retries: {
             limit: 2,
@@ -128,31 +196,18 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         async (context) => {
           attempt = context.attempt;
           try {
-            return await executeTranscriptionStage(
+            return await executeClaimExtractionStage(
               payload,
               event.instanceId,
               context.attempt,
               repository,
-              inspectVideo,
-              async (input) => {
-                try {
-                  const bytes = await downloadVideo(input.storagePath, 300);
-                  return await transcriptionProvider.transcribe({
-                    fileName: input.fileName,
-                    contentType: input.contentType,
-                    bytes,
-                  });
-                } catch (error) {
-                  if (error instanceof TranscriptionProviderError) {
-                    if (!error.retryable)
-                      throw new NonRetryableError(error.code);
-                    throw error;
-                  }
-                  throw error;
-                }
-              },
+              claimExtractionProvider,
             );
           } catch (error) {
+            if (error instanceof ClaimExtractionProviderError) {
+              if (!error.retryable) throw new NonRetryableError(error.code);
+              throw error;
+            }
             if (error instanceof PermanentWorkflowError)
               throw new NonRetryableError(error.message);
             throw error;

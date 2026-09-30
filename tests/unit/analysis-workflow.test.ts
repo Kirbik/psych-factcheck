@@ -11,6 +11,7 @@ import {
   type WorkflowRunner,
 } from "@/server/workflows/dispatch";
 import {
+  executeClaimExtractionStage,
   executeWorkflow,
   PermanentWorkflowError,
 } from "@/server/workflows/execute";
@@ -18,6 +19,13 @@ import type {
   AnalysisJob,
   WorkflowRepository,
 } from "@/server/workflows/repository";
+import type { ClaimExtractionProvider } from "@/server/ai/providers";
+import {
+  CLAIM_EXTRACTION_MODEL,
+  CLAIM_EXTRACTION_SCHEMA_VERSION,
+  CLAIM_EXTRACTION_VERSION,
+} from "@/server/ai/claim-extraction";
+import { CLAIM_EXTRACTION_INSTRUCTIONS_VERSION } from "@/server/ai/prompts/claim-extraction-v1";
 import {
   SCREENING_CLASSIFIER_MODEL,
   SCREENING_INSTRUCTIONS_VERSION,
@@ -104,6 +112,23 @@ function repository() {
     saveTranscript: vi
       .fn<WorkflowRepository["saveTranscript"]>()
       .mockResolvedValue(undefined),
+    getTranscript: vi
+      .fn<WorkflowRepository["getTranscript"]>()
+      .mockResolvedValue({
+        id: "55555555-5555-4555-8555-555555555555",
+        result: {
+          language: "ru",
+          segments: [
+            { startSeconds: 0, endSeconds: 1, text: "Тестовый сегмент." },
+          ],
+        },
+      }),
+    hasClaimExtraction: vi
+      .fn<WorkflowRepository["hasClaimExtraction"]>()
+      .mockResolvedValue(false),
+    saveClaimExtraction: vi
+      .fn<WorkflowRepository["saveClaimExtraction"]>()
+      .mockResolvedValue(undefined),
     getScreening: vi
       .fn<WorkflowRepository["getScreening"]>()
       .mockResolvedValue(null),
@@ -119,6 +144,29 @@ function transcriber() {
     language: "ru",
     segments: [{ startSeconds: 0, endSeconds: 1, text: "Тестовый сегмент." }],
   });
+}
+
+function claimExtractionProvider() {
+  return {
+    extractClaims: vi
+      .fn<ClaimExtractionProvider["extractClaims"]>()
+      .mockResolvedValue({
+        extractionVersion: CLAIM_EXTRACTION_VERSION,
+        provider: "openai",
+        model: CLAIM_EXTRACTION_MODEL,
+        instructionsVersion: CLAIM_EXTRACTION_INSTRUCTIONS_VERSION,
+        schemaVersion: CLAIM_EXTRACTION_SCHEMA_VERSION,
+        claims: [
+          {
+            original: "Недосып ухудшает память.",
+            normalized: "Недосып ухудшает память.",
+            startSeconds: 0,
+            endSeconds: 1,
+            claimType: "causal_mechanistic",
+          },
+        ],
+      }),
+  } satisfies ClaimExtractionProvider;
 }
 
 function screening(overrides: Partial<VideoScreening> = {}): VideoScreening {
@@ -188,6 +236,41 @@ describe("workflow payload and response contracts", () => {
 });
 
 describe("workflow execution", () => {
+  it("persists a validated claim extraction before completing the job", async () => {
+    const repo = repository();
+    const provider = claimExtractionProvider();
+
+    await expect(
+      executeClaimExtractionStage(payload, runId, 2, repo, provider),
+    ).resolves.toEqual({ outcome: "claims_extracted" });
+
+    expect(provider.extractClaims).toHaveBeenCalledExactlyOnceWith([
+      { startSeconds: 0, endSeconds: 1, text: "Тестовый сегмент." },
+    ]);
+    expect(repo.saveClaimExtraction).toHaveBeenCalledExactlyOnceWith(
+      "55555555-5555-4555-8555-555555555555",
+      expect.objectContaining({ extractionVersion: CLAIM_EXTRACTION_VERSION }),
+    );
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
+  });
+
+  it("reuses the immutable extraction marker on workflow retry", async () => {
+    const repo = repository();
+    repo.hasClaimExtraction.mockResolvedValue(true);
+    const provider = claimExtractionProvider();
+
+    await expect(
+      executeClaimExtractionStage(payload, runId, 2, repo, provider),
+    ).resolves.toEqual({ outcome: "claims_extracted" });
+    expect(provider.extractClaims).not.toHaveBeenCalled();
+    expect(repo.saveClaimExtraction).not.toHaveBeenCalled();
+  });
+
   it("reports an obsolete run without reading content or Storage", async () => {
     const repo = repository();
     repo.advance.mockResolvedValue(null);
@@ -217,11 +300,10 @@ describe("workflow execution", () => {
 
     await expect(
       executeWorkflow(retryPayload, runId, 3, repo, inspect, transcribe),
-    ).resolves.toEqual({ outcome: "transcribed" });
+    ).resolves.toEqual({ outcome: "ready_for_claim_extraction" });
     expect(repo.advance.mock.calls).toEqual([
       [retryPayload, runId, "running", 3],
       [retryPayload, runId, "running", 3],
-      [retryPayload, runId, "completed", 3],
     ]);
     expect(repo.setStage.mock.calls).toEqual([
       [retryPayload, runId, "screen_video", 3],
@@ -258,7 +340,7 @@ describe("workflow execution", () => {
         async () => validVideo(),
         transcribe,
       ),
-    ).resolves.toEqual({ outcome: "transcribed" });
+    ).resolves.toEqual({ outcome: "ready_for_claim_extraction" });
     expect(transcribe).not.toHaveBeenCalled();
     expect(repo.saveTranscript).not.toHaveBeenCalled();
   });
@@ -287,7 +369,7 @@ describe("workflow execution", () => {
           transcribe,
           screen,
         ),
-      ).resolves.toEqual({ outcome: "transcribed" });
+      ).resolves.toEqual({ outcome: "ready_for_claim_extraction" });
       expect(screen).toHaveBeenCalledExactlyOnceWith({
         storagePath: content().storage_path,
         fileName: "lesson.mp4",
@@ -295,7 +377,10 @@ describe("workflow execution", () => {
         size: 1024,
       });
       expect(transcribe).toHaveBeenCalledOnce();
-      expect(repo.saveScreening).toHaveBeenCalledExactlyOnceWith(contentId, result);
+      expect(repo.saveScreening).toHaveBeenCalledExactlyOnceWith(
+        contentId,
+        result,
+      );
     }
   });
 
@@ -323,7 +408,9 @@ describe("workflow execution", () => {
     ).resolves.toEqual({ outcome: "screened_out" });
 
     expect(transcribe).not.toHaveBeenCalled();
-    expect(repo.setStage.mock.calls).toEqual([[payload, runId, "screen_video", 1]]);
+    expect(repo.setStage.mock.calls).toEqual([
+      [payload, runId, "screen_video", 1],
+    ]);
     expect(repo.advance).toHaveBeenLastCalledWith(
       payload,
       runId,
@@ -350,7 +437,7 @@ describe("workflow execution", () => {
         transcribe,
         screen,
       ),
-    ).resolves.toEqual({ outcome: "transcribed" });
+    ).resolves.toEqual({ outcome: "ready_for_claim_extraction" });
     expect(repo.saveScreening).toHaveBeenCalledWith(
       contentId,
       expect.objectContaining({
@@ -522,21 +609,17 @@ describe("workflow execution", () => {
     expect(repo.advance).toHaveBeenCalledTimes(1);
   });
 
-  it("propagates a failed completion write so it cannot return a fabricated successful result", async () => {
+  it("propagates a failed completion write after claim persistence", async () => {
     const repo = repository();
     const failure = new Error("Database unavailable");
-    repo.advance
-      .mockResolvedValueOnce(job())
-      .mockResolvedValueOnce(job())
-      .mockRejectedValueOnce(failure);
+    repo.advance.mockResolvedValueOnce(job()).mockRejectedValueOnce(failure);
     await expect(
-      executeWorkflow(
+      executeClaimExtractionStage(
         payload,
         runId,
         1,
         repo,
-        async () => validVideo(),
-        transcriber(),
+        claimExtractionProvider(),
       ),
     ).rejects.toBe(failure);
   });

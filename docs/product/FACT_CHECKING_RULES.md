@@ -2,7 +2,7 @@
 
 > **We check the claim, not the person.** The product never infers intent and never says that an author is lying.
 
-These are product and AI behavior requirements. The application runs timestamped video transcription, but does not yet run claim extraction, retrieval, or fact-check judgment; the rules below describe required behavior and do not imply that any verdict is currently generated.
+These are product and AI behavior requirements. The application runs timestamped video transcription and locally implements claim extraction. Retrieval and fact-check judgment are not connected; the rules below do not imply that any verdict is currently generated.
 
 ## Checkable claims
 

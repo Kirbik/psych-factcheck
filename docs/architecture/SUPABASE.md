@@ -4,7 +4,7 @@
 
 Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated direct-to-Storage TUS video upload backed by a private bucket. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
 
-Session 5 migrations atomically queue a job with uploaded content. Session 6 adds the versioned transcript table and fenced transcription stage. The deployed Production binding still reflects Session 5 until the new migration and Worker deployment are applied; `OPENAI_API_KEY` and a live transcription check remain outstanding. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
+Session 5 migrations atomically queue a job with uploaded content. Session 6's transcript schema, Worker secret, and live transcription were deployed and verified in Production on 2026-09-30. Sessions 6A–7 add local topic-screening and claim-extraction migrations/workflow stages; those migrations and the `analysis-claim-extraction-v1` Worker binding have not been deployed or verified in Production. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
 
 ## Dependencies
 

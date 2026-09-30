@@ -27,6 +27,7 @@ type ProcessingPreviewProps = {
   uploadError?: string;
   uploadStatus?: UploadProgressStatus;
   transcriptionStatus?: UploadProgressStatus;
+  claimExtractionStatus?: UploadProgressStatus;
   workflowMessage?: string;
   onRetry?: () => void;
   onCancel?: () => void;
@@ -82,6 +83,7 @@ export function ProcessingPreview({
   uploadError,
   uploadStatus = "pending",
   transcriptionStatus = "pending",
+  claimExtractionStatus = "pending",
   workflowMessage,
   onRetry,
   onCancel,
@@ -100,7 +102,9 @@ export function ProcessingPreview({
         ? uploadStatus
         : index === 1
           ? transcriptionStatus
-          : "pending",
+          : index === 2
+            ? claimExtractionStatus
+            : "pending",
   }));
   const isComplete = steps.every((step) => step.status === "completed");
 

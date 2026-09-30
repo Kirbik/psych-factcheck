@@ -2,7 +2,7 @@
 
 ## Current status
 
-There is no AI quality runner yet. `pnpm evals` validates the synthetic fact-check fixture and the synthetic topic-screening cases in `evals/fixtures/video-screening-cases.json`; it confirms only that demonstration fixtures match their schemas. It does not call OpenAI or measure model quality, false-positive/false-negative rates, or scientific correctness.
+There is no AI quality runner yet. `pnpm evals` validates synthetic fact-check, topic-screening, and claim-extraction fixtures; it confirms only that demonstration fixtures match their schemas. It does not call OpenAI or measure model quality, false-positive/false-negative rates, or scientific correctness.
 
 ## Golden dataset
 

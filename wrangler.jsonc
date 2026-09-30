@@ -4,26 +4,26 @@
   "compatibility_date": "2026-09-18",
   "compatibility_flags": [
     "nodejs_compat",
-    "nodejs_compat_populate_process_env"
+    "nodejs_compat_populate_process_env",
   ],
   "vars": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://iqqaglkueheksfyvwjpw.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ZpYc_qkrhaap5d-QYUVT-g_rCWL17vq"
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ZpYc_qkrhaap5d-QYUVT-g_rCWL17vq",
   },
   "triggers": {
-    "crons": ["* * * * *"]
+    "crons": ["* * * * *"],
   },
   "workflows": [
     {
-      "name": "analysis-transcription-v1",
+      "name": "analysis-claim-extraction-v1",
       "binding": "ANALYSIS_WORKFLOW",
-      "class_name": "AnalysisWorkflow"
-    }
+      "class_name": "AnalysisWorkflow",
+    },
   ],
   "main": "worker/index.ts",
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",
-    "binding": "ASSETS"
-  }
+    "binding": "ASSETS",
+  },
 }

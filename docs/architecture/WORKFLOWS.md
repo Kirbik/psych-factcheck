@@ -3,13 +3,13 @@
 ## Scope and completion
 
 The Session 5 `analysis-preparation-v1` workflow validated uploaded videos
-only. Session 6 changes the source binding to `analysis-transcription-v1`: it
+only. Session 6 changed the source binding to `analysis-transcription-v1`: it
 checks the owned content row, Storage path, actual size, MIME and extension
 agreement, and container signature, then transcribes supported MP4/WebM files
 up to 25 MB with OpenAI `whisper-1`. The adapter requests segment timestamps
 in `verbose_json`, validates the response with Zod, and persists one immutable
 transcript per content item and `transcription-v1` version. Content remains
-`pending`; claims, evidence, and reports are not produced.
+`pending`; claims, evidence, and reports were not produced by Session 6.
 
 Session 6A adds `screen_video` between upload validation and full
 transcription. For videos longer than 40 seconds with a supported audio track,
@@ -29,6 +29,30 @@ sample duration, provider/model identifiers, and instruction version. It does
 not store the sample transcript. The service role is the only role with table
 access. Retried generations reuse this row; workflow step replay plus the
 unique key prevents duplicate screening records.
+
+Session 7 adds OpenAI `gpt-4o-mini` structured claim extraction after
+transcription. The versioned instruction at
+`src/server/ai/prompts/claim-extraction-v1.ts` tells the model to extract
+checkable propositions, preserve qualification and causal strength, omit
+non-claims, and treat transcript text as untrusted data. The model returns an
+exact source excerpt and inclusive transcript segment indexes; server code
+validates the excerpt and derives timestamps from the persisted segments.
+Responses use the OpenAI Responses API with strict JSON Schema and local Zod
+validation. One repair call is allowed for invalid or transcript-inconsistent
+output. Transcript input is capped at 100,000 characters; larger transcripts
+fail explicitly rather than being silently truncated.
+
+`claim_extractions` stores one successful extraction marker per transcript
+and version, including empty results, plus provider/model/instruction/schema
+versions. `claims` stores each source excerpt, normalized statement, claim
+type, timestamp range, and ordinal. A service-role-only database function
+persists the marker and claims atomically; owner RLS exposes reads. Retries
+reuse existing extraction records. The job pipeline version is
+`claim-extraction-v1`, and stage `extract_claims` follows `transcribe_video`.
+The migration requeues previously completed in-scope transcription jobs so
+they can run claim extraction while preserving completed `VIDEO_OUT_OF_SCOPE`
+jobs. Sessions 6A and 7 are implemented locally but are not
+Production-verified.
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
@@ -64,7 +88,7 @@ There is no fake executor in production.
 
 Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queued
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
-`screen_video`, `transcribe_video`, or `complete`. `generation` counts explicit restarts;
+`screen_video`, `transcribe_video`, `extract_claims`, or `complete`. `generation` counts explicit restarts;
 `attempt` records Workflow step retries. Technical errors returned to the
 browser are fixed messages, never raw provider errors. The step retries
 transient failures up to three total attempts. OpenAI requests time out after
@@ -87,9 +111,9 @@ Reloads read the durable job, then listen for `analysis_jobs` changes through
 Supabase Realtime. Owner RLS applies to the subscription. If the socket is
 disconnected, the UI checks status every ten seconds until the subscription
 recovers; returning to a visible tab triggers a fresh read. An explicit retry
-still goes through the API. The upload validation and transcript steps update
-their existing progress states; claim/evidence/report steps remain pending,
-and report navigation stays disabled.
+still goes through the API. Upload validation, screening, transcription, and
+claim extraction update their existing progress states; evidence and report
+steps remain pending, and report navigation stays disabled.
 
 During a video byte upload, reloading the page interrupts the TUS transfer.
 The same tab restores the paused upload from `sessionStorage` and then shows
@@ -125,6 +149,13 @@ terminal job contract; it adds no CSS, layout, or visual pattern.
    were verified in Supabase. Automated tests cover duplicate start, retry,
    provider failure and reload. Content remains pending with no report; MOV
    and larger files currently fail explicitly.
+7. Before deploying Sessions 6A–7, pause new workflow dispatch and drain
+   legacy active runs. Apply `20260930140000_video_topic_screening.sql` and
+   `20260930160000_claim_extraction_v1.sql`, deploy the Worker/app with the
+   `analysis-claim-extraction-v1` workflow binding, then resume dispatch.
+   Verify an owned job with persisted transcript and extraction/claim rows.
+   The migration requeues prior completed transcription jobs; do not resume
+   dispatch until the new Worker is live. This rollout has not been performed.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,

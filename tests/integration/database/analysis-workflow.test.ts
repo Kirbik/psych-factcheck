@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const owner = "11111111-1111-4111-8111-111111111111";
 const other = "22222222-2222-4222-8222-222222222222";
 const contentId = "33333333-3333-4333-8333-333333333333";
+const screenedOutContentId = "66666666-6666-4666-8666-666666666666";
 const sqlFile = (name: string) =>
   readFile(
     new URL(`../../../supabase/migrations/${name}`, import.meta.url),
@@ -34,7 +35,15 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(await sqlFile("20260930120000_transcription_v1.sql"));
     await db.exec(await sqlFile("20260930140000_video_topic_screening.sql"));
     await db.exec(`insert into auth.users values ('${owner}'), ('${other}');
-      insert into public.content_items(id, user_id, storage_path) values ('${contentId}', '${owner}', '${owner}/video.mp4');`);
+      insert into public.content_items(id, user_id, storage_path)
+        values ('${contentId}', '${owner}', '${owner}/video.mp4'),
+          ('${screenedOutContentId}', '${owner}', '${owner}/screened.mp4');
+      update public.analysis_jobs set status = 'completed', stage = 'complete',
+        completed_at = now() where content_item_id = '${contentId}';
+      update public.analysis_jobs set status = 'completed', stage = 'complete',
+        error_code = 'VIDEO_OUT_OF_SCOPE', completed_at = now()
+        where content_item_id = '${screenedOutContentId}';`);
+    await db.exec(await sqlFile("20260930160000_claim_extraction_v1.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -86,13 +95,27 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     });
   });
 
-  it("atomically queues an upload before any UI or enqueue request", async () => {
-    const result = await db.query<{ status: string; pipeline_version: string }>(
-      "select status, pipeline_version from public.analysis_jobs where content_item_id = $1",
-      [contentId],
+  it("requeues completed transcription jobs under the claim-extraction pipeline", async () => {
+    const result = await db.query<{
+      content_item_id: string;
+      status: string;
+      pipeline_version: string;
+    }>(
+      `select content_item_id, status, pipeline_version from public.analysis_jobs
+       where content_item_id in ($1, $2) order by content_item_id`,
+      [contentId, screenedOutContentId],
     );
     expect(result.rows).toEqual([
-      { status: "queued", pipeline_version: "transcription-v1" },
+      {
+        content_item_id: contentId,
+        status: "queued",
+        pipeline_version: "claim-extraction-v1",
+      },
+      {
+        content_item_id: screenedOutContentId,
+        status: "completed",
+        pipeline_version: "claim-extraction-v1",
+      },
     ]);
   });
 
@@ -183,6 +206,112 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
       ]),
     );
     expect(hidden.rows).toEqual([]);
+  });
+
+  it("persists an idempotent claim extraction, including an empty result, with owner-only reads", async () => {
+    const transcript = await db.query<{ id: string }>(
+      "select id from public.transcripts where content_item_id = $1",
+      [contentId],
+    );
+    const emptyResultContentId = "55555555-5555-4555-8555-555555555555";
+    await db.query(
+      `insert into public.content_items(id, user_id, storage_path)
+       values ($1, $2, null)`,
+      [emptyResultContentId, owner],
+    );
+    const emptyResultTranscript = await db.query<{ id: string }>(
+      `insert into public.transcripts(content_item_id, provider, model, language, segments)
+       values ($1, 'openai', 'whisper-1', 'ru', '[]') returning id`,
+      [emptyResultContentId],
+    );
+    const transcriptId = transcript.rows[0]?.id;
+    expect(transcriptId).toBeTruthy();
+    await db.exec("begin; set local role service_role");
+    const claims = [
+      {
+        original: "Недосып ухудшает память.",
+        normalized: "Недосып ухудшает память.",
+        startSeconds: 0,
+        endSeconds: 2,
+        claimType: "causal_mechanistic",
+      },
+    ];
+    const first = await db.query<{ save_claim_extraction: string }>(
+      "select public.save_claim_extraction($1, $2, $3, $4, $5, $6, $7::jsonb)",
+      [
+        transcriptId,
+        "claim-extraction-v1",
+        "openai",
+        "gpt-4o-mini",
+        "instructions-v1",
+        "schema-v1",
+        JSON.stringify(claims),
+      ],
+    );
+    await db.query(
+      "select public.save_claim_extraction($1, $2, $3, $4, $5, $6, $7::jsonb)",
+      [
+        transcriptId,
+        "claim-extraction-v1",
+        "openai",
+        "gpt-4o-mini",
+        "instructions-v1",
+        "schema-v1",
+        "[]",
+      ],
+    );
+    const emptyExtraction = await db.query<{ save_claim_extraction: string }>(
+      "select public.save_claim_extraction($1, $2, $3, $4, $5, $6, $7::jsonb)",
+      [
+        emptyResultTranscript.rows[0]?.id,
+        "claim-extraction-v1",
+        "openai",
+        "gpt-4o-mini",
+        "instructions-v1",
+        "schema-v1",
+        "[]",
+      ],
+    );
+    const extractionId = first.rows[0]?.save_claim_extraction;
+    const stored = await db.query(
+      "select original_text, claim_type from public.claims where claim_extraction_id = $1",
+      [extractionId],
+    );
+    expect(stored.rows).toEqual([
+      {
+        original_text: "Недосып ухудшает память.",
+        claim_type: "causal_mechanistic",
+      },
+    ]);
+    expect(
+      (
+        await db.query(
+          "select id from public.claim_extractions where id = $1",
+          [emptyExtraction.rows[0]?.save_claim_extraction],
+        )
+      ).rows,
+    ).toHaveLength(1);
+    expect(
+      (
+        await db.query(
+          "select id from public.claims where claim_extraction_id = $1",
+          [emptyExtraction.rows[0]?.save_claim_extraction],
+        )
+      ).rows,
+    ).toEqual([]);
+
+    await db.exec("set local role authenticated");
+    await db.query("select set_config('request.jwt.claim.sub', $1, true)", [
+      owner,
+    ]);
+    expect((await db.query("select * from public.claims")).rows).toHaveLength(
+      1,
+    );
+    await db.query("select set_config('request.jwt.claim.sub', $1, true)", [
+      other,
+    ]);
+    expect((await db.query("select * from public.claims")).rows).toEqual([]);
+    await db.exec("rollback");
   });
 
   it("fences stage changes by generation and workflow run", async () => {

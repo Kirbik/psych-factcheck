@@ -23,18 +23,18 @@
 ## Color tokens
 
 ```css
---ink: #1B1916;
---ink-2: #4A443C;
---muted: #8A8177;
---paper: #FFFFFF;
---line: #E7DFD4;
---line-soft: #F0EAE1;
---accent: #17604C;
---accent-soft: #EAF2EE;
---warning: #96670F;
---warning-soft: #FAEEDE;
---danger: #B4551F;
---danger-soft: #FBE5DF;
+--ink: #1b1916;
+--ink-2: #4a443c;
+--muted: #8a8177;
+--paper: #ffffff;
+--line: #e7dfd4;
+--line-soft: #f0eae1;
+--accent: #17604c;
+--accent-soft: #eaf2ee;
+--warning: #96670f;
+--warning-soft: #faeede;
+--danger: #b4551f;
+--danger-soft: #fbe5df;
 ```
 
 Основной фон приложения: тёплый светлый фон с мягкими radial gradients, заданный в `.preview`. Не добавлять новые цвета и не заменять палитру на холодную blue/gray-схему.
@@ -110,7 +110,7 @@ Header содержит бренд и ссылки «Проверки» / «Пр
 
 ## Design decisions
 
-- Для preview используются локальные моковые данные; исключение — `/new-check` и `/processing?contentItemId=...`, которые показывают фактические статусы загрузки и транскрибации из backend workflow. Этапы после транскрипта остаются ожидающими.
+- Для preview используются локальные моковые данные; исключение — `/new-check` и `/processing?contentItemId=...`, которые показывают фактические статусы загрузки, screening, транскрибации и выделения утверждений из backend workflow. Этапы после выделения утверждений остаются ожидающими.
 - «Удалить» в context menu пока закрывает меню и не удаляет данные.
 - Кнопка отчёта на processing неактивна, пока backend workflow не завершает реальные этапы анализа.
 - Если точное состояние или layout не определены этим документом, требуется отдельное решение дизайна до реализации.
