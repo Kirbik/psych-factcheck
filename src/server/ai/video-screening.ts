@@ -17,7 +17,6 @@ export const SCREENING_VERSION = "topic-screening-v1";
 export const SCREENING_SAMPLE_MODEL = "whisper-1";
 export const SCREENING_CLASSIFIER_MODEL = "gpt-4o-mini";
 export const SCREENING_INSTRUCTIONS_VERSION = "topic-screening-instructions-v1";
-export const SCREENING_MIN_VIDEO_SECONDS = 40;
 export const SCREENING_SAMPLE_CLIP_SECONDS = 4;
 export const SCREENING_SAMPLE_CLIP_COUNT = 3;
 export const SCREENING_MAX_SAMPLE_BYTES = 2_000_000;
@@ -70,8 +69,14 @@ export type ScreeningAudioSample = {
 };
 
 export function getScreeningSampleRanges(durationSeconds: number) {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= SCREENING_MIN_VIDEO_SECONDS)
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0)
     return [];
+
+  // Short clips are cheap to screen in full and avoid silently bypassing the
+  // topic check for videos that would otherwise go straight to transcription.
+  if (durationSeconds <= SCREENING_SAMPLE_CLIP_SECONDS * 3) {
+    return [{ startSeconds: 0, endSeconds: durationSeconds }];
+  }
 
   const clipDuration = SCREENING_SAMPLE_CLIP_SECONDS;
   const sampleCenters = [0.1, 0.5, 0.9].map((fraction) =>

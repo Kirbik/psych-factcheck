@@ -18,3 +18,7 @@ deployed, and no live screening request was made. Session 6A therefore remains
 unverified in Production. The screening gate fails open on uncertainty or
 errors; it reduces full-transcription calls only for high-confidence
 off-topic results and has not been evaluated for classification quality.
+Clips up to 12 seconds are screened using their full audio; longer videos use
+three short samples. A high-confidence off-topic result is returned by the
+analysis API with a user-facing reason, and the progress screen shows that the
+full transcription was skipped.

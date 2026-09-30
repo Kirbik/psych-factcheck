@@ -7,8 +7,14 @@ import {
   workflowRunner,
 } from "@/server/workflows/runtime";
 import { dispatchJob, reconcileJob } from "@/server/workflows/dispatch";
-import { jobViewSchema } from "@/features/analysis/job-contract";
+import {
+  jobViewSchema,
+  SCREENED_OUT_ERROR_CODE,
+  screeningOutcomeMessages,
+  type ScreeningOutcome,
+} from "@/features/analysis/job-contract";
 import { getPublicSupabaseConfig } from "@/lib/supabase-config";
+import { SCREENING_REJECTION_CONFIDENCE } from "@/server/ai/video-screening";
 
 const requestSchema = z
   .object({
@@ -74,9 +80,38 @@ async function handle(request: Request, start: boolean) {
         ? await dispatchJob(job, repository, runner)
         : await reconcileJob(job, repository, runner);
     }
+    let screening: ScreeningOutcome | null = null;
+    if (
+      job?.status === "completed" &&
+      job.error_code === SCREENED_OUT_ERROR_CODE
+    ) {
+      try {
+        const result = await operationalRepository().getScreening(content.id);
+        if (
+          result?.decision === "unrelated" &&
+          result.confidence >= SCREENING_REJECTION_CONFIDENCE
+        ) {
+          const reasonCode = result.reasonCode;
+          if (
+            reasonCode === "no_psychology_content" ||
+            reasonCode === "incidental_mention" ||
+            reasonCode === "no_checkable_claims"
+          ) {
+            screening = {
+              decision: "unrelated" as const,
+              reasonCode,
+              message: screeningOutcomeMessages[reasonCode],
+            };
+          }
+        }
+      } catch {
+        // The saved job status is still useful when screening details are unavailable.
+      }
+    }
     const publicConfig = getPublicSupabaseConfig();
     return json({
       job: job ? jobViewSchema.parse(job) : null,
+      screening,
       realtime: {
         supabaseUrl: publicConfig.NEXT_PUBLIC_SUPABASE_URL,
         supabaseAnonKey: publicConfig.NEXT_PUBLIC_SUPABASE_ANON_KEY,

@@ -27,12 +27,23 @@ export const jobViewSchema = z.object({
   error_code: z.string().nullable(),
 });
 export type JobView = z.infer<typeof jobViewSchema>;
+export const screeningOutcomeSchema = z.object({
+  decision: z.literal("unrelated"),
+  reasonCode: z.enum([
+    "no_psychology_content",
+    "incidental_mention",
+    "no_checkable_claims",
+  ]),
+  message: z.string().min(1),
+});
+export type ScreeningOutcome = z.infer<typeof screeningOutcomeSchema>;
 export const realtimeConfigSchema = z.object({
   supabaseUrl: z.url(),
   supabaseAnonKey: z.string().min(1),
 });
 export const jobResponseSchema = z.object({
   job: jobViewSchema.nullable(),
+  screening: screeningOutcomeSchema.nullable().optional(),
   realtime: realtimeConfigSchema.optional(),
 });
 export const isActiveJob = (job: Pick<JobView, "status">) =>
@@ -49,3 +60,12 @@ export const workflowMessages = {
 } as const;
 
 export const SCREENED_OUT_ERROR_CODE = "VIDEO_OUT_OF_SCOPE";
+
+export const screeningOutcomeMessages = {
+  no_psychology_content:
+    "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено содержательного материала о психологии.",
+  incidental_mention:
+    "Видео не подходит для психологического фактчекинга: психология упоминается только вскользь.",
+  no_checkable_claims:
+    "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено проверяемых утверждений о психологии.",
+} as const;

@@ -10,6 +10,7 @@ import {
   SCREENED_OUT_ERROR_CODE,
   workflowMessages,
   type JobView,
+  type ScreeningOutcome,
 } from "./job-contract";
 
 export function WorkflowProgress({
@@ -21,6 +22,7 @@ export function WorkflowProgress({
 }) {
   const { updateWorkflowStatus } = useVideoUpload();
   const [job, setJob] = useState<JobView | null>(null);
+  const [screening, setScreening] = useState<ScreeningOutcome | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -33,6 +35,7 @@ export function WorkflowProgress({
       latestContentId.current = contentItemId;
       latestJob.current = null;
       setJob(null);
+      setScreening(null);
     }
     const controller = new AbortController();
     let isSubscribed = false;
@@ -82,6 +85,7 @@ export function WorkflowProgress({
         const value: unknown = await response.json();
         if (!response.ok) return;
         const result = jobResponseSchema.parse(value);
+        setScreening(result.screening ?? null);
         applyJob(result.job);
       } catch {
         // The next realtime event or fallback tick will try again.
@@ -111,6 +115,12 @@ export function WorkflowProgress({
             if (!parsed.success || !parsed.data.job) return;
             applyJob(parsed.data.job);
             setError("");
+            if (
+              parsed.data.job.status === "completed" &&
+              parsed.data.job.error_code === SCREENED_OUT_ERROR_CODE
+            ) {
+              void refreshStatus();
+            }
           },
         )
         .subscribe((status) => {
@@ -150,6 +160,7 @@ export function WorkflowProgress({
         const result = jobResponseSchema.parse(value);
         if (controller.signal.aborted) return;
         if (result.realtime) subscribeToRealtime(result.realtime);
+        setScreening(result.screening ?? null);
         applyJob(result.job);
         setError("");
       } catch (caught) {
@@ -209,7 +220,8 @@ export function WorkflowProgress({
         job
           ? job.status === "completed" &&
             job.error_code === SCREENED_OUT_ERROR_CODE
-            ? "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась."
+            ? screening?.message ??
+              "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась."
             : job.status === "running" && job.stage === "screen_video"
               ? "Проверяем тему по коротким фрагментам видео."
               : job.status === "running" && job.stage === "transcribe_video"

@@ -227,6 +227,23 @@ describe("workflow payload and response contracts", () => {
     expect(jobResponseSchema.parse({ job: null })).toEqual({ job: null });
   });
 
+  it("accepts a safe backend explanation for a screened-out video", () => {
+    expect(
+      jobResponseSchema.parse({
+        job: job({ status: "completed", error_code: "VIDEO_OUT_OF_SCOPE" }),
+        screening: {
+          decision: "unrelated",
+          reasonCode: "no_psychology_content",
+          message: "Видео не подходит для психологического фактчекинга.",
+        },
+      }).screening,
+    ).toEqual({
+      decision: "unrelated",
+      reasonCode: "no_psychology_content",
+      message: "Видео не подходит для психологического фактчекинга.",
+    });
+  });
+
   it.each(["completed", "failed", "cancelled"] as const)(
     "does not classify %s as active",
     (status) => {

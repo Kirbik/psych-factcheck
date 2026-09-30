@@ -6,7 +6,6 @@ import {
 import {
   getScreeningSampleRanges,
   SCREENING_CLASSIFIER_MODEL,
-  SCREENING_MIN_VIDEO_SECONDS,
   SCREENING_SAMPLE_MODEL,
   type ScreeningAudioSample,
 } from "@/server/ai/video-screening";
@@ -50,8 +49,11 @@ function sampleExtractor() {
 }
 
 describe("video topic screening", () => {
-  it("uses three short samples spread across the video duration", () => {
-    expect(getScreeningSampleRanges(SCREENING_MIN_VIDEO_SECONDS)).toEqual([]);
+  it("screens short videos in full and uses three samples for longer videos", () => {
+    expect(getScreeningSampleRanges(0)).toEqual([]);
+    expect(getScreeningSampleRanges(8)).toEqual([
+      { startSeconds: 0, endSeconds: 8 },
+    ]);
     expect(getScreeningSampleRanges(100)).toEqual([
       { startSeconds: 8, endSeconds: 12 },
       { startSeconds: 48, endSeconds: 52 },

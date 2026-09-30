@@ -103,6 +103,12 @@ test("shows a screened-out outcome without marking transcription complete", asyn
           stage: "complete",
           error_code: "VIDEO_OUT_OF_SCOPE",
         },
+        screening: {
+          decision: "unrelated",
+          reasonCode: "no_psychology_content",
+          message:
+            "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено содержательного материала о психологии.",
+        },
       },
     }),
   );
@@ -110,7 +116,7 @@ test("shows a screened-out outcome without marking transcription complete", asyn
 
   await expect(
     page.getByText(
-      "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась.",
+      "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено содержательного материала о психологии.",
     ),
   ).toBeVisible();
   await expect(
