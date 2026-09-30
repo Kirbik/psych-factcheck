@@ -115,10 +115,7 @@ function outputText(payload: unknown) {
 
 function tokensWithOffsets(value: string) {
   return Array.from(value.matchAll(/[\p{L}\p{N}]+/gu), (match) => ({
-    normalized: match[0]
-      .normalize("NFKC")
-      .toLowerCase()
-      .replaceAll("ё", "е"),
+    normalized: match[0].normalize("NFKC").toLowerCase().replaceAll("ё", "е"),
     start: match.index,
     end: match.index + match[0].length,
   }));

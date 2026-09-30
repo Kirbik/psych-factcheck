@@ -59,6 +59,13 @@ export const workflowMessages = {
   cancelled: "Подготовка остановлена. Можно повторить запуск.",
 } as const;
 
+export const workflowErrorMessages: Readonly<Record<string, string>> = {
+  CLAIM_OUTPUT_INVALID:
+    "Не удалось проверить утверждения по тексту транскрипта. Повторите запуск.",
+  OPENAI_UNAVAILABLE:
+    "Сервис обработки временно недоступен. Повторите запуск позже.",
+};
+
 export const SCREENED_OUT_ERROR_CODE = "VIDEO_OUT_OF_SCOPE";
 
 export const screeningOutcomeMessages = {

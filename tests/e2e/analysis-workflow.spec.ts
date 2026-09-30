@@ -136,11 +136,21 @@ test("retries a failed generation explicitly", async ({ page }) => {
       json: {
         job: retried
           ? { ...job, generation: 2, status: "completed", stage: "complete" }
-          : { ...job, status: "failed", error_code: "WORKFLOW_FAILED" },
+          : {
+              ...job,
+              status: "failed",
+              stage: "extract_claims",
+              error_code: "CLAIM_OUTPUT_INVALID",
+            },
       },
     });
   });
   await page.goto(`/processing?contentItemId=${contentId}`);
+  await expect(
+    page.getByText(
+      "Не удалось проверить утверждения по тексту транскрипта. Повторите запуск.",
+    ),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Повторить запуск" }).click();
   await expect(
     page.getByText(

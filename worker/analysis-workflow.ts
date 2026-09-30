@@ -48,6 +48,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
     let attempt = 1;
+    let failureCode: string | undefined;
 
     const inspectVideo = async (path: string) => {
       const client = createWorkerClient(this.env);
@@ -122,8 +123,10 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               },
             );
           } catch (error) {
-            if (error instanceof PermanentWorkflowError)
+            if (error instanceof PermanentWorkflowError) {
+              failureCode = error.message;
               throw new NonRetryableError(error.message);
+            }
             throw error;
           }
         },
@@ -164,6 +167,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
                     });
                   } catch (error) {
                     if (error instanceof TranscriptionProviderError) {
+                      failureCode = error.code;
                       if (!error.retryable)
                         throw new NonRetryableError(error.code);
                       throw error;
@@ -173,8 +177,10 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
                 },
               );
             } catch (error) {
-              if (error instanceof PermanentWorkflowError)
+              if (error instanceof PermanentWorkflowError) {
+                failureCode = error.message;
                 throw new NonRetryableError(error.message);
+              }
               throw error;
             }
           },
@@ -205,6 +211,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
             );
           } catch (error) {
             if (error instanceof ClaimExtractionProviderError) {
+              failureCode = error.code;
               if (error.code === "CLAIM_OUTPUT_INVALID") {
                 console.error("[analysis] Claim extraction output rejected", {
                   jobId: payload.jobId,
@@ -214,8 +221,10 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               if (!error.retryable) throw new NonRetryableError(error.code);
               throw error;
             }
-            if (error instanceof PermanentWorkflowError)
+            if (error instanceof PermanentWorkflowError) {
+              failureCode = error.message;
               throw new NonRetryableError(error.message);
+            }
             throw error;
           }
         },
@@ -226,7 +235,10 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         event.instanceId,
         "failed",
         attempt,
-        error instanceof NonRetryableError ? error.message : "WORKFLOW_FAILED",
+        failureCode ??
+          (error instanceof NonRetryableError
+            ? error.message
+            : "WORKFLOW_FAILED"),
       );
       throw error;
     }

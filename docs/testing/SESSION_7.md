@@ -31,9 +31,11 @@ transcription but again ended with `CLAIM_OUTPUT_INVALID` after the repair
 request. The previous attempt did not persist its validation subtype. The
 provider now accepts Russian `ё`/`е` spelling variation while storing the
 verbatim transcript excerpt, aligns the model-facing JSON Schema string limits
-with local validation, and logs the validation category plus job ID on future
-failures without logging transcript/model text. A new successful Production
-retry is required to verify this change.
+with local validation, persists the provider error code instead of a generic
+workflow error, and logs the validation category plus job ID on future failures
+without logging transcript/model text. The UI now gives an actionable message
+for this failure code. A new successful Production retry is required to verify
+this change.
 
 ## Implementation
 

@@ -8,6 +8,7 @@ import {
   isActiveJob,
   jobResponseSchema,
   SCREENED_OUT_ERROR_CODE,
+  workflowErrorMessages,
   workflowMessages,
   type JobView,
   type ScreeningOutcome,
@@ -220,8 +221,8 @@ export function WorkflowProgress({
         job
           ? job.status === "completed" &&
             job.error_code === SCREENED_OUT_ERROR_CODE
-            ? screening?.message ??
-              "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась."
+            ? (screening?.message ??
+              "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась.")
             : job.status === "running" && job.stage === "screen_video"
               ? "Проверяем тему по коротким фрагментам видео."
               : job.status === "running" && job.stage === "transcribe_video"
@@ -230,7 +231,10 @@ export function WorkflowProgress({
                   ? "Выделяем и классифицируем утверждения."
                   : job.status === "running" && job.stage === "validate_upload"
                     ? "Проверяем загруженное видео."
-                    : workflowMessages[job.status]
+                    : job.status === "failed"
+                      ? (workflowErrorMessages[job.error_code ?? ""] ??
+                        workflowMessages.failed)
+                      : workflowMessages[job.status]
           : "Видео сохранено. Получаем состояние подготовки."
       }
       onRetry={
