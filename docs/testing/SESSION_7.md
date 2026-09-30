@@ -24,6 +24,17 @@ stores the exact transcript excerpt. This correction was deployed as Worker
 version `f24f7c46-bbaf-4507-8002-6bd811cb60ab`. A successful retry is still
 needed for live verification.
 
+## Follow-up Production failure — 2026-09-30
+
+The job `3bb696f7-2946-424b-b11e-ed5c64d61eaa` passed screening and
+transcription but again ended with `CLAIM_OUTPUT_INVALID` after the repair
+request. The previous attempt did not persist its validation subtype. The
+provider now accepts Russian `ё`/`е` spelling variation while storing the
+verbatim transcript excerpt, aligns the model-facing JSON Schema string limits
+with local validation, and logs the validation category plus job ID on future
+failures without logging transcript/model text. A new successful Production
+retry is required to verify this change.
+
 ## Implementation
 
 - Prompt: `claim-extraction-instructions-v1` in

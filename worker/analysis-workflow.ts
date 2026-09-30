@@ -205,6 +205,12 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
             );
           } catch (error) {
             if (error instanceof ClaimExtractionProviderError) {
+              if (error.code === "CLAIM_OUTPUT_INVALID") {
+                console.error("[analysis] Claim extraction output rejected", {
+                  jobId: payload.jobId,
+                  validationIssue: error.validationIssue,
+                });
+              }
               if (!error.retryable) throw new NonRetryableError(error.code);
               throw error;
             }

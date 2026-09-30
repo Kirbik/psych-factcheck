@@ -94,6 +94,39 @@ describe("OpenAI claim extraction provider", () => {
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
+  it("matches Russian ё/e spelling differences and stores the transcript text", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      apiResponse({
+        claims: [
+          {
+            ...validOutput.claims[0],
+            source_text: "Все сильнее реагируют на недосып",
+          },
+        ],
+      }),
+    );
+    const provider = createOpenAIClaimExtractionProvider("secret", fetcher);
+
+    await expect(
+      provider.extractClaims([
+        {
+          startSeconds: 1,
+          endSeconds: 2,
+          text: "Всё сильнее реагируют на недосып.",
+        },
+      ]),
+    ).resolves.toMatchObject({
+      claims: [
+        expect.objectContaining({
+          original: "Всё сильнее реагируют на недосып.",
+          startSeconds: 1,
+          endSeconds: 2,
+        }),
+      ],
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+
   it("accepts an empty claim list and repairs one invalid source quote", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -144,6 +177,7 @@ describe("OpenAI claim extraction provider", () => {
     await expect(provider.extractClaims(transcript)).rejects.toMatchObject({
       code: "CLAIM_OUTPUT_INVALID",
       retryable: false,
+      validationIssue: "source_text_not_in_transcript",
     });
   });
 

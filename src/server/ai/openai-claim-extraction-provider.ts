@@ -60,8 +60,8 @@ const outputJsonSchema = {
           "end_segment_index",
         ],
         properties: {
-          source_text: { type: "string" },
-          normalized_text: { type: "string" },
+          source_text: { type: "string", minLength: 1, maxLength: 1200 },
+          normalized_text: { type: "string", minLength: 1, maxLength: 1200 },
           claim_type: {
             type: "string",
             enum: [
@@ -82,10 +82,20 @@ const outputJsonSchema = {
   },
 } as const;
 
+type ClaimValidationIssue =
+  | "invalid_response"
+  | "response_not_json"
+  | "response_missing_output_text"
+  | "output_not_json"
+  | "output_schema_invalid"
+  | "source_text_not_in_transcript"
+  | "segment_index_out_of_range";
+
 export class ClaimExtractionProviderError extends Error {
   constructor(
     readonly code: string,
     readonly retryable: boolean,
+    readonly validationIssue?: ClaimValidationIssue,
   ) {
     super(code);
     this.name = "ClaimExtractionProviderError";
@@ -105,7 +115,10 @@ function outputText(payload: unknown) {
 
 function tokensWithOffsets(value: string) {
   return Array.from(value.matchAll(/[\p{L}\p{N}]+/gu), (match) => ({
-    normalized: match[0].normalize("NFKC").toLowerCase(),
+    normalized: match[0]
+      .normalize("NFKC")
+      .toLowerCase()
+      .replaceAll("ё", "е"),
     start: match.index,
     end: match.index + match[0].length,
   }));
@@ -257,7 +270,7 @@ export function createOpenAIClaimExtractionProvider(
           text: segment.text,
         })),
       });
-      let lastValidationError = "invalid_response";
+      let lastValidationError: ClaimValidationIssue = "invalid_response";
       let lastInvalidOutput: string | null = null;
 
       // Structured output is validated locally; one repair call is allowed for semantic mismatches.
@@ -349,7 +362,11 @@ export function createOpenAIClaimExtractionProvider(
           claims: mapped.claims,
         });
       }
-      throw new ClaimExtractionProviderError("CLAIM_OUTPUT_INVALID", false);
+      throw new ClaimExtractionProviderError(
+        "CLAIM_OUTPUT_INVALID",
+        false,
+        lastValidationError,
+      );
     },
   };
 }
