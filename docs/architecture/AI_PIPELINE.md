@@ -2,7 +2,7 @@
 
 ## Current status
 
-The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are implemented locally but have not been verified in Production. Embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, and explanation are not connected. The `pnpm evals` command validates synthetic fixture shape; it is not a model-quality evaluation.
+The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A claim-extraction run failed source validation; a correction for matching quoted text to transcript segments was deployed on 2026-09-30, and a successful retry is pending. Embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, and explanation are not connected. The `pnpm evals` command validates synthetic fixture shape; it is not a model-quality evaluation.
 
 ## Contract
 

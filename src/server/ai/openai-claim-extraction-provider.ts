@@ -103,8 +103,66 @@ function outputText(payload: unknown) {
   return null;
 }
 
-function normalizedForMatch(value: string) {
-  return value.trim().replace(/\s+/g, " ");
+function tokensWithOffsets(value: string) {
+  return Array.from(value.matchAll(/[\p{L}\p{N}]+/gu), (match) => ({
+    normalized: match[0].normalize("NFKC").toLowerCase(),
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
+}
+
+function transcriptText(segments: readonly TranscriptSegment[], offset = 0) {
+  const bounds: { start: number; end: number; index: number }[] = [];
+  const parts: string[] = [];
+  let cursor = 0;
+  segments.forEach((segment, index) => {
+    if (index > 0) {
+      parts.push(" ");
+      cursor += 1;
+    }
+    bounds.push({
+      start: cursor,
+      end: cursor + segment.text.length,
+      index: offset + index,
+    });
+    parts.push(segment.text);
+    cursor += segment.text.length;
+  });
+  return { text: parts.join(""), bounds };
+}
+
+function exactTranscriptExcerpt(source: string, quote: string) {
+  const sourceTokens = tokensWithOffsets(source);
+  const quoteTokens = tokensWithOffsets(quote);
+  if (quoteTokens.length === 0 || quoteTokens.length > sourceTokens.length)
+    return null;
+
+  for (
+    let start = 0;
+    start <= sourceTokens.length - quoteTokens.length;
+    start++
+  ) {
+    const matches = quoteTokens.every(
+      (token, offset) =>
+        token.normalized === sourceTokens[start + offset]?.normalized,
+    );
+    if (!matches) continue;
+
+    const first = sourceTokens[start];
+    const last = sourceTokens[start + quoteTokens.length - 1];
+    if (!first || !last) return null;
+    const trailingPunctuation =
+      source.slice(last.end).match(/^[\p{P}\p{S}]+/u)?.[0] ?? "";
+    return {
+      original: source.slice(
+        first.start,
+        last.end + trailingPunctuation.length,
+      ),
+      start: first.start,
+      end: last.end + trailingPunctuation.length,
+    };
+  }
+  return null;
 }
 
 function validateAndMapClaims(
@@ -117,29 +175,46 @@ function validateAndMapClaims(
 
   const claims: ClaimExtractionResult["claims"][number][] = [];
   for (const claim of parsed.data.claims) {
-    if (
-      claim.start_segment_index > claim.end_segment_index ||
-      claim.end_segment_index >= transcript.length
-    )
-      return { ok: false, error: "segment_index_out_of_range" } as const;
-
-    const source = transcript
-      .slice(claim.start_segment_index, claim.end_segment_index + 1)
-      .map((segment) => segment.text)
-      .join(" ");
-    if (
-      !normalizedForMatch(source).includes(
-        normalizedForMatch(claim.source_text),
-      )
-    )
+    const rangeIsValid =
+      claim.start_segment_index <= claim.end_segment_index &&
+      claim.end_segment_index < transcript.length;
+    const candidate = rangeIsValid
+      ? transcriptText(
+          transcript.slice(
+            claim.start_segment_index,
+            claim.end_segment_index + 1,
+          ),
+          claim.start_segment_index,
+        )
+      : null;
+    const localMatch = candidate
+      ? exactTranscriptExcerpt(candidate.text, claim.source_text)
+      : null;
+    const full = transcriptText(transcript);
+    const fullMatch = localMatch
+      ? null
+      : exactTranscriptExcerpt(full.text, claim.source_text);
+    const match =
+      candidate && localMatch
+        ? { ...localMatch, bounds: candidate.bounds }
+        : fullMatch
+          ? { ...fullMatch, bounds: full.bounds }
+          : null;
+    if (!match)
       return { ok: false, error: "source_text_not_in_transcript" } as const;
 
-    const first = transcript[claim.start_segment_index];
-    const last = transcript[claim.end_segment_index];
+    const startSegment = match.bounds.find(
+      (bound) => bound.start <= match.start && match.start < bound.end,
+    );
+    const endSegment = match.bounds.find(
+      (bound) => bound.start < match.end && match.end <= bound.end,
+    );
+    const first = startSegment ? transcript[startSegment.index] : undefined;
+    const last = endSegment ? transcript[endSegment.index] : undefined;
     if (!first || !last)
       return { ok: false, error: "segment_index_out_of_range" } as const;
     claims.push({
-      original: claim.source_text,
+      original: match.original,
       normalized: claim.normalized_text,
       startSeconds: first.startSeconds,
       endSeconds: last.endSeconds,

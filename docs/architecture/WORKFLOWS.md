@@ -51,8 +51,10 @@ reuse existing extraction records. The job pipeline version is
 `claim-extraction-v1`, and stage `extract_claims` follows `transcribe_video`.
 The migration requeues previously completed in-scope transcription jobs so
 they can run claim extraction while preserving completed `VIDEO_OUT_OF_SCOPE`
-jobs. Sessions 6A and 7 are implemented locally but are not
-Production-verified.
+jobs. Sessions 6A–7 are deployed in Production. The first reported claim-
+extraction attempt failed because model excerpts/segment indexes did not pass
+source validation; the matching logic fix was deployed on 2026-09-30. A
+successful retry remains unverified.
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
@@ -150,13 +152,10 @@ terminal job contract; it adds no CSS, layout, or visual pattern.
    were verified in Supabase. Automated tests cover duplicate start, retry,
    provider failure and reload. Content remains pending with no report; MOV
    and larger files currently fail explicitly.
-7. Before deploying Sessions 6A–7, pause new workflow dispatch and drain
-   legacy active runs. Apply `20260930140000_video_topic_screening.sql` and
-   `20260930160000_claim_extraction_v1.sql`, deploy the Worker/app with the
-   `analysis-claim-extraction-v1` workflow binding, then resume dispatch.
-   Verify an owned job with persisted transcript and extraction/claim rows.
-   The migration requeues prior completed transcription jobs; do not resume
-   dispatch until the new Worker is live. This rollout has not been performed.
+7. Session 6A–7 rollout is live in Production. The claim-extraction code fix
+   was deployed as Worker version `f24f7c46-bbaf-4507-8002-6bd811cb60ab` on
+   2026-09-30. Retry the failed owned job and verify persisted extraction and
+   claim rows before treating claim extraction as live-verified.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,

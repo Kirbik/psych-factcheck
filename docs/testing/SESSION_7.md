@@ -9,8 +9,20 @@ the server, and persists versioned extraction metadata and claims atomically.
 
 The Session 7 Definition of Done is **not fully met**: `pnpm evals` validates
 synthetic fixture shape only and does not measure model extraction quality.
-Production migration/deployment and live OpenAI verification are also
-outstanding. This is not a release-readiness claim.
+Production migration/deployment are complete, but successful live claim
+extraction is still pending. This is not a release-readiness claim.
+
+## Production incident and correction — 2026-09-30
+
+Cloudflare instance
+`analysis-c5ca7b90-cfc0-4d09-8d36-f10fe16a2057-1` completed screening and
+transcription, then failed claim extraction with `CLAIM_OUTPUT_INVALID` after
+the model's repair response also failed source validation. The provider now
+matches source quote tokens across the transcript despite case and punctuation
+differences, recovers segment indexes from the matched transcript text, and
+stores the exact transcript excerpt. This correction was deployed as Worker
+version `f24f7c46-bbaf-4507-8002-6bd811cb60ab`. A successful retry is still
+needed for live verification.
 
 ## Implementation
 
