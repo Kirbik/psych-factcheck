@@ -4,6 +4,7 @@ import {
   PIPELINE_VERSION,
   type JobPayload,
 } from "@/features/analysis/job-contract";
+import type { TranscriptionResult } from "@/server/ai/providers";
 
 export type AnalysisJob = Database["public"]["Tables"]["analysis_jobs"]["Row"];
 export type WorkflowClient = SupabaseClient<Database>;
@@ -58,6 +59,54 @@ export function workflowRepository(client: WorkflowClient) {
       });
       if (error) throw new Error("Job transition failed");
       return data?.[0] ?? null;
+    },
+    async setStage(
+      payload: JobPayload,
+      runId: string,
+      stage: string,
+      attempt: number,
+    ) {
+      const { data, error } = await client.rpc("set_analysis_job_stage", {
+        p_job_id: payload.jobId,
+        p_generation: payload.generation,
+        p_run_id: runId,
+        p_stage: stage,
+        p_attempt: attempt,
+      });
+      if (error) throw new Error("Job stage update failed");
+      return data === true;
+    },
+    async hasTranscript(contentItemId: string) {
+      const { data, error } = await client
+        .from("transcripts")
+        .select("id")
+        .eq("content_item_id", contentItemId)
+        .eq("pipeline_version", PIPELINE_VERSION)
+        .maybeSingle();
+      if (error) throw new Error("Transcript read failed");
+      return Boolean(data);
+    },
+    async saveTranscript(
+      contentItemId: string,
+      provider: string,
+      model: string,
+      result: TranscriptionResult,
+    ) {
+      const { error } = await client.from("transcripts").upsert(
+        {
+          content_item_id: contentItemId,
+          pipeline_version: PIPELINE_VERSION,
+          provider,
+          model,
+          language: result.language,
+          segments: result.segments.map((segment) => ({ ...segment })),
+        },
+        {
+          onConflict: "content_item_id,pipeline_version",
+          ignoreDuplicates: true,
+        },
+      );
+      if (error) throw new Error("Transcript write failed");
     },
     async content(job: AnalysisJob) {
       const { data, error } = await client

@@ -31,6 +31,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(await sqlFile("20260912000000_initial_foundation.sql"));
     await db.exec(await sqlFile("20260913000000_video_upload.sql"));
     await db.exec(await sqlFile("20260927100000_analysis_workflow.sql"));
+    await db.exec(await sqlFile("20260930120000_transcription_v1.sql"));
     await db.exec(`insert into auth.users values ('${owner}'), ('${other}');
       insert into public.content_items(id, user_id, storage_path) values ('${contentId}', '${owner}', '${owner}/video.mp4');`);
   }, 30_000);
@@ -85,11 +86,13 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
   });
 
   it("atomically queues an upload before any UI or enqueue request", async () => {
-    const result = await db.query<{ status: string }>(
-      "select status from public.analysis_jobs where content_item_id = $1",
+    const result = await db.query<{ status: string; pipeline_version: string }>(
+      "select status, pipeline_version from public.analysis_jobs where content_item_id = $1",
       [contentId],
     );
-    expect(result.rows).toEqual([{ status: "queued" }]);
+    expect(result.rows).toEqual([
+      { status: "queued", pipeline_version: "transcription-v1" },
+    ]);
   });
 
   it("uses generation/run fencing, monotonic state and idempotent retries", async () => {
@@ -150,6 +153,55 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     await db.exec("set local role anon");
     await expect(request()).rejects.toThrow(/permission denied/);
+    await db.exec("rollback");
+  });
+
+  it("stores one immutable versioned transcript and exposes it only to its owner", async () => {
+    const created = await db.query<{ id: string }>(
+      `insert into public.transcripts(content_item_id, provider, model, language, segments)
+       values ($1, 'openai', 'whisper-1', 'ru', '[{"startSeconds":0,"endSeconds":1,"text":"текст"}]')
+       returning id`,
+      [contentId],
+    );
+    await db.query(
+      `insert into public.transcripts(content_item_id, provider, model, language, segments)
+       values ($1, 'openai', 'whisper-1', 'en', '[]')
+       on conflict (content_item_id, pipeline_version) do nothing`,
+      [contentId],
+    );
+    const rows = await asUser(owner, () =>
+      db.query(
+        "select id, language from public.transcripts where content_item_id = $1",
+        [contentId],
+      ),
+    );
+    expect(rows.rows).toEqual([{ id: created.rows[0]?.id, language: "ru" }]);
+    const hidden = await asUser(other, () =>
+      db.query("select * from public.transcripts where content_item_id = $1", [
+        contentId,
+      ]),
+    );
+    expect(hidden.rows).toEqual([]);
+  });
+
+  it("fences stage changes by generation and workflow run", async () => {
+    await db.exec("begin; set local role authenticated;");
+    await db.query("select set_config('request.jwt.claim.sub', $1, true)", [
+      owner,
+    ]);
+    const job = await request();
+    await db.exec("set local role service_role");
+    await transition(job.id, 1, "run_stage", "running");
+    const stage = await db.query<{ updated: boolean }>(
+      "select public.set_analysis_job_stage($1, $2, $3, $4, $5) as updated",
+      [job.id, 1, "run_stage", "transcribe_video", 2],
+    );
+    expect(stage.rows[0]?.updated).toBe(true);
+    const stale = await db.query<{ updated: boolean }>(
+      "select public.set_analysis_job_stage($1, $2, $3, $4, $5) as updated",
+      [job.id, 2, "old_run", "validate_upload", 1],
+    );
+    expect(stale.rows[0]?.updated).toBe(false);
     await db.exec("rollback");
   });
 });

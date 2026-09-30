@@ -2,7 +2,7 @@
 
 ## Current status
 
-The codebase currently defines TypeScript provider contracts and the verdict union only. No video transcription, claim extraction/normalization/classification, embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, or explanation runtime is wired into the application. The `pnpm evals` command currently validates a synthetic fixture's shape; it is not an AI quality evaluation. The sections below describe the intended future design.
+The codebase defines provider contracts and connects timestamped video transcription to OpenAI `whisper-1` through the Cloudflare Workflow. Versioned transcript persistence and the provider adapter are implemented; the migration, Worker secret, deployment, and a live OpenAI request remain unverified. Claim extraction/normalization/classification, embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, and explanation are not connected. The `pnpm evals` command validates a synthetic fixture's shape; it is not an AI quality evaluation.
 
 ## Contract
 
@@ -17,7 +17,7 @@ Every stage accepts a typed input, produces a versioned typed output, validates 
 ## Stages
 
 1. **Video:** validate ownership, size, type, and storage reference; never trust file metadata alone.
-2. **Transcription:** produce timestamped segments and language metadata through `TranscriptionProvider`.
+2. **Transcription:** OpenAI `whisper-1` receives supported MP4/WebM files up to 25 MB. The adapter requests `verbose_json` segment timestamps, validates the untrusted response with Zod, and persists language plus segments under `transcription-v1`. MOV and larger videos currently fail explicitly; audio extraction/chunking is not implemented. See the [OpenAI speech-to-text guide](https://developers.openai.com/api/docs/guides/speech-to-text).
 3. **Claim extraction:** identify standalone checkable statements without judging truth.
 4. **Normalization:** preserve meaning while resolving context; retain original text and timestamp.
 5. **Classification:** assign a claim type to guide search and evidence standards.

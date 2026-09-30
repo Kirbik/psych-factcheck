@@ -15,7 +15,7 @@
   },
   "workflows": [
     {
-      "name": "analysis-preparation-v1",
+      "name": "analysis-transcription-v1",
       "binding": "ANALYSIS_WORKFLOW",
       "class_name": "AnalysisWorkflow"
     }

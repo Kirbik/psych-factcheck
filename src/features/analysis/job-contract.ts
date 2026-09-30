@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-export const PIPELINE_VERSION = "orchestration-v1";
-export const ANALYSIS_WORKFLOW_NAME = "analysis-preparation-v1";
+export const PIPELINE_VERSION = "transcription-v1";
+export const ANALYSIS_WORKFLOW_NAME = "analysis-transcription-v1";
 export const jobPayloadSchema = z
   .object({
     jobId: z.uuid(),
@@ -14,7 +14,7 @@ export const jobViewSchema = z.object({
   id: z.uuid(),
   generation: z.number().int().positive(),
   status: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
-  stage: z.enum(["queued", "validate_upload", "complete"]),
+  stage: z.enum(["queued", "validate_upload", "transcribe_video", "complete"]),
   attempt: z.number().int().nonnegative(),
   error_code: z.string().nullable(),
 });
@@ -32,9 +32,9 @@ export const isActiveJob = (job: Pick<JobView, "status">) =>
 
 export const workflowMessages = {
   queued: "Видео загружено. Подготовка к анализу ожидает запуска.",
-  running: "Проверяем доступность загруженного видео.",
+  running: "Проверяем видео и создаём транскрипт.",
   completed:
-    "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+    "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
   failed:
     "Подготовка не завершена. Повторите запуск; если ошибка повторяется, загрузите видео заново.",
   cancelled: "Подготовка остановлена. Можно повторить запуск.",

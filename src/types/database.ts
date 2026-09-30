@@ -14,6 +14,47 @@ export type Database = {
   };
   public: {
     Tables: {
+      transcripts: {
+        Row: {
+          content_item_id: string;
+          created_at: string;
+          id: string;
+          language: string | null;
+          model: string;
+          pipeline_version: string;
+          provider: string;
+          segments: Json;
+        };
+        Insert: {
+          content_item_id: string;
+          created_at?: string;
+          id?: string;
+          language?: string | null;
+          model: string;
+          pipeline_version?: string;
+          provider: string;
+          segments: Json;
+        };
+        Update: {
+          content_item_id?: string;
+          created_at?: string;
+          id?: string;
+          language?: string | null;
+          model?: string;
+          pipeline_version?: string;
+          provider?: string;
+          segments?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_content_item_id_fkey";
+            columns: ["content_item_id"];
+            isOneToOne: false;
+            referencedRelation: "content_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       analysis_jobs: {
         Row: {
           attempt: number;
@@ -241,6 +282,16 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
+      };
+      set_analysis_job_stage: {
+        Args: {
+          p_attempt?: number;
+          p_generation: number;
+          p_job_id: string;
+          p_run_id: string;
+          p_stage: string;
+        };
+        Returns: boolean;
       };
       request_analysis_job: {
         Args: { p_content_item_id: string; p_retry_generation?: number };

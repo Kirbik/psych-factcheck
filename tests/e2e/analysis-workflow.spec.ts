@@ -80,7 +80,7 @@ test("shows durable progress after reload without claiming AI completion", async
   await page.reload();
   await expect(
     page.getByText(
-      "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+      "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
     ),
   ).toBeVisible();
   await expect(
@@ -88,7 +88,7 @@ test("shows durable progress after reload without claiming AI completion", async
   ).toHaveAttribute("aria-disabled", "true");
   await expect(
     page.locator("li").filter({ hasText: "Создание транскрипта" }),
-  ).toContainText("Ожидает");
+  ).toContainText("Готово");
 });
 
 test("retries a failed generation explicitly", async ({ page }) => {
@@ -111,7 +111,7 @@ test("retries a failed generation explicitly", async ({ page }) => {
   await page.getByRole("button", { name: "Повторить запуск" }).click();
   await expect(
     page.getByText(
-      "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+      "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
     ),
   ).toBeVisible();
   expect(retried).toBe(true);

@@ -14,7 +14,13 @@ import {
 } from "@/server/workflows/execute";
 import { workflowRepository } from "@/server/workflows/repository";
 import { VIDEO_BUCKET } from "@/server/storage/video-validator";
+import {
+  createOpenAITranscriptionProvider,
+  MAX_OPENAI_TRANSCRIPTION_BYTES,
+  TranscriptionProviderError,
+} from "@/server/ai/openai-transcription-provider";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
+import { readWorkflowVideo } from "@/server/workflows/video-download";
 import { createWorkerClient } from "./client";
 
 export class AnalysisWorkflow extends WorkflowEntrypoint<
@@ -24,6 +30,11 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
   async run(event: WorkflowEvent<JobPayload>, step: WorkflowStep) {
     const payload = jobPayloadSchema.parse(event.payload);
     const repository = workflowRepository(createWorkerClient(this.env));
+    const apiKey =
+      typeof this.env.OPENAI_API_KEY === "string"
+        ? this.env.OPENAI_API_KEY
+        : undefined;
+    const transcriptionProvider = createOpenAITranscriptionProvider(apiKey);
     let attempt = 1;
 
     try {
@@ -35,7 +46,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
             delay: "1 second",
             backoff: "exponential",
           },
-          timeout: "60 seconds",
+          timeout: "4 minutes",
         },
         async (context) => {
           attempt = context.attempt;
@@ -70,6 +81,36 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
                   header: await readWorkflowVideoHeader(signed.data.signedUrl),
                 };
               },
+              async (input) => {
+                if (input.size > MAX_OPENAI_TRANSCRIPTION_BYTES)
+                  throw new PermanentWorkflowError(
+                    "TRANSCRIPTION_FILE_TOO_LARGE",
+                  );
+                const client = createWorkerClient(this.env);
+                const signed = await client.storage
+                  .from(VIDEO_BUCKET)
+                  .createSignedUrl(input.storagePath, 300);
+                if (signed.error || !signed.data)
+                  throw new Error("Video download unavailable");
+                const bytes = await readWorkflowVideo(
+                  signed.data.signedUrl,
+                  MAX_OPENAI_TRANSCRIPTION_BYTES,
+                );
+                try {
+                  return await transcriptionProvider.transcribe({
+                    fileName: input.fileName,
+                    contentType: input.contentType,
+                    bytes,
+                  });
+                } catch (error) {
+                  if (error instanceof TranscriptionProviderError) {
+                    if (!error.retryable)
+                      throw new NonRetryableError(error.code);
+                    throw error;
+                  }
+                  throw error;
+                }
+              },
             );
           } catch (error) {
             if (error instanceof PermanentWorkflowError)
@@ -79,15 +120,13 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         },
       );
     } catch (error) {
-      if (!(error instanceof NonRetryableError)) {
-        await repository.advance(
-          payload,
-          event.instanceId,
-          "failed",
-          attempt,
-          "WORKFLOW_FAILED",
-        );
-      }
+      await repository.advance(
+        payload,
+        event.instanceId,
+        "failed",
+        attempt,
+        error instanceof NonRetryableError ? error.message : "WORKFLOW_FAILED",
+      );
       throw error;
     }
   }

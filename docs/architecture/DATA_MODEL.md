@@ -43,9 +43,9 @@ This document distinguishes the current Supabase schema from the planned analysi
 ### `transcripts`
 
 - **Purpose:** versioned transcription output for a content item.
-- **Important fields:** `id`, `content_item_id`, `provider`, `model`, `language`, timestamped segments JSON, status.
+- **Implemented fields:** `id`, `content_item_id`, `pipeline_version`, `provider`, `model`, nullable `language`, timestamped `segments` JSON, `created_at`.
 - **Relations/ownership:** belongs to content item; source for claims. Ownership derives from content item.
-- **Lifecycle:** created by workflow; immutable after completion except explicit replacement/versioning.
+- **Lifecycle:** created by the transcription workflow after Zod validation; unique per content item and pipeline version, immutable on retries. Session 6 uses OpenAI `whisper-1` and stores segment start/end seconds and text. MP4/WebM up to 25 MB are supported; MOV and larger files fail with explicit job errors.
 
 ### `claims`
 
@@ -91,7 +91,7 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** the Session 5 migration queues a job atomically on uploaded content insertion. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. The Cloudflare Workflow validates the uploaded object and completes preparation only; content remains pending and no AI result is produced. Production workflow verification is pending; see [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6 adds the `transcription-v1` pipeline and fenced stage updates. Content remains pending after transcription; no claims, evidence, or report are produced. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 

@@ -4,7 +4,7 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 ## Repository progress (2026-09-27)
 
-The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Cloudflare Workflows preparation process. On 2026-09-30, all seven visible Production Workflow instances matched the seven latest `analysis_jobs.run_id` values; all corresponding jobs are `completed/complete`, and their content rows remain `pending`. The latest ten minute-cron events succeeded. A fresh authenticated browser upload/retry/recovery and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
+Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. The user explicitly directed work to proceed to Session 6 despite those open acceptance items. Session 6 implementation now exists locally; migration/deployment and a live OpenAI request remain unverified. This is not a claim that the MVP is release-ready.
 
 ## Session 0 — Foundation
 
@@ -98,9 +98,11 @@ The repository contains implementation work through Session 5: foundation/toolin
 
 ## Session 6 — Transcription
 
+**Status:** Implemented locally. Provider selected: OpenAI `whisper-1` for segment timestamps. The migration, Worker secret/deployment, and live provider verification remain pending. See [Session 6 verification](../testing/SESSION_6.md).
+
 - **Goal:** Implement `TranscriptionProvider` adapter and timestamped transcript persistence.
 - **Why:** Claims require auditable source text and timing.
-- **Scope:** One selected provider adapter, Zod validation, errors/timeouts, transcript repository/workflow stage.
+- **Scope:** OpenAI `whisper-1` adapter, Zod validation, bounded timeout/retries, transcript repository/workflow stage, timestamped persistence. The API's 25 MB file ceiling and supported input formats apply.
 - **Out of scope:** Claim extraction, multiple providers in UI, judgment.
 - **Expected files:** `src/server/ai`, transcripts migration/repository, workflow/tests.
 - **Acceptance criteria:** Provider data is validated and segments map faithfully with timestamps.

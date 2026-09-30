@@ -40,8 +40,15 @@ export interface LLMProvider {
 
 export interface TranscriptionProvider {
   transcribe(input: {
-    readonly storagePath: string;
-  }): Promise<readonly TranscriptSegment[]>;
+    readonly fileName: string;
+    readonly contentType: string;
+    readonly bytes: Uint8Array;
+  }): Promise<TranscriptionResult>;
+}
+
+export interface TranscriptionResult {
+  readonly language: string | null;
+  readonly segments: readonly TranscriptSegment[];
 }
 
 export interface EmbeddingProvider {

@@ -38,7 +38,10 @@ function populateSupabaseProcessEnv(environment: WorkerEnvironment) {
 
 function withUtf8ContentType(response: Response) {
   const contentType = response.headers.get("content-type");
-  if (!contentType?.startsWith("text/x-component") || contentType.includes("charset=")) {
+  if (
+    !contentType?.startsWith("text/x-component") ||
+    contentType.includes("charset=")
+  ) {
     return response;
   }
 
@@ -78,9 +81,7 @@ async function reconcileActiveJobs(environment: WorkerEnvironment) {
   if (typeof workflow !== "object" || workflow === null)
     throw new Error("Cloudflare Workflow binding unavailable");
   const jobs = await repository.active();
-  const runner = createCloudflareWorkflowRunner(
-    workflow as WorkflowBinding,
-  );
+  const runner = createCloudflareWorkflowRunner(workflow as WorkflowBinding);
   const results = await Promise.allSettled(
     jobs.map((job) => reconcileJob(job, repository, runner)),
   );

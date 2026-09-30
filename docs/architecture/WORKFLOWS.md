@@ -1,20 +1,22 @@
-# Background workflow — Session 5
+# Background workflow — Sessions 5–6
 
 ## Scope and completion
 
-`analysis-preparation-v1` is a Cloudflare Workflow without AI stages. It reads
-the owned content row, checks the Storage object path, actual size, MIME and
-extension agreement, and a bounded container signature, then persists
-`completed` on the job. This means upload preparation completed, not fact
-checking. `content_items.status` stays `pending`; no transcript, claims,
-evidence, or report is produced.
+The Session 5 `analysis-preparation-v1` workflow validated uploaded videos
+only. Session 6 changes the source binding to `analysis-transcription-v1`: it
+checks the owned content row, Storage path, actual size, MIME and extension
+agreement, and container signature, then transcribes supported MP4/WebM files
+up to 25 MB with OpenAI `whisper-1`. The adapter requests segment timestamps
+in `verbose_json`, validates the response with Zod, and persists one immutable
+transcript per content item and `transcription-v1` version. Content remains
+`pending`; claims, evidence, and reports are not produced.
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
-source of truth for job state and ownership. The Production dashboard has the
-binding and cron configured and records one completed Workflow instance;
-verification of the corresponding Supabase job state and browser end-to-end
-acceptance remain pending. If the Worker binding is unavailable, the API
+source of truth for job state and ownership. The Production dashboard had the
+Session 5 binding and cron configured, with matching completed Workflow/Supabase
+runs. The Session 6 binding, migration, Worker `OPENAI_API_KEY` secret and live
+browser transcription remain pending. If the Worker binding is unavailable, the API
 returns HTTP 503 with an explicit unavailable message; uploads remain saved.
 There is no fake executor in production.
 
@@ -40,12 +42,13 @@ There is no fake executor in production.
   throughput bound, not a production-scale queue dispatcher.
 
 Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queued
-runs can also fail or cancel. Stage is `queued`, `validate_upload`, or
-`complete`. `generation` counts explicit restarts; `attempt` records Workflow
-step retries. Technical errors returned to the browser are fixed messages,
-never raw provider errors. The preparation step retries transient failures up
-to three total attempts. Permanent invalid-upload failures stop immediately.
-Storage fetches have a 15-second timeout and the step has a 60-second timeout.
+runs can also fail or cancel. Stage is `queued`, `validate_upload`,
+`transcribe_video`, or `complete`. `generation` counts explicit restarts;
+`attempt` records Workflow step retries. Technical errors returned to the
+browser are fixed messages, never raw provider errors. The step retries
+transient failures up to three total attempts. OpenAI requests time out after
+180 seconds, full Storage downloads after 60 seconds, and the Workflow step
+after 4 minutes. Permanent input/configuration errors stop immediately.
 
 ## API and UI
 
@@ -63,8 +66,9 @@ Reloads read the durable job, then listen for `analysis_jobs` changes through
 Supabase Realtime. Owner RLS applies to the subscription. If the socket is
 disconnected, the UI checks status every ten seconds until the subscription
 recovers; returning to a visible tab triggers a fresh read. An explicit retry
-still goes through the API. The existing analysis steps remain pending after
-upload, and report navigation stays disabled.
+still goes through the API. The upload validation and transcript steps update
+their existing progress states; claim/evidence/report steps remain pending,
+and report navigation stays disabled.
 
 During a video byte upload, reloading the page interrupts the TUS transfer.
 The same tab restores the paused upload from `sessionStorage` and then shows
@@ -75,27 +79,29 @@ the original file again. Cancel clears the upload state so another file can be
 chosen. Returning from completed progress to a new check also clears the old
 file selection.
 
-No UI or CSS changes are part of the workflow runtime migration.
+Session 6 changes only the existing workflow progress text/state mapping; it adds no new visual pattern or CSS.
 
 ## Setup and deployment
 
 1. Apply the reviewed Supabase migrations for upload, analysis jobs, and the
    Realtime publication (`20260928100000_analysis_jobs_realtime.sql`).
-2. Configure `NEXT_PUBLIC_SUPABASE_URL` and the server-only
-   `SUPABASE_SERVICE_ROLE_KEY` in the Cloudflare Worker environment. Keep the
-   service-role value as a Worker secret; do not put it in client code or task
-   payloads.
+2. Configure `NEXT_PUBLIC_SUPABASE_URL`, the server-only
+   `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY` in the Cloudflare Worker
+   environment. Keep both secrets as Worker secrets; do not put them in client
+   code, variables, or task payloads.
 3. `wrangler.jsonc` declares the `ANALYSIS_WORKFLOW` binding and the minute
    cron. Run `pnpm dev:vinext` to exercise the app, workflow and scheduled
    handler locally through the Cloudflare runtime.
 4. Run `pnpm build:vinext`, then deploy with the project's Cloudflare Worker
    deployment pipeline. No separate workflow service, project, or API key is
    required.
-5. The Production dashboard has confirmed the `analysis-preparation-v1`
-   Workflow binding, minute cron and one completed instance.
-6. Verify the corresponding Supabase job reached `completed`, then test a fresh
-   upload, duplicate start, worker failure, explicit retry and reload. Check
-   that the content remains pending and no report is advertised.
+5. Apply `20260930120000_transcription_v1.sql`, deploy the Worker with the
+   `analysis-transcription-v1` binding, and set `OPENAI_API_KEY` with
+   `wrangler secret put OPENAI_API_KEY`.
+6. Verify a fresh authorized MP4/WebM upload no larger than 25 MB produces a
+   transcript and completed `transcription-v1` job. Test duplicate start,
+   retry, provider failure and reload. Content must remain pending with no
+   report. MOV and larger files currently fail explicitly.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,

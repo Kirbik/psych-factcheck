@@ -90,8 +90,22 @@ function repository() {
     content: vi
       .fn<WorkflowRepository["content"]>()
       .mockResolvedValue(content()),
+    setStage: vi.fn<WorkflowRepository["setStage"]>().mockResolvedValue(true),
+    hasTranscript: vi
+      .fn<WorkflowRepository["hasTranscript"]>()
+      .mockResolvedValue(false),
+    saveTranscript: vi
+      .fn<WorkflowRepository["saveTranscript"]>()
+      .mockResolvedValue(undefined),
     active: vi.fn<WorkflowRepository["active"]>(),
   } satisfies WorkflowRepository;
+}
+
+function transcriber() {
+  return vi.fn<Parameters<typeof executeWorkflow>[5]>().mockResolvedValue({
+    language: "ru",
+    segments: [{ startSeconds: 0, endSeconds: 1, text: "Тестовый сегмент." }],
+  });
 }
 
 function runner() {
@@ -152,7 +166,7 @@ describe("workflow execution", () => {
     const inspect = vi.fn<Parameters<typeof executeWorkflow>[4]>();
 
     await expect(
-      executeWorkflow(payload, runId, 1, repo, inspect),
+      executeWorkflow(payload, runId, 1, repo, inspect, transcriber()),
     ).resolves.toEqual({ outcome: "obsolete" });
     expect(repo.advance).toHaveBeenCalledExactlyOnceWith(
       payload,
@@ -171,16 +185,54 @@ describe("workflow execution", () => {
     const inspect = vi
       .fn<Parameters<typeof executeWorkflow>[4]>()
       .mockResolvedValue(validVideo());
+    const transcribe = transcriber();
 
     await expect(
-      executeWorkflow(retryPayload, runId, 3, repo, inspect),
-    ).resolves.toEqual({ outcome: "prepared" });
+      executeWorkflow(retryPayload, runId, 3, repo, inspect, transcribe),
+    ).resolves.toEqual({ outcome: "transcribed" });
     expect(repo.advance.mock.calls).toEqual([
       [retryPayload, runId, "running", 3],
       [retryPayload, runId, "completed", 3],
     ]);
+    expect(repo.setStage).toHaveBeenCalledExactlyOnceWith(
+      retryPayload,
+      runId,
+      "transcribe_video",
+      3,
+    );
+    expect(transcribe).toHaveBeenCalledExactlyOnceWith({
+      storagePath: content().storage_path,
+      fileName: "lesson.mp4",
+      contentType: "video/mp4",
+      size: 1024,
+    });
+    expect(repo.saveTranscript).toHaveBeenCalledExactlyOnceWith(
+      contentId,
+      "openai",
+      "whisper-1",
+      expect.objectContaining({ language: "ru" }),
+    );
     expect(inspect).toHaveBeenCalledExactlyOnceWith(content().storage_path);
     expect(repo.request).not.toHaveBeenCalled();
+  });
+
+  it("does not call OpenAI again when the immutable transcript already exists", async () => {
+    const repo = repository();
+    repo.hasTranscript.mockResolvedValue(true);
+    const transcribe = transcriber();
+
+    await expect(
+      executeWorkflow(
+        payload,
+        runId,
+        2,
+        repo,
+        async () => validVideo(),
+        transcribe,
+      ),
+    ).resolves.toEqual({ outcome: "transcribed" });
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(repo.saveTranscript).not.toHaveBeenCalled();
   });
 
   it("does not report success if the generation becomes obsolete during inspection", async () => {
@@ -188,7 +240,14 @@ describe("workflow execution", () => {
     repo.advance.mockResolvedValueOnce(job()).mockResolvedValueOnce(null);
 
     await expect(
-      executeWorkflow(payload, runId, 1, repo, async () => validVideo()),
+      executeWorkflow(
+        payload,
+        runId,
+        1,
+        repo,
+        async () => validVideo(),
+        transcriber(),
+      ),
     ).resolves.toEqual({ outcome: "obsolete" });
   });
 
@@ -207,7 +266,7 @@ describe("workflow execution", () => {
       const inspect = vi.fn<Parameters<typeof executeWorkflow>[4]>();
 
       await expect(
-        executeWorkflow(payload, runId, 1, repo, inspect),
+        executeWorkflow(payload, runId, 1, repo, inspect, transcriber()),
       ).rejects.toThrow(new PermanentWorkflowError("INVALID_UPLOAD"));
       expect(inspect).not.toHaveBeenCalled();
       expect(repo.advance).toHaveBeenCalledTimes(1);
@@ -219,7 +278,14 @@ describe("workflow execution", () => {
     async (size) => {
       const repo = repository();
       await expect(
-        executeWorkflow(payload, runId, 1, repo, async () => validVideo(size)),
+        executeWorkflow(
+          payload,
+          runId,
+          1,
+          repo,
+          async () => validVideo(size),
+          transcriber(),
+        ),
       ).rejects.toThrow(PermanentWorkflowError);
       expect(repo.advance).toHaveBeenCalledTimes(1);
     },
@@ -231,7 +297,14 @@ describe("workflow execution", () => {
       const repo = repository();
       repo.content.mockResolvedValue(content(overrides));
       await expect(
-        executeWorkflow(payload, runId, 1, repo, async () => validVideo()),
+        executeWorkflow(
+          payload,
+          runId,
+          1,
+          repo,
+          async () => validVideo(),
+          transcriber(),
+        ),
       ).rejects.toThrow(new PermanentWorkflowError("UPLOAD_CHANGED"));
       expect(repo.advance).toHaveBeenCalledTimes(1);
     },
@@ -245,7 +318,7 @@ describe("workflow execution", () => {
       .mockRejectedValue(failure);
 
     await expect(
-      executeWorkflow(payload, runId, 1, repo, inspect),
+      executeWorkflow(payload, runId, 1, repo, inspect, transcriber()),
     ).rejects.toBe(failure);
     expect(repo.advance).toHaveBeenCalledExactlyOnceWith(
       payload,
@@ -265,7 +338,7 @@ describe("workflow execution", () => {
       });
 
     await expect(
-      executeWorkflow(payload, runId, 1, repo, inspect),
+      executeWorkflow(payload, runId, 1, repo, inspect, transcriber()),
     ).rejects.toThrow(PermanentWorkflowError);
     expect(repo.advance).toHaveBeenCalledExactlyOnceWith(
       payload,
@@ -282,7 +355,14 @@ describe("workflow execution", () => {
     );
 
     await expect(
-      executeWorkflow(payload, runId, 1, repo, async () => validVideo()),
+      executeWorkflow(
+        payload,
+        runId,
+        1,
+        repo,
+        async () => validVideo(),
+        transcriber(),
+      ),
     ).rejects.toThrow(PermanentWorkflowError);
     expect(repo.advance).toHaveBeenCalledTimes(1);
   });
@@ -292,7 +372,14 @@ describe("workflow execution", () => {
     const failure = new Error("Database unavailable");
     repo.advance.mockResolvedValueOnce(job()).mockRejectedValueOnce(failure);
     await expect(
-      executeWorkflow(payload, runId, 1, repo, async () => validVideo()),
+      executeWorkflow(
+        payload,
+        runId,
+        1,
+        repo,
+        async () => validVideo(),
+        transcriber(),
+      ),
     ).rejects.toBe(failure);
   });
 });

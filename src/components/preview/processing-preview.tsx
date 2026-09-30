@@ -26,6 +26,7 @@ type ProcessingPreviewProps = {
   onBack?: () => void;
   uploadError?: string;
   uploadStatus?: UploadProgressStatus;
+  transcriptionStatus?: UploadProgressStatus;
   workflowMessage?: string;
   onRetry?: () => void;
   onCancel?: () => void;
@@ -80,6 +81,7 @@ export function ProcessingPreview({
   onBack,
   uploadError,
   uploadStatus = "pending",
+  transcriptionStatus = "pending",
   workflowMessage,
   onRetry,
   onCancel,
@@ -93,7 +95,12 @@ export function ProcessingPreview({
   const [needsManualSelection, setNeedsManualSelection] = useState(false);
   const steps: ProcessingStep[] = stepLabels.map((label, index) => ({
     label,
-    status: index === 0 ? uploadStatus : "pending",
+    status:
+      index === 0
+        ? uploadStatus
+        : index === 1
+          ? transcriptionStatus
+          : "pending",
   }));
   const isComplete = steps.every((step) => step.status === "completed");
 

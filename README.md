@@ -1,10 +1,10 @@
 # Psych Factcheck
 
-An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 5 adds a Cloudflare Workflows preparation process with durable jobs and retry/status UI. The Production Worker binding and schedule are configured; matching database state and fresh browser upload/retry acceptance remain to be verified. Transcription, claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
+An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 6 connects versioned timestamped transcription to OpenAI `whisper-1` through Cloudflare Workflows. Its database migration, Worker secret, deployment, and live provider check remain pending. Claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Real AI/transcription/embedding providers are not connected.
+Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Session 6 connects transcription to OpenAI; claim extraction, embeddings, retrieval, judgment, and report generation are not connected.
 
 ## Prerequisites
 

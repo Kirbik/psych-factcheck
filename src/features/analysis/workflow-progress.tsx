@@ -174,6 +174,15 @@ export function WorkflowProgress({
   return (
     <ProcessingPreview
       uploadStatus="completed"
+      transcriptionStatus={
+        job?.status === "completed"
+          ? "completed"
+          : job?.stage === "transcribe_video" && job.status === "running"
+            ? "processing"
+            : job?.stage === "transcribe_video" && job.status === "failed"
+              ? "failed"
+              : "pending"
+      }
       onBack={onBack}
       uploadError={error || undefined}
       workflowMessage={

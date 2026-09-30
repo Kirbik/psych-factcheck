@@ -4,7 +4,7 @@
 
 Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated direct-to-Storage TUS video upload backed by a private bucket. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
 
-The applied Session 5 migration atomically queues a preparation job with uploaded content. Cloudflare Workflows provide background execution; the Production binding and schedule are configured and one completed instance has been observed. Verification of its matching Supabase job state and full browser acceptance remain pending. Transcription, AI, evidence retrieval and report persistence remain future scope. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
+Session 5 migrations atomically queue a job with uploaded content. Session 6 adds the versioned transcript table and fenced transcription stage. The deployed Production binding still reflects Session 5 until the new migration and Worker deployment are applied; `OPENAI_API_KEY` and a live transcription check remain outstanding. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
 
 ## Dependencies
 

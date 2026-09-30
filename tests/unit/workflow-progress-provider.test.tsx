@@ -143,7 +143,7 @@ describe("workflow progress upload lock", () => {
 
     expect(
       await screen.findByText(
-        "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+        "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Новая проверка" }));
@@ -202,7 +202,7 @@ describe("workflow progress upload lock", () => {
 
     expect(
       await screen.findByText(
-        "Видео готово к следующим этапам. Транскрипция и анализ пока недоступны.",
+        "Транскрипт создан. Выделение утверждений и анализ пока недоступны.",
       ),
     ).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(2);
