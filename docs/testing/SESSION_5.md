@@ -109,3 +109,21 @@ See [setup instructions](../architecture/WORKFLOWS.md).
   case checks that server-rendered HTML omits the transient preparation-stage
   screen and that the paused upload is restored. This is a mocked/UI check, not
   a test of live Cloudflare or Supabase connectivity.
+
+## Session 5 follow-up verification — 2026-09-30
+
+- A read-only Supabase check found the five most recently updated
+  `analysis_jobs` rows in `completed` / `complete`, with `run_id` set. Every
+  row had a matching `content_items` row whose status remained `pending`.
+  This verifies persisted job-to-content linkage and expected non-AI status;
+  the run IDs were not cross-checked against Cloudflare's dashboard instances.
+- `pnpm test:e2e`: 11 passed, 5 skipped. The mocked browser tests for restored
+  upload UI, durable workflow progress, explicit retry, and unavailable worker
+  passed. Live auth/upload cases were skipped because no E2E test token was
+  configured.
+- `pnpm test`: 138 passed, 4 skipped; `pnpm typecheck`: passed; `pnpm lint`:
+  passed with two existing navigation warnings in `history-preview.tsx`.
+- A fresh TUS upload and a live Cloudflare crash/recovery/retry scenario were
+  not run: this workspace has no configured E2E user token or Cloudflare CLI
+  credentials. Session 5 acceptance remains pending those environment-backed
+  checks and Figma comparison.

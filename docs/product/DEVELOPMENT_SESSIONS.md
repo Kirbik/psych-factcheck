@@ -4,7 +4,7 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 ## Repository progress (2026-09-27)
 
-The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Cloudflare Workflows preparation process. Matching Production job state, browser failure/retry scenarios and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
+The repository contains implementation work through Session 5: foundation/tooling, Supabase schema and clients, token-based authentication, validated private video upload and a non-AI Cloudflare Workflows preparation process. A read-only check confirmed the five latest Production jobs have matching content rows and leave content pending; cross-checking their run IDs against Cloudflare instances, live browser upload/retry/recovery, and visual acceptance remain. This is not a claim that every environment-gated test passed or that the MVP is release-ready. Transcription, AI, Evidence Base and report persistence are not connected. Do not start Session 6 until Session 5 is accepted.
 
 ## Session 0 — Foundation
 
@@ -83,7 +83,7 @@ The repository contains implementation work through Session 5: foundation/toolin
 
 ## Session 5 — Background Workflow
 
-**Status:** The application uses Cloudflare Workflows; the earlier Development integration was verified on 2026-09-27 before the runtime migration. Atomic upload/job creation, guarded lifecycle/retry RPCs, scheduled recovery, API and persisted progress UI are present. Hosted migrations were applied and DB types regenerated. The earlier uploaded WebM reached `completed`, and duplicate dispatch reused the same run; that result does not verify the Cloudflare runtime. Production binding, minute cron and one completed Workflow instance are visible in the Cloudflare dashboard. Confirm the persisted job state, then run a fresh browser upload/retry/crash check and complete Figma acceptance. See [workflow setup and limits](../architecture/WORKFLOWS.md) and [live verification](../testing/SESSION_5.md).
+**Status:** The application uses Cloudflare Workflows; the earlier Development integration was verified on 2026-09-27 before the runtime migration. Atomic upload/job creation, guarded lifecycle/retry RPCs, scheduled recovery, API and persisted progress UI are present. Hosted migrations were applied and DB types regenerated. The earlier uploaded WebM reached `completed`, and duplicate dispatch reused the same run; that result does not verify the Cloudflare runtime. Production binding, minute cron and one completed Workflow instance are visible in the Cloudflare dashboard. A 2026-09-30 read-only check confirmed the five latest Production job rows link to content rows and leave them `pending`; live run-ID-to-Cloudflare matching, a fresh browser upload/retry/crash check and Figma acceptance remain. See [workflow setup and limits](../architecture/WORKFLOWS.md) and [live verification](../testing/SESSION_5.md).
 
 - **Goal:** Add an idempotent Cloudflare preparation workflow without AI.
 - **Why:** Long-running work must not depend on an HTTP request.
