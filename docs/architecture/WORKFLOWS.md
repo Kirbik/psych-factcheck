@@ -108,12 +108,13 @@ anonymous key is public; table access remains protected by RLS.
 After upload, `/new-check` displays progress and requests immediate dispatch.
 `/dashboard` links to `/processing?contentItemId=...` for saved uploads.
 Reloads read the durable job, then listen for `analysis_jobs` changes through
-Supabase Realtime. Owner RLS applies to the subscription. If the socket is
-disconnected, the UI checks status every ten seconds until the subscription
-recovers; returning to a visible tab triggers a fresh read. An explicit retry
-still goes through the API. Upload validation, screening, transcription, and
-claim extraction update their existing progress states; evidence and report
-steps remain pending, and report navigation stays disabled.
+Supabase Realtime. Owner RLS applies to the subscription. Realtime events update
+the UI immediately, and a ten-second status read reconciles missed events even
+when the channel reports a connection; returning to a visible tab also triggers
+a fresh read. These are GET status reads; workflow dispatch still occurs once
+through POST, and an explicit retry uses the API. Upload validation, screening,
+transcription, and claim extraction update their existing progress states;
+evidence and report steps remain pending, and report navigation stays disabled.
 
 During a video byte upload, reloading the page interrupts the TUS transfer.
 The same tab restores the paused upload from `sessionStorage` and then shows

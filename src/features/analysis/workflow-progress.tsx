@@ -5,6 +5,7 @@ import { ProcessingPreview } from "@/components/preview/processing-preview";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { useVideoUpload } from "@/features/analysis/video-upload-provider";
 import {
+  isActiveJob,
   jobResponseSchema,
   SCREENED_OUT_ERROR_CODE,
   workflowMessages,
@@ -65,6 +66,10 @@ export function WorkflowProgress({
       latestJob.current = next;
       updateWorkflowStatus(contentItemId, next.status);
       setJob(next);
+      if (!isActiveJob(next) && fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = undefined;
+      }
     }
     async function refreshStatus() {
       if (refreshing || controller.signal.aborted) return;
@@ -111,10 +116,11 @@ export function WorkflowProgress({
         .subscribe((status) => {
           isSubscribed = status === "SUBSCRIBED";
           if (isSubscribed) {
-            if (fallbackTimer) clearInterval(fallbackTimer);
-            fallbackTimer = undefined;
             void refreshStatus();
-          } else if (!fallbackTimer) {
+          }
+          // Realtime is the fast path; this snapshot check also recovers if a
+          // deployed database accepts the channel but does not publish row changes.
+          if (!fallbackTimer) {
             fallbackTimer = setInterval(() => void refreshStatus(), 10_000);
           }
         });

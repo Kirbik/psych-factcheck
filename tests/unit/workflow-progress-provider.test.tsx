@@ -18,6 +18,7 @@ const fileAccess = vi.hoisted(() => ({
 }));
 const realtime = vi.hoisted(() => ({
   onChange: null as ((payload: { new: unknown }) => void) | null,
+  onFallback: null as (() => void) | null,
   onStatus: null as ((status: string) => void) | null,
   removeChannel: vi.fn(),
 }));
@@ -98,6 +99,7 @@ afterEach(() => {
   vi.clearAllMocks();
   fileAccess.supportsPersistentVideoAccess.mockReturnValue(false);
   realtime.onChange = null;
+  realtime.onFallback = null;
   realtime.onStatus = null;
   realtime.removeChannel.mockClear();
 });
@@ -228,11 +230,7 @@ describe("workflow progress upload lock", () => {
     expect(realtime.removeChannel).toHaveBeenCalled();
   });
 
-  it("sends one analysis POST and uses Realtime for later status changes", async () => {
-    uploadVideoFile.mockResolvedValue({
-      contentItemId: "33333333-3333-4333-8333-333333333333",
-      duplicate: false,
-    });
+  it("uses Realtime for stage changes and schedules status reconciliation", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -251,21 +249,24 @@ describe("workflow progress upload lock", () => {
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("setInterval", (callback: () => void) => {
+      realtime.onFallback = callback;
+      return 1;
+    });
 
     render(
       <VideoUploadProvider>
-        <UploadAndWorkflow />
+        <WorkflowProgress contentItemId="33333333-3333-4333-8333-333333333333" />
       </VideoUploadProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Start upload" }));
     expect(
       await screen.findByText(
         "Видео загружено. Подготовка к анализу ожидает запуска.",
       ),
     ).toBeInTheDocument();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(realtime.onFallback).toBeTypeOf("function");
     realtime.onChange?.({
       new: {
         id: "44444444-4444-4444-8444-444444444444",
