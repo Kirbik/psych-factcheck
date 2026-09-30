@@ -228,6 +228,61 @@ describe("workflow progress upload lock", () => {
     expect(realtime.removeChannel).toHaveBeenCalled();
   });
 
+  it("sends one analysis POST and uses Realtime for later status changes", async () => {
+    uploadVideoFile.mockResolvedValue({
+      contentItemId: "33333333-3333-4333-8333-333333333333",
+      duplicate: false,
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        realtime: {
+          supabaseUrl: "https://example.supabase.co",
+          supabaseAnonKey: "public-test-key",
+        },
+        job: {
+          id: "44444444-4444-4444-8444-444444444444",
+          generation: 1,
+          status: "queued",
+          stage: "queued",
+          attempt: 0,
+          error_code: null,
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <VideoUploadProvider>
+        <UploadAndWorkflow />
+      </VideoUploadProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Start upload" }));
+    expect(
+      await screen.findByText(
+        "Видео загружено. Подготовка к анализу ожидает запуска.",
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    realtime.onChange?.({
+      new: {
+        id: "44444444-4444-4444-8444-444444444444",
+        generation: 1,
+        status: "running",
+        stage: "transcribe_video",
+        attempt: 1,
+        error_code: null,
+      },
+    });
+
+    expect(
+      await screen.findByText("Транскрибируем видео через OpenAI."),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("restores interrupted upload progress and resumes with the original file", async () => {
     const uploadId = "55555555-5555-4555-8555-555555555555";
     const file = new File(["video bytes"], "lesson.mp4", {

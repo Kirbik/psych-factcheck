@@ -7,6 +7,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
   useSyncExternalStore,
 } from "react";
 import {
@@ -192,10 +193,10 @@ export function VideoUploadProvider({
     () => restoringSnapshot,
   );
   const isRestoring = activeContentItemSnapshot === restoringSnapshot;
-  const storedUploadState = parseStoredUploadState(activeContentItemSnapshot);
-  const restoredTask = storedUploadState
-    ? createRestoredTask(storedUploadState)
-    : null;
+  const restoredTask = useMemo(() => {
+    const storedUploadState = parseStoredUploadState(activeContentItemSnapshot);
+    return storedUploadState ? createRestoredTask(storedUploadState) : null;
+  }, [activeContentItemSnapshot]);
   const currentTask = task ?? restoredTask;
   const interruptedUploadId =
     currentTask?.status === "interrupted" ? currentTask.uploadId : null;
@@ -277,9 +278,14 @@ export function VideoUploadProvider({
         progressPercent: initialTask.progressPercent ?? 0,
       });
 
-      void uploadVideoFile(file, uploadId, (progressPercent) => {
-        updateUploadProgress(uploadId, progressPercent);
-      }, controller.signal)
+      void uploadVideoFile(
+        file,
+        uploadId,
+        (progressPercent) => {
+          updateUploadProgress(uploadId, progressPercent);
+        },
+        controller.signal,
+      )
         .then((result) => {
           const current = taskRef.current;
           if (current?.uploadId === uploadId) {
@@ -364,7 +370,11 @@ export function VideoUploadProvider({
   const cancelUpload = useCallback(() => {
     const current = taskRef.current ?? restoredTask;
     const active = uploadControllerRef.current;
-    if (!current || (current.status !== "processing" && current.status !== "interrupted")) return false;
+    if (
+      !current ||
+      (current.status !== "processing" && current.status !== "interrupted")
+    )
+      return false;
     if (current.status === "processing") {
       if (!active || active.uploadId !== current.uploadId) return false;
       active.controller.abort();
@@ -391,7 +401,8 @@ export function VideoUploadProvider({
       const current = taskRef.current ?? restoredTask;
       if (
         current?.status === "completed" &&
-        current.result?.contentItemId === contentItemId
+        current.result?.contentItemId === contentItemId &&
+        current.workflowStatus !== workflowStatus
       ) {
         updateTask({ ...current, workflowStatus });
         if (
