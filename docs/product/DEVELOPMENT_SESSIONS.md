@@ -111,6 +111,19 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 - **QA requirements:** Reviewer plus provider-failure Test Engineer.
 - **Definition of Done:** A real uploaded video yields a validated persisted transcript through the provider boundary.
 
+## Session 6A — Topic Screening
+
+**Status:** Implemented locally; Production verification remains outstanding. Session 6 Production transcription verification predates this change.
+
+- **Goal:** Reject only clearly off-topic videos before full transcription by screening bounded samples.
+- **Why:** Reduce full-transcription spend on unsuitable long videos while preserving uncertain or potentially relevant videos.
+- **Scope:** MP4/WebM compressed-audio sample demux/remux, server-only OpenAI sample transcription and structured topic classification, Zod validation, fail-open policy, versioned diagnostic result, workflow stage and status copy.
+- **Out of scope:** Claim extraction, truth evaluation, video decoding, full audio extraction, UI redesign, production rollout.
+- **Acceptance criteria:** Only high-confidence out-of-scope decisions skip full transcription; errors and uncertainty continue; sample text is not persisted; retry/fencing remain intact.
+- **Required tests:** screening provider contract, malformed output, workflow gate/retry, DB idempotency/RLS, E2E progress, eval fixture shape, lint, typecheck, unit tests, build.
+- **Definition of Done:** Required local checks pass and documentation distinguishes local implementation from Production verification.
+- **Verification record:** [Session 6A checks and limitations](../testing/SESSION_6A.md).
+
 ## Session 7 — Claim Extraction
 
 - **Goal:** Extract, normalize, and classify claims via `LLMProvider` structured output.

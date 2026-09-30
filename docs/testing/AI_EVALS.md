@@ -2,7 +2,7 @@
 
 ## Current status
 
-There is no AI pipeline or golden-set runner yet. `pnpm evals` runs a single Zod shape check for `evals/fixtures/synthetic-cases.json`; this confirms only that the demonstration fixture matches its schema. It does not measure model quality or scientific correctness.
+There is no AI quality runner yet. `pnpm evals` validates the synthetic fact-check fixture and the synthetic topic-screening cases in `evals/fixtures/video-screening-cases.json`; it confirms only that demonstration fixtures match their schemas. It does not call OpenAI or measure model quality, false-positive/false-negative rates, or scientific correctness.
 
 ## Golden dataset
 
@@ -20,6 +20,8 @@ Example:
 ```
 
 The repository currently contains one synthetic fixture demonstrating the expected case shape. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
+
+The screening fixture includes an incidental psychology mention as a false-positive guard, an ambiguous short excerpt as a false-negative guard, and one clear psychology case. These examples document desired behavior only; no model output is scored against them yet.
 
 ## Metrics
 

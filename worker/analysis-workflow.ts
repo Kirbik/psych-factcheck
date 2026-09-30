@@ -9,7 +9,8 @@ import {
   type JobPayload,
 } from "@/features/analysis/job-contract";
 import {
-  executeWorkflow,
+  executeScreeningStage,
+  executeTranscriptionStage,
   PermanentWorkflowError,
 } from "@/server/workflows/execute";
 import { workflowRepository } from "@/server/workflows/repository";
@@ -19,6 +20,10 @@ import {
   MAX_OPENAI_TRANSCRIPTION_BYTES,
   TranscriptionProviderError,
 } from "@/server/ai/openai-transcription-provider";
+import {
+  createOpenAIVideoScreeningProvider,
+  uncertainScreening,
+} from "@/server/ai/openai-video-screening-provider";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
 import { createWorkerClient } from "./client";
@@ -35,11 +40,41 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         ? this.env.OPENAI_API_KEY
         : undefined;
     const transcriptionProvider = createOpenAITranscriptionProvider(apiKey);
+    const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     let attempt = 1;
 
+    const inspectVideo = async (path: string) => {
+      const client = createWorkerClient(this.env);
+      const { data, error } = await client.storage.from(VIDEO_BUCKET).info(path);
+      if (error || !data) {
+        if (error && "statusCode" in error && String(error.statusCode) === "404")
+          throw new PermanentWorkflowError("UPLOAD_MISSING");
+        throw new Error("Storage unavailable");
+      }
+      const signed = await client.storage
+        .from(VIDEO_BUCKET)
+        .createSignedUrl(path, 60);
+      if (signed.error || !signed.data)
+        throw new Error("Video verification unavailable");
+      return {
+        size: Number(data.size),
+        header: await readWorkflowVideoHeader(signed.data.signedUrl),
+      };
+    };
+
+    const downloadVideo = async (storagePath: string, ttlSeconds: number) => {
+      const client = createWorkerClient(this.env);
+      const signed = await client.storage
+        .from(VIDEO_BUCKET)
+        .createSignedUrl(storagePath, ttlSeconds);
+      if (signed.error || !signed.data)
+        throw new Error("Video download unavailable");
+      return readWorkflowVideo(signed.data.signedUrl, MAX_OPENAI_TRANSCRIPTION_BYTES);
+    };
+
     try {
-      return await step.do(
-        "prepare uploaded video",
+      const screening = await step.do(
+        "screen uploaded video topic",
         {
           retries: {
             limit: 2,
@@ -51,52 +86,57 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         async (context) => {
           attempt = context.attempt;
           try {
-            return await executeWorkflow(
+            return await executeScreeningStage(
               payload,
               event.instanceId,
               context.attempt,
               repository,
-              async (path) => {
-                const client = createWorkerClient(this.env);
-                const { data, error } = await client.storage
-                  .from(VIDEO_BUCKET)
-                  .info(path);
-                if (error || !data) {
-                  if (
-                    error &&
-                    "statusCode" in error &&
-                    String(error.statusCode) === "404"
-                  ) {
-                    throw new PermanentWorkflowError("UPLOAD_MISSING");
-                  }
-                  throw new Error("Storage unavailable");
-                }
-                const signed = await client.storage
-                  .from(VIDEO_BUCKET)
-                  .createSignedUrl(path, 60);
-                if (signed.error || !signed.data)
-                  throw new Error("Video verification unavailable");
-                return {
-                  size: Number(data.size),
-                  header: await readWorkflowVideoHeader(signed.data.signedUrl),
-                };
-              },
+              inspectVideo,
               async (input) => {
-                if (input.size > MAX_OPENAI_TRANSCRIPTION_BYTES)
-                  throw new PermanentWorkflowError(
-                    "TRANSCRIPTION_FILE_TOO_LARGE",
-                  );
-                const client = createWorkerClient(this.env);
-                const signed = await client.storage
-                  .from(VIDEO_BUCKET)
-                  .createSignedUrl(input.storagePath, 300);
-                if (signed.error || !signed.data)
-                  throw new Error("Video download unavailable");
-                const bytes = await readWorkflowVideo(
-                  signed.data.signedUrl,
-                  MAX_OPENAI_TRANSCRIPTION_BYTES,
-                );
+                const bytes = await downloadVideo(input.storagePath, 180);
+                if (
+                  input.contentType !== "video/mp4" &&
+                  input.contentType !== "video/webm"
+                ) {
+                  return uncertainScreening("sample_unavailable");
+                }
+                return screeningProvider.screen({
+                  bytes,
+                  contentType: input.contentType,
+                });
+              },
+            );
+          } catch (error) {
+            if (error instanceof PermanentWorkflowError)
+              throw new NonRetryableError(error.message);
+            throw error;
+          }
+        },
+      );
+      if (screening.outcome !== "ready_for_transcription") return screening;
+
+      return await step.do(
+        "transcribe screened video",
+        {
+          retries: {
+            limit: 2,
+            delay: "1 second",
+            backoff: "exponential",
+          },
+          timeout: "4 minutes",
+        },
+        async (context) => {
+          attempt = context.attempt;
+          try {
+            return await executeTranscriptionStage(
+              payload,
+              event.instanceId,
+              context.attempt,
+              repository,
+              inspectVideo,
+              async (input) => {
                 try {
+                  const bytes = await downloadVideo(input.storagePath, 300);
                   return await transcriptionProvider.transcribe({
                     fileName: input.fileName,
                     contentType: input.contentType,

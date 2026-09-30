@@ -5,6 +5,11 @@ import {
   type JobPayload,
 } from "@/features/analysis/job-contract";
 import type { TranscriptionResult } from "@/server/ai/providers";
+import {
+  SCREENING_VERSION,
+  videoScreeningSchema,
+  type VideoScreening,
+} from "@/server/ai/video-screening";
 
 export type AnalysisJob = Database["public"]["Tables"]["analysis_jobs"]["Row"];
 export type WorkflowClient = SupabaseClient<Database>;
@@ -107,6 +112,57 @@ export function workflowRepository(client: WorkflowClient) {
         },
       );
       if (error) throw new Error("Transcript write failed");
+    },
+    async getScreening(contentItemId: string): Promise<VideoScreening | null> {
+      const { data, error } = await client
+        .from("video_screenings")
+        .select()
+        .eq("content_item_id", contentItemId)
+        .eq("screening_version", SCREENING_VERSION)
+        .maybeSingle();
+      if (error) throw new Error("Video screening read failed");
+      if (!data) return null;
+      const result = videoScreeningSchema.safeParse({
+        decision: data.decision,
+        reasonCode: data.reason_code,
+        confidence: data.confidence,
+        rationale: data.rationale,
+        sampleDurationSeconds: data.sample_duration_seconds,
+        provider: data.provider,
+        sampleModel: data.sample_model,
+        classifierModel: data.classifier_model,
+        instructionsVersion: data.instructions_version,
+      });
+      if (!result.success) throw new Error("Video screening record invalid");
+      return result.data;
+    },
+    async saveScreening(
+      contentItemId: string,
+      result: VideoScreening,
+    ): Promise<VideoScreening> {
+      const { error } = await client.from("video_screenings").upsert(
+        {
+          content_item_id: contentItemId,
+          screening_version: SCREENING_VERSION,
+          provider: result.provider,
+          sample_model: result.sampleModel,
+          classifier_model: result.classifierModel,
+          instructions_version: result.instructionsVersion,
+          decision: result.decision,
+          reason_code: result.reasonCode,
+          confidence: result.confidence,
+          rationale: result.rationale,
+          sample_duration_seconds: result.sampleDurationSeconds,
+        },
+        {
+          onConflict: "content_item_id,screening_version",
+          ignoreDuplicates: true,
+        },
+      );
+      if (error) throw new Error("Video screening write failed");
+      const saved = await this.getScreening(contentItemId);
+      if (!saved) throw new Error("Video screening write missing");
+      return saved;
     },
     async content(job: AnalysisJob) {
       const { data, error } = await client

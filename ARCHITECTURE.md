@@ -31,7 +31,9 @@ flowchart TD
   CONTENT --> HISTORY[Dashboard history/status]
   CONTENT --> JOB[Durable analysis job]
   JOB --> PREP[Cloudflare Workflow upload validation]
-  PREP --> TRANS[OpenAI timestamped transcription]
+  PREP --> SCREEN[Bounded topic screening]
+  SCREEN -->|relevant or uncertain| TRANS[OpenAI timestamped transcription]
+  SCREEN -->|clearly unrelated| STOP[Completed as out of scope]
   TRANS -. future .-> CLAIMS[Claim extraction]
   CLAIMS -. future .-> RAG[Evidence retrieval and reranking]
   RAG -. future .-> JUDGE[Evidence-bound judgment]
@@ -54,7 +56,7 @@ External services sit behind these contracts:
 - `ContentProvider`: future external content acquisition
 - `BillingProvider`: future checkout and subscription operations
 
-Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. The OpenAI transcription adapter is server-only and used by the Cloudflare Worker workflow; claim LLM, embedding, content, and billing adapters are not implemented. The existing Supabase integration is infrastructure, not an AI provider implementation.
+Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. The OpenAI transcription and topic-screening adapters are server-only and used by the Cloudflare Worker workflow; claim extraction, embedding, content, and billing adapters are not implemented. Topic screening demuxes at most three four-second ranges from the compressed audio track with Mediabunny, then calls OpenAI transcription and structured text classification. Unsupported samples, low-confidence decisions, and screening errors fail open to full transcription. The screening instruction/model versions and bounded decision metadata are persisted without the sample transcript.
 
 ## Supabase boundary
 
@@ -62,7 +64,7 @@ Supabase currently provides Auth, PostgreSQL, and private video Storage. Migrati
 
 ## Workflow boundary
 
-Session 6 extends the Cloudflare workflow. A database trigger atomically queues an `analysis_jobs` row with each uploaded content row; a Worker cron and an owner-authorized API start or reconcile the workflow. Generation/run fencing protects retries and persisted progress. Supported MP4/WebM files up to 25 MB are transcribed through OpenAI `whisper-1`; validated segments are persisted once per pipeline version. Content remains pending and claim/evidence/report stages do not run. The Session 6 migration, Worker binding, `OPENAI_API_KEY` secret, and live run are configured and verified in Production. See [Background workflows](docs/architecture/WORKFLOWS.md) and [Session 6 verification](docs/testing/SESSION_6.md).
+Session 6A adds bounded topic screening before transcription. A high-confidence off-topic result is stored as a completed job with `VIDEO_OUT_OF_SCOPE`; unclear, low-confidence, unsupported, and failed screening continues to full transcription. Screening and transcription remain inside the same generation/run-fenced Cloudflare Workflow. Supported MP4/WebM files up to 25 MB continue to use OpenAI `whisper-1` for timestamped transcription. Content remains pending; claim and evidence/report stages do not run. Session 6 Production verification predates Session 6A; this change has not been verified in Production. See [Background workflows](docs/architecture/WORKFLOWS.md), [Session 6 verification](docs/testing/SESSION_6.md), and [Session 6A verification](docs/testing/SESSION_6A.md).
 
 ## AI and Evidence Base
 

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "screening-false-positive-incidental-mention",
+    "sampleText": "Сегодня готовим пирог. Подруга сказала, что тревожилась перед экзаменом. Добавим корицу и выпекаем сорок минут.",
+    "expectedDecision": "unrelated",
+    "expectedReasonCode": "incidental_mention",
+    "expectedDisposition": "skip_transcription",
+    "failureMode": "false_positive",
+    "synthetic": true
+  },
+  {
+    "id": "screening-false-negative-guard-ambiguous-excerpt",
+    "sampleText": "Некоторые привычки влияют на поведение, но этот короткий фрагмент не объясняет контекст.",
+    "expectedDecision": "uncertain",
+    "expectedReasonCode": "unclear_sample",
+    "expectedDisposition": "continue_transcription",
+    "failureMode": "false_negative_guard",
+    "synthetic": true
+  },
+  {
+    "id": "screening-relevant-psychology-claim",
+    "sampleText": "В когнитивной психологии проверяют, как рабочая память ограничивает одновременное удержание информации.",
+    "expectedDecision": "relevant",
+    "expectedReasonCode": "psychology_claims_present",
+    "expectedDisposition": "continue_transcription",
+    "failureMode": "true_positive",
+    "synthetic": true
+  }
+]

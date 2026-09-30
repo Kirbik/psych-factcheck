@@ -18,6 +18,12 @@ import type {
   AnalysisJob,
   WorkflowRepository,
 } from "@/server/workflows/repository";
+import {
+  SCREENING_CLASSIFIER_MODEL,
+  SCREENING_INSTRUCTIONS_VERSION,
+  SCREENING_SAMPLE_MODEL,
+  type VideoScreening,
+} from "@/server/ai/video-screening";
 import { MAX_VIDEO_SIZE_BYTES } from "@/server/storage/video-validator";
 import type { Database } from "@/types/database";
 
@@ -28,6 +34,7 @@ const uploadId = "44444444-4444-4444-8444-444444444444";
 const payload = { jobId, generation: 1 };
 const runId = "run_workflow_1";
 const timestamp = "2026-09-27T00:00:00.000Z";
+type ScreenVideo = NonNullable<Parameters<typeof executeWorkflow>[6]>;
 
 function validVideo(size = 1024) {
   return {
@@ -97,6 +104,12 @@ function repository() {
     saveTranscript: vi
       .fn<WorkflowRepository["saveTranscript"]>()
       .mockResolvedValue(undefined),
+    getScreening: vi
+      .fn<WorkflowRepository["getScreening"]>()
+      .mockResolvedValue(null),
+    saveScreening: vi
+      .fn<WorkflowRepository["saveScreening"]>()
+      .mockImplementation(async (_contentItemId, result) => result),
     active: vi.fn<WorkflowRepository["active"]>(),
   } satisfies WorkflowRepository;
 }
@@ -106,6 +119,21 @@ function transcriber() {
     language: "ru",
     segments: [{ startSeconds: 0, endSeconds: 1, text: "Тестовый сегмент." }],
   });
+}
+
+function screening(overrides: Partial<VideoScreening> = {}): VideoScreening {
+  return {
+    decision: "relevant",
+    reasonCode: "psychology_claims_present",
+    confidence: 0.95,
+    rationale: "Сэмплы содержат содержательное обсуждение психологии.",
+    sampleDurationSeconds: 12,
+    provider: "openai",
+    sampleModel: SCREENING_SAMPLE_MODEL,
+    classifierModel: SCREENING_CLASSIFIER_MODEL,
+    instructionsVersion: SCREENING_INSTRUCTIONS_VERSION,
+    ...overrides,
+  };
 }
 
 function runner() {
@@ -192,14 +220,13 @@ describe("workflow execution", () => {
     ).resolves.toEqual({ outcome: "transcribed" });
     expect(repo.advance.mock.calls).toEqual([
       [retryPayload, runId, "running", 3],
+      [retryPayload, runId, "running", 3],
       [retryPayload, runId, "completed", 3],
     ]);
-    expect(repo.setStage).toHaveBeenCalledExactlyOnceWith(
-      retryPayload,
-      runId,
-      "transcribe_video",
-      3,
-    );
+    expect(repo.setStage.mock.calls).toEqual([
+      [retryPayload, runId, "screen_video", 3],
+      [retryPayload, runId, "transcribe_video", 3],
+    ]);
     expect(transcribe).toHaveBeenCalledExactlyOnceWith({
       storagePath: content().storage_path,
       fileName: "lesson.mp4",
@@ -212,7 +239,8 @@ describe("workflow execution", () => {
       "whisper-1",
       expect.objectContaining({ language: "ru" }),
     );
-    expect(inspect).toHaveBeenCalledExactlyOnceWith(content().storage_path);
+    expect(inspect).toHaveBeenCalledTimes(2);
+    expect(inspect).toHaveBeenCalledWith(content().storage_path);
     expect(repo.request).not.toHaveBeenCalled();
   });
 
@@ -233,6 +261,133 @@ describe("workflow execution", () => {
     ).resolves.toEqual({ outcome: "transcribed" });
     expect(transcribe).not.toHaveBeenCalled();
     expect(repo.saveTranscript).not.toHaveBeenCalled();
+  });
+
+  it("continues to transcription for relevant, uncertain, and low-confidence screening", async () => {
+    const cases = [
+      screening(),
+      screening({ decision: "uncertain", reasonCode: "unclear_sample" }),
+      screening({
+        decision: "unrelated",
+        reasonCode: "incidental_mention",
+        confidence: 0.89,
+      }),
+    ];
+    for (const result of cases) {
+      const repo = repository();
+      const transcribe = transcriber();
+      const screen = vi.fn<ScreenVideo>().mockResolvedValue(result);
+      await expect(
+        executeWorkflow(
+          payload,
+          runId,
+          1,
+          repo,
+          async () => validVideo(),
+          transcribe,
+          screen,
+        ),
+      ).resolves.toEqual({ outcome: "transcribed" });
+      expect(screen).toHaveBeenCalledExactlyOnceWith({
+        storagePath: content().storage_path,
+        fileName: "lesson.mp4",
+        contentType: "video/mp4",
+        size: 1024,
+      });
+      expect(transcribe).toHaveBeenCalledOnce();
+      expect(repo.saveScreening).toHaveBeenCalledExactlyOnceWith(contentId, result);
+    }
+  });
+
+  it("marks a high-confidence off-topic video complete without full transcription", async () => {
+    const repo = repository();
+    const transcribe = transcriber();
+    const screen = vi.fn<ScreenVideo>().mockResolvedValue(
+      screening({
+        decision: "unrelated",
+        reasonCode: "no_psychology_content",
+        confidence: 0.97,
+      }),
+    );
+
+    await expect(
+      executeWorkflow(
+        payload,
+        runId,
+        1,
+        repo,
+        async () => validVideo(),
+        transcribe,
+        screen,
+      ),
+    ).resolves.toEqual({ outcome: "screened_out" });
+
+    expect(transcribe).not.toHaveBeenCalled();
+    expect(repo.setStage.mock.calls).toEqual([[payload, runId, "screen_video", 1]]);
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      1,
+      "VIDEO_OUT_OF_SCOPE",
+    );
+  });
+
+  it("fails open after a screening error and persists a non-sensitive fallback", async () => {
+    const repo = repository();
+    const transcribe = transcriber();
+    const screen = vi
+      .fn<ScreenVideo>()
+      .mockRejectedValue(new Error("private model response"));
+
+    await expect(
+      executeWorkflow(
+        payload,
+        runId,
+        1,
+        repo,
+        async () => validVideo(),
+        transcribe,
+        screen,
+      ),
+    ).resolves.toEqual({ outcome: "transcribed" });
+    expect(repo.saveScreening).toHaveBeenCalledWith(
+      contentId,
+      expect.objectContaining({
+        decision: "uncertain",
+        reasonCode: "provider_error",
+        rationale: expect.not.stringContaining("private model response"),
+      }),
+    );
+    expect(transcribe).toHaveBeenCalledOnce();
+  });
+
+  it("reuses a persisted screening result on workflow retry", async () => {
+    const repo = repository();
+    repo.getScreening.mockResolvedValue(
+      screening({
+        decision: "unrelated",
+        reasonCode: "no_checkable_claims",
+        confidence: 0.98,
+      }),
+    );
+    const screen = vi.fn<ScreenVideo>();
+    const transcribe = transcriber();
+
+    await expect(
+      executeWorkflow(
+        payload,
+        runId,
+        2,
+        repo,
+        async () => validVideo(),
+        transcribe,
+        screen,
+      ),
+    ).resolves.toEqual({ outcome: "screened_out" });
+    expect(screen).not.toHaveBeenCalled();
+    expect(repo.saveScreening).not.toHaveBeenCalled();
+    expect(transcribe).not.toHaveBeenCalled();
   });
 
   it("does not report success if the generation becomes obsolete during inspection", async () => {
@@ -370,7 +525,10 @@ describe("workflow execution", () => {
   it("propagates a failed completion write so it cannot return a fabricated successful result", async () => {
     const repo = repository();
     const failure = new Error("Database unavailable");
-    repo.advance.mockResolvedValueOnce(job()).mockRejectedValueOnce(failure);
+    repo.advance
+      .mockResolvedValueOnce(job())
+      .mockResolvedValueOnce(job())
+      .mockRejectedValueOnce(failure);
     await expect(
       executeWorkflow(
         payload,

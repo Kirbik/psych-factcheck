@@ -91,6 +91,31 @@ test("shows durable progress after reload without claiming AI completion", async
   ).toContainText("Готово");
 });
 
+test("shows a screened-out outcome without marking transcription complete", async ({ page }) => {
+  await page.route("**/api/analysis**", (route) =>
+    route.fulfill({
+      json: {
+        job: {
+          ...job,
+          status: "completed",
+          stage: "complete",
+          error_code: "VIDEO_OUT_OF_SCOPE",
+        },
+      },
+    }),
+  );
+  await page.goto(`/processing?contentItemId=${contentId}`);
+
+  await expect(
+    page.getByText(
+      "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.locator("li").filter({ hasText: "Создание транскрипта" }),
+  ).not.toContainText("Готово");
+});
+
 test("retries a failed generation explicitly", async ({ page }) => {
   let retried = false;
   await page.route("**/api/analysis**", async (route) => {

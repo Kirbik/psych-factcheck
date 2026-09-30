@@ -1,4 +1,4 @@
-# Background workflow — Sessions 5–6
+# Background workflow — Sessions 5–6A
 
 ## Scope and completion
 
@@ -10,6 +10,25 @@ up to 25 MB with OpenAI `whisper-1`. The adapter requests segment timestamps
 in `verbose_json`, validates the response with Zod, and persists one immutable
 transcript per content item and `transcription-v1` version. Content remains
 `pending`; claims, evidence, and reports are not produced.
+
+Session 6A adds `screen_video` between upload validation and full
+transcription. For videos longer than 40 seconds with a supported audio track,
+the Worker demuxes and remuxes no more than three four-second audio ranges
+using Mediabunny; it does not decode media or send the full video to the
+screening transcription request. The short sample is transcribed by
+`whisper-1`, then `gpt-4o-mini` returns a strict structured decision. Zod
+validates both API responses. Only `unrelated` with confidence >= 0.9 and an
+out-of-scope reason completes the job early with `VIDEO_OUT_OF_SCOPE`. Every
+other result, unsupported sample, or screening error proceeds to full
+transcription. Videos at or below 40 seconds skip sample API calls and proceed
+directly to full transcription.
+
+The `video_screenings` table stores one result per content item and
+`topic-screening-v1`: decision, reason code, confidence, brief rationale,
+sample duration, provider/model identifiers, and instruction version. It does
+not store the sample transcript. The service role is the only role with table
+access. Retried generations reuse this row; workflow step replay plus the
+unique key prevents duplicate screening records.
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
@@ -45,7 +64,7 @@ There is no fake executor in production.
 
 Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queued
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
-`transcribe_video`, or `complete`. `generation` counts explicit restarts;
+`screen_video`, `transcribe_video`, or `complete`. `generation` counts explicit restarts;
 `attempt` records Workflow step retries. Technical errors returned to the
 browser are fixed messages, never raw provider errors. The step retries
 transient failures up to three total attempts. OpenAI requests time out after
@@ -81,7 +100,8 @@ the original file again. Cancel clears the upload state so another file can be
 chosen. Returning from completed progress to a new check also clears the old
 file selection.
 
-Session 6 changes only the existing workflow progress text/state mapping; it adds no new visual pattern or CSS.
+Session 6A adds status copy for the existing progress screen and the existing
+terminal job contract; it adds no CSS, layout, or visual pattern.
 
 ## Setup and deployment
 
@@ -120,6 +140,14 @@ transitions, retries and fencing in isolated PostgreSQL. Its single connection
 does not prove multi-connection lock contention or Supabase service behavior.
 Playwright exercises progress, reload, retry and unavailable states with the
 API mocked; it does not establish real Cloudflare/Storage connectivity.
+
+Session 6A unit tests cover sample-window selection, request construction with
+the extracted sample, strict response validation, fail-open decisions, terminal
+out-of-scope progress, and screening row idempotency. They do not run media
+demux/remux against real MP4/WebM fixtures, establish model classification
+quality, or verify Production behavior. `pnpm evals` validates synthetic
+fixture structure; it does not call OpenAI or measure
+false-positive/false-negative rates.
 
 Before accepting Session 5, complete browser upload/retry/crash integration,
 the environment-gated RLS/auth/upload tests and visual comparison with

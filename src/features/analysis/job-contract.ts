@@ -14,7 +14,13 @@ export const jobViewSchema = z.object({
   id: z.uuid(),
   generation: z.number().int().positive(),
   status: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
-  stage: z.enum(["queued", "validate_upload", "transcribe_video", "complete"]),
+  stage: z.enum([
+    "queued",
+    "validate_upload",
+    "screen_video",
+    "transcribe_video",
+    "complete",
+  ]),
   attempt: z.number().int().nonnegative(),
   error_code: z.string().nullable(),
 });
@@ -39,3 +45,5 @@ export const workflowMessages = {
     "Подготовка не завершена. Повторите запуск; если ошибка повторяется, загрузите видео заново.",
   cancelled: "Подготовка остановлена. Можно повторить запуск.",
 } as const;
+
+export const SCREENED_OUT_ERROR_CODE = "VIDEO_OUT_OF_SCOPE";

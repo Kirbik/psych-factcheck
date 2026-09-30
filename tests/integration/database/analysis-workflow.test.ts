@@ -32,6 +32,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(await sqlFile("20260913000000_video_upload.sql"));
     await db.exec(await sqlFile("20260927100000_analysis_workflow.sql"));
     await db.exec(await sqlFile("20260930120000_transcription_v1.sql"));
+    await db.exec(await sqlFile("20260930140000_video_topic_screening.sql"));
     await db.exec(`insert into auth.users values ('${owner}'), ('${other}');
       insert into public.content_items(id, user_id, storage_path) values ('${contentId}', '${owner}', '${owner}/video.mp4');`);
   }, 30_000);
@@ -194,7 +195,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await transition(job.id, 1, "run_stage", "running");
     const stage = await db.query<{ updated: boolean }>(
       "select public.set_analysis_job_stage($1, $2, $3, $4, $5) as updated",
-      [job.id, 1, "run_stage", "transcribe_video", 2],
+      [job.id, 1, "run_stage", "screen_video", 2],
     );
     expect(stage.rows[0]?.updated).toBe(true);
     const stale = await db.query<{ updated: boolean }>(
@@ -203,5 +204,49 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     expect(stale.rows[0]?.updated).toBe(false);
     await db.exec("rollback");
+  });
+
+  it("stores one diagnostic screening result per version without giving users access", async () => {
+    const columns = await db.query<{ column_name: string }>(
+      `select column_name from information_schema.columns
+       where table_schema = 'public' and table_name = 'video_screenings'`,
+    );
+    expect(columns.rows.map(({ column_name }) => column_name)).not.toContain(
+      "sample_transcript",
+    );
+    expect(
+      await db.query<{ allowed: boolean }>(
+        "select has_table_privilege('authenticated', 'public.video_screenings', 'select') as allowed",
+      ),
+    ).toMatchObject({ rows: [{ allowed: false }] });
+
+    await db.exec("set role service_role");
+    await db.query(
+      `insert into public.video_screenings
+       (content_item_id, screening_version, provider, sample_model, classifier_model,
+        instructions_version, decision, reason_code, confidence, rationale, sample_duration_seconds)
+       values ($1, 'topic-screening-v1', 'openai', 'whisper-1', 'gpt-4o-mini',
+        'topic-screening-instructions-v1', 'uncertain', 'unclear_sample', 0,
+        'Short samples are unclear.', 12)
+       on conflict (content_item_id, screening_version) do nothing`,
+      [contentId],
+    );
+    await db.query(
+      `insert into public.video_screenings
+       (content_item_id, screening_version, provider, sample_model, classifier_model,
+        instructions_version, decision, reason_code, confidence, rationale, sample_duration_seconds)
+       values ($1, 'topic-screening-v1', 'openai', 'whisper-1', 'gpt-4o-mini',
+        'topic-screening-instructions-v1', 'uncertain', 'unclear_sample', 0,
+        'Duplicate attempt.', 12)
+       on conflict (content_item_id, screening_version) do nothing`,
+      [contentId],
+    );
+    const rows = await db.query<{ count: string }>(
+      `select count(*)::text as count from public.video_screenings
+       where content_item_id = $1 and screening_version = 'topic-screening-v1'`,
+      [contentId],
+    );
+    expect(rows.rows[0]?.count).toBe("1");
+    await db.exec("reset role");
   });
 });

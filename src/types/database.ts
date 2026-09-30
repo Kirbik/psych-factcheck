@@ -14,6 +14,62 @@ export type Database = {
   };
   public: {
     Tables: {
+      video_screenings: {
+        Row: {
+          classifier_model: string;
+          confidence: number;
+          content_item_id: string;
+          created_at: string;
+          decision: string;
+          id: string;
+          instructions_version: string;
+          provider: string;
+          rationale: string;
+          reason_code: string;
+          sample_duration_seconds: number;
+          sample_model: string;
+          screening_version: string;
+        };
+        Insert: {
+          classifier_model: string;
+          confidence: number;
+          content_item_id: string;
+          created_at?: string;
+          decision: string;
+          id?: string;
+          instructions_version: string;
+          provider: string;
+          rationale: string;
+          reason_code: string;
+          sample_duration_seconds: number;
+          sample_model: string;
+          screening_version: string;
+        };
+        Update: {
+          classifier_model?: string;
+          confidence?: number;
+          content_item_id?: string;
+          created_at?: string;
+          decision?: string;
+          id?: string;
+          instructions_version?: string;
+          provider?: string;
+          rationale?: string;
+          reason_code?: string;
+          sample_duration_seconds?: number;
+          sample_model?: string;
+          screening_version?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "video_screenings_content_item_id_fkey";
+            columns: ["content_item_id"];
+            isOneToOne: false;
+            referencedRelation: "content_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       transcripts: {
         Row: {
           content_item_id: string;

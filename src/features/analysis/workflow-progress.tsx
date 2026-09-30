@@ -6,6 +6,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { useVideoUpload } from "@/features/analysis/video-upload-provider";
 import {
   jobResponseSchema,
+  SCREENED_OUT_ERROR_CODE,
   workflowMessages,
   type JobView,
 } from "./job-contract";
@@ -175,7 +176,8 @@ export function WorkflowProgress({
     <ProcessingPreview
       uploadStatus="completed"
       transcriptionStatus={
-        job?.status === "completed"
+        job?.status === "completed" &&
+        job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
           : job?.stage === "transcribe_video" && job.status === "running"
             ? "processing"
@@ -187,11 +189,16 @@ export function WorkflowProgress({
       uploadError={error || undefined}
       workflowMessage={
         job
-          ? job.status === "running" && job.stage === "transcribe_video"
-            ? "Транскрибируем видео через OpenAI."
-            : job.status === "running" && job.stage === "validate_upload"
-              ? "Проверяем загруженное видео."
-              : workflowMessages[job.status]
+          ? job.status === "completed" &&
+            job.error_code === SCREENED_OUT_ERROR_CODE
+            ? "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась."
+            : job.status === "running" && job.stage === "screen_video"
+              ? "Проверяем тему по коротким фрагментам видео."
+              : job.status === "running" && job.stage === "transcribe_video"
+                ? "Транскрибируем видео через OpenAI."
+                : job.status === "running" && job.stage === "validate_upload"
+                  ? "Проверяем загруженное видео."
+                  : workflowMessages[job.status]
           : "Видео сохранено. Получаем состояние подготовки."
       }
       onRetry={

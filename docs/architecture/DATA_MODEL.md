@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `transcripts`, three token-auth tables, and a private video bucket. Claim, evidence, fact-check, and billing entities below remain future schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, three token-auth tables, and a private video bucket. Claim, evidence, fact-check, and billing entities below remain future schema.
 
 ## Identity and content
 
@@ -47,6 +47,13 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Relations/ownership:** belongs to content item; source for claims. Ownership derives from content item.
 - **Lifecycle:** created by the transcription workflow after Zod validation; unique per content item and pipeline version, immutable on retries. Session 6 uses OpenAI `whisper-1` and stores segment start/end seconds and text. MP4/WebM up to 25 MB are supported; MOV and larger files fail with explicit job errors.
 
+### `video_screenings`
+
+- **Purpose:** retain a minimal diagnostic record of the pre-transcription topic-screening decision.
+- **Implemented fields:** `content_item_id`, `screening_version`, provider and model identifiers, instruction version, decision, reason code, confidence, short rationale, bounded sample duration, and `created_at`.
+- **Relations/ownership:** one row per content item and screening version; ownership derives from content. Only the Worker service role has table access.
+- **Lifecycle:** unique by `(content_item_id, screening_version)` and reused across retries. The temporary sample transcript is not persisted. A high-confidence off-topic result completes the job without creating a transcript.
+
 ### `claims`
 
 - **Purpose:** checkable proposition extracted from a transcript.
@@ -91,7 +98,7 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6 adds the `transcription-v1` pipeline and fenced stage updates. Content remains pending after transcription; no claims, evidence, or report are produced. See [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video` before `transcribe_video`; a high-confidence out-of-scope result completes with `VIDEO_OUT_OF_SCOPE`. Content remains pending after transcription; no claims, evidence, or report are produced. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 
