@@ -99,5 +99,7 @@ schema and Worker integration were deployed on 2026-10-01. The provisional
 retrieval-v2 eval checks package P@5 against the offline lexical baseline; it
 is not an expert-reviewed quality measure.
 
-The next stage is judgment preparation. Do not infer a verdict from retrieval
-or the Evidence Package.
+Session 12 adds a separate judgment stage that consumes the persisted package
+and stores a versioned fact check with package-member citations. This integration
+is local and not deployed. Do not infer a verdict from retrieval or the Evidence
+Package itself.

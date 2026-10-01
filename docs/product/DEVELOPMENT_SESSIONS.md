@@ -209,7 +209,7 @@ does not invent one. Do not begin Session 13 until Session 12 is accepted.
 
 ## Session 12 — Full Pipeline
 
-**Status:** The local Worker now runs one durable judgment step per claim and persists validated fact checks before completing the job. The `judge_claims` stage is fenced in SQL; retries skip judgments already saved for the current Evidence Package and judgment version. Local workflow and database tests cover resume, empty extractions, missing packages, and stage authorization. Deployment and full upload-to-fact-check E2E verification remain open. The existing `UsageService` remains an interface only because no usage policy or implementation is defined.
+**Status:** The local Worker now runs one durable judgment step per claim and persists validated fact checks before completing the job. The `judge_claims` stage and fact-check writes are fenced in SQL; retries skip judgments already saved for the current Evidence Package and judgment version. `pnpm check`, `pnpm evals`, and `pnpm build` pass. The full Playwright run started 17 tests but stalled without results and was interrupted. Deployment and full upload-to-fact-check E2E verification remain open. Confidence is uncalibrated and judgment quality lacks an expert-reviewed golden set. The existing `UsageService` remains an interface only because no usage policy or implementation is defined.
 
 - **Goal:** Connect upload through final persisted fact checks.
 - **Why:** Validate contracts, state transitions, idempotency, and recovery end-to-end.

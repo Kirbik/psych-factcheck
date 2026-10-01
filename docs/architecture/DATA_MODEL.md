@@ -101,7 +101,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 ### Retrieval and judgment boundary
 
 - Session 9 deploys versioned 1536-dimensional vectors keyed to `evidence_chunks.id` and provides a `claim_embeddings` table. The current workflow embeds claim text in batches as retrieval queries but does not persist those query vectors. Stored chunk vectors include model/version and source-text digest; the query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
-- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence is deployed; the Worker does not call the judgment service yet.
+- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence is deployed. Session 12 connects the service to the local Worker and adds a run-fenced persistence wrapper; Production still uses the Session 10 Worker.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
 ### `fact_checks` — Session 11, migration deployed
@@ -109,14 +109,14 @@ This document distinguishes the implemented repository schema from deployed Prod
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
 - **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, verdict, confidence, explanation, limitations, and creation time.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
-- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. The migration is deployed to Production, but the Worker does not call the judgment service yet.
+- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. The wrapper and Worker integration are local and not deployed.
 
 ### `fact_check_evidence` — Session 11, migration deployed
 
 - **Purpose:** auditable join between a fact check and evidence used or cited.
 - **Implemented fields:** `fact_check_id`, `evidence_chunk_id`, citation ordinal, relation (`supports`, `qualifies`, or `contradicts`), and rationale.
 - **Relations/ownership:** many-to-many join; ownership derives from fact check while evidence is shared.
-- **Lifecycle:** citations are frozen with the fact check. The service-role RPC rejects chunk IDs absent from the linked Evidence Package.
+- **Lifecycle:** citations are frozen with the fact check. The persistence path rejects chunk IDs absent from the linked Evidence Package.
 
 ## Orchestration
 
