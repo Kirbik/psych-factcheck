@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, three token-auth tables, and a private video bucket. The Session 9 migration was applied to Production on 2026-10-01. Production contains 23 evidence chunk vectors; the claim embedding table is available but is not populated by the current evidence-seeding workflow. Fact-check and billing entities remain future schema.
+This document distinguishes the current Supabase schema from the planned fact-check and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, three token-auth tables, and a private video bucket. The Session 9 retrieval and Session 10 evidence-package migrations are deployed to Production. Production contains 23 evidence chunk vectors; claim embeddings are supported by schema but are not currently populated. Fact-check judgments and billing entities remain future schema.
 
 ## Identity and content
 
@@ -84,10 +84,24 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Relations/ownership:** belongs to a shared source; deletion of a referenced source is restricted.
 - **Lifecycle:** the Session 8 seed contains 23 verbatim passages from 9 publications and metadata for 10 publications. The transactional service-role import validates source links and updates stable rows on repeat. Authenticated users can read the shared catalog; clients cannot write it. Session 9 adds service-role-only `evidence_embeddings` and `claim_embeddings` rows keyed by the source entity and embedding version. Each row records provider, model, dimensions, source-text SHA-256, and a 1536-dimensional vector. Retrieval ignores stale chunk vectors and returns only active source records.
 
-### Future evidence extensions
+### `evidence_packages`
 
-- Session 9 adds versioned vectors keyed to `evidence_chunks.id` and `claims.id`, with recorded model, dimension, and source-text digest. The current query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
-- Fact-check persistence will link judgments to a frozen set of evidence chunk IDs.
+- **Purpose:** immutable, versioned result of retrieving and reranking evidence for one extracted claim.
+- **Implemented fields:** `id`, `claim_id`, retrieval/reranking versions, coverage (`none`, `limited`, or `multi_source`), warnings, trace, full package payload, and `created_at`.
+- **Relations/ownership:** belongs to one claim; owner access follows claim → extraction → transcript → content. Authenticated users can select only their own packages. Writes are service-role-only through `save_evidence_packages`.
+- **Lifecycle:** unique by `(claim_id, retrieval_version, reranking_version)`. Retries reuse an existing package. The saved payload retains claim wording, evidence/source snapshots, scores, filters, and trace for audit.
+
+### `evidence_package_items`
+
+- **Purpose:** ordered relational links from a package to the selected Evidence Base chunks.
+- **Implemented fields:** package ID, evidence chunk ID, ordinal (0–4), retrieval score, relevance score, and item snapshot.
+- **Relations/ownership:** references a package and a shared evidence chunk. Owner reads are permitted only when the parent package belongs to the current user; clients cannot write.
+- **Lifecycle:** created atomically with its package by `save_evidence_packages`; each package has at most five unique chunks. Referenced chunks cannot be deleted while linked.
+
+### Retrieval and judgment boundary
+
+- Session 9 deploys versioned 1536-dimensional vectors keyed to `evidence_chunks.id` and provides a `claim_embeddings` table. The current workflow embeds claim text in batches as retrieval queries but does not persist those query vectors. Stored chunk vectors include model/version and source-text digest; the query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
+- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs; fact-check judgments are not implemented yet.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
 ### `fact_checks`
@@ -111,7 +125,7 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`; other jobs complete after claims are validated and persisted. Content remains pending; evidence and reports are not produced. See [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence`. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`; other jobs complete after Evidence Packages are saved. Judgment/report artifacts are not yet produced, and content remains pending. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 

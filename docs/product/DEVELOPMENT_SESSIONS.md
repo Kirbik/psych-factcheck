@@ -6,6 +6,10 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. Session 10's evidence-package migration and Worker version `7279e730-7eae-4a78-8126-2a67ebf045ed` are deployed; browser E2E verification remains pending. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Synthetic and provisional evals do not measure model quality, and the MVP is not release-ready.
 
+The next planned session is 11. The roadmap currently contains 11 remaining
+sessions (11–21); the pending Session 10 browser E2E verification is a check on
+completed work, not an additional roadmap session.
+
 ## Session 0 — Foundation
 
 **Status:** Implemented. The project has the Next.js/TypeScript/pnpm tooling, documentation, provider contracts, tests, and initial smoke coverage. This records implementation status, not a release audit.

@@ -1,4 +1,4 @@
-# Background workflow — Sessions 5–6A
+# Background workflow — Sessions 5–10
 
 ## Scope and completion
 
@@ -61,6 +61,18 @@ successful workflow run, not extraction quality. The screening duration
 fallback was deployed on 2026-09-30; the previously affected clip must be
 uploaded again to verify the fresh screening path.
 
+Sessions 9–10 add the deployed evidence stages after extraction. The Worker
+embeds normalized claims in a batch, searches active Evidence Base chunks with
+the versioned pgvector RPC and metadata filters, deterministically reranks the
+validated candidates, and persists a bounded Evidence Package per claim.
+`build_evidence` uses an idempotent database RPC; package rows and ordered
+chunk links are owner-readable through RLS. Empty or narrow retrieval is saved
+with explicit coverage and warnings. This stage does not assign a verdict.
+Migration `20261001140000_evidence_packages_v1.sql` and Worker version
+`7279e730-7eae-4a78-8126-2a67ebf045ed` were deployed on 2026-10-01. Existing
+completed jobs were not requeued; a new upload is needed to verify this stage
+in a live analysis.
+
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
 source of truth for job state and ownership. The Production dashboard has the
@@ -96,7 +108,9 @@ There is no fake executor in production.
 
 Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queued
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
-`screen_video`, `transcribe_video`, `extract_claims`, or `complete`. `generation` counts explicit restarts;
+`screen_video`, `transcribe_video`, `extract_claims`, `build_evidence`, or
+`complete`. In-scope jobs complete after Evidence Packages are saved; judgment
+and report generation are not part of the workflow yet. `generation` counts explicit restarts;
 `attempt` records Workflow step retries. Technical errors returned to the
 browser are fixed messages, never raw provider errors. The step retries
 transient failures up to three total attempts. OpenAI requests time out after
@@ -125,8 +139,8 @@ transcription, and claim extraction update the existing progress messages.
 While dispatch is busy or the job is running, the message carries an animated
 activity marker and `aria-busy`; the animation respects
 `prefers-reduced-motion`. A completed `VIDEO_OUT_OF_SCOPE` result uses the
-shared warning Alert. Evidence and report steps remain pending, and report
-navigation stays disabled.
+shared warning Alert. Evidence search has persisted progress states. Judgment
+and report steps remain pending, and report navigation stays disabled.
 
 During a video byte upload, reloading the page interrupts the TUS transfer.
 The same tab restores the paused upload from `sessionStorage` and then shows
@@ -164,11 +178,13 @@ out-of-scope results use the shared Alert component with the warning token.
    provider failure and reload. Content remains pending with no report; MOV
    and larger files currently fail explicitly.
 7. Sessions 6A–7 and their migrations are deployed in Production. A job reached
-   `complete` after claim extraction on 2026-09-30. The latest Worker deployment
-   is `fdd311f2-5cda-4d0b-bb3e-c448ccdb6955`; it includes the packet-duration
-   fallback and processing-screen feedback. A fresh unrelated video upload is
-   still required to verify that screening fix against the previously missed
-   MP4 case. Model-quality evaluation remains outstanding.
+   `complete` after claim extraction on 2026-09-30. Session 9 retrieval and
+   Session 10's package migration/Worker are deployed; the latest Worker
+   version is `7279e730-7eae-4a78-8126-2a67ebf045ed`. Its public endpoint
+   returned HTTP 200. Browser E2E verification stalled before reporting a
+   result, and a fresh analysis is still needed to verify package persistence
+   end to end. A separate fresh upload remains needed for the screening
+   duration fallback case. Model-quality evaluation remains outstanding.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,
@@ -191,7 +207,10 @@ out-of-scope progress, and screening row idempotency. They do not run media
 demux/remux against real MP4/WebM fixtures, establish model classification
 quality, or verify Production behavior. `pnpm evals` validates synthetic
 fixture structure; it does not call OpenAI or measure
-false-positive/false-negative rates.
+false-positive/false-negative rates. Session 10 adds unit and database
+integration coverage for batch retrieval and idempotent package persistence.
+The Playwright attempt for the changed progress flow stalled before reporting
+results, so browser E2E remains an open verification item.
 
 Before accepting Session 5, complete browser upload/retry/crash integration,
 the environment-gated RLS/auth/upload tests and visual comparison with

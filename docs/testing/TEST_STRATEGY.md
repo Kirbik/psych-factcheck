@@ -11,6 +11,7 @@ Tests use real behavior at the smallest practical boundary. Unit tests stay dete
 - **AI evals:** synthetic fixture checks plus a deterministic lexical P@5 baseline over three provisional AI-reviewed query cases. Session 9 also recorded live Production semantic retrieval at P@5 0.400; this small set is not human/expert-reviewed and does not establish retrieval or verdict quality. See [AI eval plan](AI_EVALS.md).
 - **Session 5 workflow:** unit tests cover dispatch/reconciliation and retry races; PGlite runs the actual workflow migration in isolated PostgreSQL for RLS, RPC grants, transitions and fencing; API tests verify ownership and safe responses; Playwright mocks the workflow API for progress/reload/retry. These do not verify hosted Cloudflare/Supabase connectivity. See [Session 5 QA](SESSION_5.md).
 - **Session 8 Evidence Base:** Zod tests validate the curated seed and stable identifiers; PGlite applies the actual migration and verifies transactional imports, idempotency, foreign-key integrity, status preservation, and catalog RLS. These tests do not apply the migration or seed to Production. See [Session 8 verification](SESSION_8.md).
+- **Sessions 9–10 retrieval:** unit/eval coverage checks embedding/search validation, deterministic reranking, package provenance/coverage, and workflow persistence/idempotency. The actual retrieval and Evidence Package migration plus Worker are deployed to Production. The most recent Playwright attempt for the changed progress flow stalled without reporting results; a fresh production analysis is still needed to verify package persistence end to end. See [Session 9](SESSION_9.md) and [Session 10](SESSION_10.md).
 
 Coverage is not proof that an unconfigured external service or skipped flow works. Consult [Supabase foundation](../architecture/SUPABASE.md) and [Authentication](../architecture/AUTH.md) for exact integration variables.
 
@@ -34,7 +35,7 @@ pnpm test:unit
 
 ## Level 3 — Integration tests
 
-The current suites verify Supabase Auth/profile lifecycle and real PostgreSQL migration/RLS behavior. `SUPABASE_TEST_URL` plus `SUPABASE_TEST_ANON_KEY` enable Auth integration; `SUPABASE_TEST_DB_URL` enables PostgreSQL/RLS integration. Use a local disposable Supabase stack. Tests skip when configuration is absent and do not silently substitute mocks. A pgvector migration/search integration test is present but requires `SUPABASE_TEST_DB_URL`; it was skipped in Session 9. Production migration and retrieval were verified separately. Future integrations include repositories, Storage policy behavior, provider adapters, background workflows, and billing adapters.
+The current suites verify Supabase Auth/profile lifecycle and real PostgreSQL migration/RLS behavior. `SUPABASE_TEST_URL` plus `SUPABASE_TEST_ANON_KEY` enable Auth integration; `SUPABASE_TEST_DB_URL` enables PostgreSQL/RLS integration. Use a local disposable Supabase stack. Tests skip when configuration is absent and do not silently substitute mocks. The pgvector migration/search integration test requires `SUPABASE_TEST_DB_URL`; it was skipped in Session 9. Session 10's package persistence integration test uses PGlite; Production migrations and retrieval were verified separately. Future integrations include Storage policy behavior, live provider adapters, and billing adapters.
 
 ```bash
 pnpm test:integration
