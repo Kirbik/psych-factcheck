@@ -7,8 +7,8 @@ import {
   embeddingInputSchema,
   embeddingVectorSchema,
   MAX_EMBEDDING_BATCH_SIZE,
-} from "./embeddings";
-import type { EmbeddingProvider } from "./providers";
+} from "./embeddings.ts";
+import type { EmbeddingProvider } from "./providers.ts";
 
 const embeddingResponseSchema = z
   .object({
@@ -25,11 +25,13 @@ const embeddingResponseSchema = z
   .passthrough();
 
 export class EmbeddingProviderError extends Error {
-  constructor(
-    readonly code: string,
-    readonly retryable: boolean,
-  ) {
+  readonly code: string;
+  readonly retryable: boolean;
+
+  constructor(code: string, retryable: boolean) {
     super(code);
+    this.code = code;
+    this.retryable = retryable;
     this.name = "EmbeddingProviderError";
   }
 }

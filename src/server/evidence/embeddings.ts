@@ -9,15 +9,18 @@ import {
   EMBEDDING_VERSION,
   embeddingVectorSchema,
   serializeEmbedding,
-} from "@/server/ai/embeddings";
-import type { EmbeddingProvider } from "@/server/ai/providers";
-import type { Database } from "@/types/database";
+} from "../ai/embeddings.ts";
+import type { EmbeddingProvider } from "../ai/providers.ts";
+import type { Database } from "../../types/database.ts";
 
 type EvidenceClient = SupabaseClient<Database>;
 
 export class EvidenceEmbeddingError extends Error {
-  constructor(readonly code: string) {
+  readonly code: string;
+
+  constructor(code: string) {
     super(code);
+    this.code = code;
     this.name = "EvidenceEmbeddingError";
   }
 }

@@ -71,3 +71,11 @@ provenance and supports language, source type, and publication-date filters.
 Topic metadata is not present in Evidence Base v0. Original passages and source
 provenance remain canonical. Reranking, Evidence Packages, and verdicts remain
 future work.
+
+After the Session 9 migration is applied to a target project, the explicit
+`pnpm evidence:embed` command reuses vectors whose source hashes are current,
+embeds changed passages, and reports the small retrieval relevance score. It
+requires `OPENAI_API_KEY`, service-role access, the exact
+`EVIDENCE_EMBEDDING_PROJECT_REF`, and `EVIDENCE_EMBEDDING_CONFIRM=EMBED_EVIDENCE_V1`.
+The command performs privileged database writes and external embedding API
+calls; inspect the configured Supabase target before running it.

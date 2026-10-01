@@ -20,4 +20,6 @@
 
 ## Remaining verification
 
-The migration and live semantic P@5 have not been verified because this environment has no dedicated local Supabase database URL and no OpenAI API key. Do not apply the migration to Production as part of the local implementation session. A dedicated test database needs the Session 8 migrations and this Session 9 migration before `pnpm test:db` can exercise pgvector. The current relevance fixture is small and must not be treated as scientific ground truth.
+The Production schema readback on 2026-10-01 returned `PGRST205` for both embedding tables and `PGRST202` for the search RPC, confirming Session 9 is not deployed. The migration and live semantic P@5 have not been verified because the environment has no Supabase CLI/login token and no OpenAI API key. `pnpm evidence:embed` is now prepared to embed changed chunks and run the three-case semantic P@5 against the configured target, but requires an exact target project ref and explicit confirmation token. It also requires the Session 9 migration to be applied first.
+
+Applying the migration and writing vectors changes Production schema/data and incurs OpenAI API usage. Do not run the migration or `pnpm evidence:embed` until those actions are explicitly approved. The current relevance fixture is small and has not been expert-reviewed; its scores are not scientific ground truth.
