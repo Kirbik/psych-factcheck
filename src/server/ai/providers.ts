@@ -44,13 +44,40 @@ export interface ClaimExtractionProvider {
 export interface EvidenceItem {
   readonly sourceId: string;
   readonly chunkId: string;
+  readonly chunkKey: string;
   readonly text: string;
+  readonly language: string;
+  readonly locator: string;
+  readonly source: {
+    readonly key: string;
+    readonly title: string;
+    readonly authors: readonly string[];
+    readonly journal: string;
+    readonly publishedAt: string;
+    readonly type:
+      | "journal_article"
+      | "systematic_review"
+      | "meta_analysis"
+      | "commentary";
+    readonly canonicalUrl: string;
+  };
+  readonly retrievalScore: number;
   readonly relevanceScore: number;
 }
 
 export interface EvidencePackage {
   readonly claim: ExtractedClaim;
   readonly evidence: readonly EvidenceItem[];
+  readonly retrievalVersion: string;
+  readonly rerankingVersion: string;
+  readonly coverage: "none" | "limited" | "multi_source";
+  readonly warnings: readonly string[];
+  readonly trace: {
+    readonly candidateCount: number;
+    readonly selectedChunkIds: readonly string[];
+    readonly maximumEvidence: number;
+    readonly maximumChunksPerSource: number;
+  };
 }
 
 export interface FactCheckJudgment {

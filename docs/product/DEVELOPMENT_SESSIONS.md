@@ -4,7 +4,7 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 ## Repository progress (2026-10-01)
 
-Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. The current Worker is `fdd311f2-5cda-4d0b-bb3e-c448ccdb6955`. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Synthetic evals do not measure model quality, and the MVP is not release-ready.
+Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. The current Worker is `fdd311f2-5cda-4d0b-bb3e-c448ccdb6955`. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Session 10's deterministic reranking and bounded Evidence Package builder are implemented locally; they are not connected to the video workflow or deployed. Synthetic and provisional evals do not measure model quality, and the MVP is not release-ready.
 
 ## Session 0 — Foundation
 
@@ -171,6 +171,8 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 - **Definition of Done:** Versioned retrieval returns traceable candidates with a recorded baseline.
 
 ## Session 10 — Reranking
+
+**Status:** Implemented locally. Deterministic ranking, source/content diversity limits, provenance-preserving Evidence Package construction, and a provisional relevance/coverage eval are present. The module is not connected to the video workflow or deployed. See [Session 10 verification](../testing/SESSION_10.md).
 
 - **Goal:** Select the best non-duplicative evidence from retrieved candidates.
 - **Why:** Similarity alone does not guarantee direct evidentiary relevance.

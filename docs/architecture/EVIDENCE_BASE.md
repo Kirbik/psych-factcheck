@@ -86,6 +86,15 @@ human-reviewed quality benchmark.
 
 ## Next stage
 
-Session 10 adds reranking and bounded Evidence Package construction. It should
-compare its results with the provisional retrieval baseline and report coverage
-gaps without weakening source traceability.
+Session 10 implements local deterministic reranking and bounded Evidence
+Package construction in `src/server/evidence/reranking.ts`. It combines cosine
+similarity and normalized-claim term coverage, deduplicates identical passage
+text, caps packages at five chunks and two chunks per source, and preserves
+source metadata, verbatim text, scores, versions, and candidate/selection
+trace. Empty and narrow packages carry explicit coverage warnings. The
+provisional retrieval-v2 eval checks package P@5 against the offline lexical
+baseline; it is not an expert-reviewed quality measure. The package builder is
+not yet connected to the video workflow or persisted with fact checks.
+
+The next stage is workflow integration and judgment preparation. Do not infer a
+verdict from retrieval or the Evidence Package.
