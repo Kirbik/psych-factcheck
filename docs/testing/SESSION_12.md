@@ -2,7 +2,7 @@
 
 ## Result
 
-The local Cloudflare Worker now continues from persisted Evidence Packages to
+The Production Cloudflare Worker now continues from persisted Evidence Packages to
 evidence-bound fact checks:
 
 - The Worker invokes the Session 11 judgment service for each claim/package.
@@ -22,9 +22,12 @@ evidence-bound fact checks:
 
 Migrations `20261002120000_full_pipeline_judgment_stage.sql` and
 `20261002130000_fenced_fact_check_persistence.sql` expand the stage constraint
-and fence judgment writes by generation and workflow run. The migrations and
-Worker changes are local and have not been deployed. Production still uses the
-Session 10 Worker.
+and fence judgment writes by generation and workflow run. Both migrations
+were applied to Production on 2026-10-01; the remote migration history was
+verified afterward. Cloudflare Worker version
+`1201cf3a-a17e-4782-a986-e003f24e88bb` was deployed the same day with the
+`ANALYSIS_WORKFLOW` binding and minute schedule. The Production endpoint
+returned HTTP 200.
 
 There is no concrete `UsageService` or usage policy in the repository. Session
 12 leaves that interface unconfigured rather than introducing a default limit
@@ -47,12 +50,17 @@ or a no-op implementation. Report generation and report UI remain future work.
   stalled in the same way. No E2E pass is claimed.
 - `pnpm check`: PASS — lint, typecheck, and full test suite. Lint reports only
   two pre-existing warnings in `history-preview.tsx`.
+- Production migration check: PASS — both Session 12 migrations appear in the
+  linked remote history.
+- `pnpm deploy:vinext`: PASS — deployed Worker version
+  `1201cf3a-a17e-4782-a986-e003f24e88bb`.
+- Production endpoint health check: PASS — HTTP 200.
 
 ## Remaining verification
 
-- Deploy the migration and Worker before Production can use this pipeline.
 - Run a fresh authenticated upload through fact-check persistence. Existing
-  completed jobs are not automatically rerun.
+  completed jobs are not automatically rerun; deployment and HTTP health do
+  not establish full-path workflow success.
 - Resolve the Playwright stall and pass full-path E2E before accepting the
   workflow.
 - Add expert-reviewed verdict/citation cases before making any judgment-quality

@@ -85,8 +85,10 @@ the first saved result. Jobs enter `judge_claims` and complete only after all
 claims have current persisted fact checks. Empty claim extractions complete
 without model calls. Report generation and its UI remain out of scope.
 
-The Session 12 code and migration are implemented locally but have not been
-deployed. Production continues to use the Session 10 Worker until deployment.
+The Session 12 migrations and Worker were deployed to Production on 2026-10-01.
+The endpoint returned HTTP 200 and the deployed Worker exposes the workflow
+binding. A fresh authenticated analysis is still needed to verify the complete
+upload-to-fact-check path; see [Session 12 verification](../testing/SESSION_12.md).
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the

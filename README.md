@@ -1,10 +1,10 @@
 # Psych Factcheck
 
-An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Cloudflare Workflows connect screening, timestamped OpenAI transcription, claim extraction, evidence retrieval/reranking, and Evidence Package persistence. Session 11 adds the standalone evidence-bound judgment provider and fact-check persistence schema; judgment is not yet connected to the workflow, and report generation/UI remain incomplete. See [Architecture](ARCHITECTURE.md) for the current status.
+An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Cloudflare Workflows connect screening, timestamped OpenAI transcription, claim extraction, evidence retrieval/reranking, Evidence Package persistence, and Session 12 evidence-bound judgment. Judgment is deployed to Production; a fresh authenticated full-path run and model-quality evaluation remain pending. Report generation/UI remain incomplete. See [Architecture](ARCHITECTURE.md) for the current status.
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, embeddings/retrieval, reranking, and Evidence Package persistence are implemented; judgment exists as a standalone provider/repository and is not yet part of the Workflow. Report generation and persisted report UI are not connected.
+Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, embeddings/retrieval, reranking, Evidence Package persistence, and evidence-bound judgment are implemented and deployed. Report generation and persisted report UI are not connected.
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ The suite includes unit tests for auth validation/actions, Supabase configuratio
 
 ## Deployment concept
 
-The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. The Production Worker has a configured workflow binding and scheduled recovery; a completed Workflow instance has been observed, but its matching Supabase job state and a fresh browser upload/retry flow have not yet been verified. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, and private Storage are used by server routes. pgvector remains future work.
+The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. Production Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` has the workflow binding and scheduled recovery; the endpoint returned HTTP 200. A fresh authenticated upload through fact-check persistence has not yet been verified. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, private Storage, and pgvector retrieval are used by server routes/workflows.
 
 ## Documentation
 
