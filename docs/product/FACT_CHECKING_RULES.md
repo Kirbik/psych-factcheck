@@ -2,7 +2,7 @@
 
 > **We check the claim, not the person.** The product never infers intent and never says that an author is lying.
 
-These are product and AI behavior requirements. The application runs timestamped video transcription, extracts claims, retrieves evidence, and persists an Evidence Package. Fact-check judgment is not connected; the rules below do not imply that any verdict is currently generated.
+These are product and AI behavior requirements. The current pipeline runs timestamped video transcription, extracts claims, retrieves evidence, persists an Evidence Package, and stores a versioned model-generated judgment with its cited evidence chunks. This judgment stage is not yet gated by an expert-reviewed quality evaluation set.
 
 ## Checkable claims
 
@@ -51,11 +51,11 @@ Only these primary verdicts are permitted. Judgment must be reproducible from th
 
 ## Confidence
 
-Confidence communicates how strongly the available, relevant Evidence Package justifies this classification, considering evidence quality, agreement, directness, and claim clarity. It is not a probability that the speaker is lying, not clinical certainty, and not a substitute for limitations. Calibration rules and thresholds must be versioned and evaluated.
+Confidence is currently an uncalibrated model output. It is not a probability that the speaker is lying, not clinical certainty, and not a substitute for limitations. Do not interpret it as a calibrated measure until calibration rules and thresholds have been versioned and evaluated.
 
 ## Citation rules
 
-Every citation must resolve to a real stored source and exact evidence chunk. A cited chunk must appear in the Evidence Package, support the adjacent explanation, retain source metadata, and be presented without changing its meaning. Never fabricate a DOI, title, author, URL, quote, study result, source, or evidence. If traceability fails, remove the assertion or return insufficient evidence—not a guessed citation.
+Every citation must resolve to a real stored source and exact evidence chunk. The current implementation validates that cited chunk IDs belong to the persisted Evidence Package, but semantic support between the passage and explanation has not yet been independently evaluated. A cited chunk must support the adjacent explanation, retain source metadata, and be presented without changing its meaning. Never fabricate a DOI, title, author, URL, quote, study result, source, or evidence. If traceability fails, remove the assertion or return insufficient evidence—not a guessed citation.
 
 ## Limitations and insufficient evidence
 

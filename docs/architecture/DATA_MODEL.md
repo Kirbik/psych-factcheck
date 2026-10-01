@@ -125,7 +125,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence`. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`; other jobs complete after Evidence Packages are saved. Judgment/report artifacts are not yet produced, and content remains pending. See [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence`; Session 12 adds `judge_claims` and completes after fact checks are persisted. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`. Report artifacts are not yet produced, and content remains pending. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 

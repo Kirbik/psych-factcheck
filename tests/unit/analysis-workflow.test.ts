@@ -13,6 +13,7 @@ import {
 import {
   executeClaimExtractionStage,
   executeEvidencePackageStage,
+  executeJudgmentStage,
   executeWorkflow,
   PermanentWorkflowError,
 } from "@/server/workflows/execute";
@@ -46,6 +47,7 @@ const payload = { jobId, generation: 1 };
 const runId = "run_workflow_1";
 const extractionId = "66666666-6666-4666-8666-666666666666";
 const claimId = "77777777-7777-4777-8777-777777777777";
+const evidencePackageId = "88888888-8888-4888-8888-888888888888";
 const timestamp = "2026-09-27T00:00:00.000Z";
 type ScreenVideo = NonNullable<Parameters<typeof executeWorkflow>[6]>;
 
@@ -137,15 +139,19 @@ function repository() {
     getClaimExtractionId: vi
       .fn<WorkflowRepository["getClaimExtractionId"]>()
       .mockResolvedValue(extractionId),
-    listClaims: vi
-      .fn<WorkflowRepository["listClaims"]>()
-      .mockResolvedValue([]),
+    listClaims: vi.fn<WorkflowRepository["listClaims"]>().mockResolvedValue([]),
     existingEvidencePackageClaimIds: vi
       .fn<WorkflowRepository["existingEvidencePackageClaimIds"]>()
       .mockResolvedValue(new Set()),
     saveEvidencePackages: vi
       .fn<WorkflowRepository["saveEvidencePackages"]>()
       .mockResolvedValue(undefined),
+    listEvidencePackages: vi
+      .fn<WorkflowRepository["listEvidencePackages"]>()
+      .mockResolvedValue([]),
+    existingFactCheckPairs: vi
+      .fn<WorkflowRepository["existingFactCheckPairs"]>()
+      .mockResolvedValue([]),
     getScreening: vi
       .fn<WorkflowRepository["getScreening"]>()
       .mockResolvedValue(null),
@@ -154,6 +160,12 @@ function repository() {
       .mockImplementation(async (_contentItemId, result) => result),
     active: vi.fn<WorkflowRepository["active"]>(),
   } satisfies WorkflowRepository;
+}
+
+function markWorkflowJobRunning(repo: ReturnType<typeof repository>) {
+  repo.get.mockResolvedValue(
+    job({ status: "running", stage: "build_evidence", run_id: runId }),
+  );
 }
 
 function transcriber() {
@@ -300,7 +312,7 @@ describe("workflow execution", () => {
     expect(repo.saveClaimExtraction).not.toHaveBeenCalled();
   });
 
-  it("retrieves and persists an idempotent evidence package before completing the job", async () => {
+  it("retrieves and persists an idempotent evidence package before judgment", async () => {
     const repo = repository();
     repo.listClaims.mockResolvedValue([
       {
@@ -354,8 +366,16 @@ describe("workflow execution", () => {
 
     await expect(
       executeEvidencePackageStage(payload, runId, 2, repo, retrieveEvidence),
-    ).resolves.toEqual({ outcome: "evidence_packages_ready" });
-    expect(repo.setStage).toHaveBeenCalledExactlyOnceWith(
+    ).resolves.toEqual({ outcome: "ready_for_fact_checks" });
+    expect(repo.setStage).toHaveBeenNthCalledWith(
+      1,
+      payload,
+      runId,
+      "build_evidence",
+      2,
+    );
+    expect(repo.setStage).toHaveBeenNthCalledWith(
+      2,
       payload,
       runId,
       "build_evidence",
@@ -364,24 +384,16 @@ describe("workflow execution", () => {
     expect(retrieveEvidence).toHaveBeenCalledExactlyOnceWith([
       "Stress impairs memory.",
     ]);
-    expect(repo.saveEvidencePackages).toHaveBeenCalledWith(
-      extractionId,
-      [
-        expect.objectContaining({
-          claimId,
-          package: expect.objectContaining({
-            rerankingVersion: "evidence-reranking-v1",
-            trace: expect.objectContaining({ candidateCount: 1 }),
-          }),
+    expect(repo.saveEvidencePackages).toHaveBeenCalledWith(extractionId, [
+      expect.objectContaining({
+        claimId,
+        package: expect.objectContaining({
+          rerankingVersion: "evidence-reranking-v1",
+          trace: expect.objectContaining({ candidateCount: 1 }),
         }),
-      ],
-    );
-    expect(repo.advance).toHaveBeenLastCalledWith(
-      payload,
-      runId,
-      "completed",
-      2,
-    );
+      }),
+    ]);
+    expect(repo.advance).toHaveBeenLastCalledWith(payload, runId, "running", 2);
   });
 
   it("does not repeat retrieval for evidence packages already persisted on retry", async () => {
@@ -403,9 +415,344 @@ describe("workflow execution", () => {
 
     await expect(
       executeEvidencePackageStage(payload, runId, 2, repo, retrieveEvidence),
-    ).resolves.toEqual({ outcome: "evidence_packages_ready" });
+    ).resolves.toEqual({ outcome: "ready_for_fact_checks" });
     expect(retrieveEvidence).not.toHaveBeenCalled();
     expect(repo.saveEvidencePackages).not.toHaveBeenCalled();
+  });
+
+  it("persists one judgment per current package before completing the job", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "Claim",
+          normalized: "Claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.listEvidencePackages.mockResolvedValue([
+      {
+        claimId,
+        evidencePackageId,
+        packageClaim: {
+          original: "Claim",
+          normalized: "Claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    const judgeClaim = vi.fn().mockResolvedValue("fact-check-id");
+
+    await expect(
+      executeJudgmentStage(payload, runId, 3, repo, judgeClaim),
+    ).resolves.toEqual({ outcome: "fact_checks_ready" });
+    expect(repo.setStage).toHaveBeenCalledExactlyOnceWith(
+      payload,
+      runId,
+      "judge_claims",
+      3,
+    );
+    expect(judgeClaim).toHaveBeenCalledExactlyOnceWith({
+      claimId,
+      claim: {
+        original: "Claim",
+        normalized: "Claim",
+        startSeconds: 0,
+        endSeconds: 1,
+        claimType: "historical",
+      },
+      evidencePackageId,
+    });
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      3,
+    );
+  });
+
+  it("skips already persisted judgments on retry", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "Claim",
+          normalized: "Claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.listEvidencePackages.mockResolvedValue([
+      {
+        claimId,
+        evidencePackageId,
+        packageClaim: {
+          original: "Claim",
+          normalized: "Claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.existingFactCheckPairs.mockResolvedValue([
+      { claimId, evidencePackageId },
+    ]);
+    const judgeClaim = vi.fn();
+
+    await expect(
+      executeJudgmentStage(payload, runId, 4, repo, judgeClaim),
+    ).resolves.toEqual({ outcome: "fact_checks_ready" });
+    expect(judgeClaim).not.toHaveBeenCalled();
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      4,
+    );
+  });
+
+  it("resumes a partially completed judgment run without repeating saved claims", async () => {
+    const secondClaimId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const secondEvidencePackageId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "First claim",
+          normalized: "First claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+      {
+        id: secondClaimId,
+        claim: {
+          original: "Second claim",
+          normalized: "Second claim",
+          startSeconds: 1,
+          endSeconds: 2,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.listEvidencePackages.mockResolvedValue([
+      {
+        claimId,
+        evidencePackageId,
+        packageClaim: {
+          original: "First claim",
+          normalized: "First claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+      {
+        claimId: secondClaimId,
+        evidencePackageId: secondEvidencePackageId,
+        packageClaim: {
+          original: "Second claim",
+          normalized: "Second claim",
+          startSeconds: 1,
+          endSeconds: 2,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.existingFactCheckPairs
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ claimId, evidencePackageId }]);
+    const judgeClaim = vi
+      .fn()
+      .mockResolvedValueOnce("first-fact-check")
+      .mockRejectedValueOnce(new Error("temporary provider failure"))
+      .mockResolvedValueOnce("second-fact-check");
+
+    await expect(
+      executeJudgmentStage(payload, runId, 2, repo, judgeClaim),
+    ).rejects.toThrow("temporary provider failure");
+    expect(repo.advance).not.toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
+
+    await expect(
+      executeJudgmentStage(payload, runId, 3, repo, judgeClaim),
+    ).resolves.toEqual({ outcome: "fact_checks_ready" });
+    expect(judgeClaim.mock.calls).toEqual([
+      [
+        {
+          claimId,
+          claim: {
+            original: "First claim",
+            normalized: "First claim",
+            startSeconds: 0,
+            endSeconds: 1,
+            claimType: "historical",
+          },
+          evidencePackageId,
+        },
+      ],
+      [
+        {
+          claimId: secondClaimId,
+          claim: {
+            original: "Second claim",
+            normalized: "Second claim",
+            startSeconds: 1,
+            endSeconds: 2,
+            claimType: "historical",
+          },
+          evidencePackageId: secondEvidencePackageId,
+        },
+      ],
+      [
+        {
+          claimId: secondClaimId,
+          claim: {
+            original: "Second claim",
+            normalized: "Second claim",
+            startSeconds: 1,
+            endSeconds: 2,
+            claimType: "historical",
+          },
+          evidencePackageId: secondEvidencePackageId,
+        },
+      ],
+    ]);
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      3,
+    );
+  });
+
+  it("completes an extraction with no claims without making judgment calls", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    const judgeClaim = vi.fn();
+
+    await expect(
+      executeJudgmentStage(payload, runId, 2, repo, judgeClaim),
+    ).resolves.toEqual({ outcome: "fact_checks_ready" });
+    expect(repo.listEvidencePackages).toHaveBeenCalledExactlyOnceWith([]);
+    expect(judgeClaim).not.toHaveBeenCalled();
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
+  });
+
+  it("does not complete when a claim has no persisted Evidence Package", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "Claim",
+          normalized: "Claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    const judgeClaim = vi.fn();
+
+    await expect(
+      executeJudgmentStage(payload, runId, 2, repo, judgeClaim),
+    ).rejects.toThrow(new PermanentWorkflowError("EVIDENCE_PACKAGE_MISSING"));
+    expect(judgeClaim).not.toHaveBeenCalled();
+    expect(repo.advance).not.toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
+  });
+
+  it("rejects an Evidence Package attached to a different extracted claim", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "Current claim",
+          normalized: "Current claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.listEvidencePackages.mockResolvedValue([
+      {
+        claimId,
+        evidencePackageId,
+        packageClaim: {
+          original: "Different claim",
+          normalized: "Different claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    const judgeClaim = vi.fn();
+
+    await expect(
+      executeJudgmentStage(payload, runId, 2, repo, judgeClaim),
+    ).rejects.toThrow(
+      new PermanentWorkflowError("EVIDENCE_PACKAGE_CLAIM_MISMATCH"),
+    );
+    expect(judgeClaim).not.toHaveBeenCalled();
+    expect(repo.advance).not.toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
+  });
+
+  it("stops judgment when the stage fence says the run is obsolete", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    repo.setStage.mockResolvedValue(false);
+    const judgeClaim = vi.fn();
+
+    await expect(
+      executeJudgmentStage(payload, runId, 2, repo, judgeClaim),
+    ).resolves.toEqual({ outcome: "obsolete" });
+    expect(repo.listClaims).not.toHaveBeenCalled();
+    expect(judgeClaim).not.toHaveBeenCalled();
+    expect(repo.advance).not.toHaveBeenCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
   });
 
   it("reports an obsolete run without reading content or Storage", async () => {
@@ -746,18 +1093,12 @@ describe("workflow execution", () => {
     expect(repo.advance).toHaveBeenCalledTimes(1);
   });
 
-  it("propagates a failed completion write after evidence packages are built", async () => {
+  it("propagates a failed evidence-stage fence after package persistence", async () => {
     const repo = repository();
     const failure = new Error("Database unavailable");
-    repo.advance.mockResolvedValueOnce(job()).mockRejectedValueOnce(failure);
+    repo.setStage.mockResolvedValueOnce(true).mockRejectedValueOnce(failure);
     await expect(
-      executeEvidencePackageStage(
-        payload,
-        runId,
-        1,
-        repo,
-        async () => [],
-      ),
+      executeEvidencePackageStage(payload, runId, 1, repo, async () => []),
     ).rejects.toBe(failure);
   });
 });

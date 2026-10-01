@@ -7,6 +7,7 @@ const owner = "11111111-1111-4111-8111-111111111111";
 const other = "22222222-2222-4222-8222-222222222222";
 const contentId = "33333333-3333-4333-8333-333333333333";
 const screenedOutContentId = "66666666-6666-4666-8666-666666666666";
+const judgmentStageContentId = "99999999-9999-4999-8999-999999999999";
 const sqlFile = (name: string) =>
   readFile(
     new URL(`../../../supabase/migrations/${name}`, import.meta.url),
@@ -37,7 +38,8 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(`insert into auth.users values ('${owner}'), ('${other}');
       insert into public.content_items(id, user_id, storage_path)
         values ('${contentId}', '${owner}', '${owner}/video.mp4'),
-          ('${screenedOutContentId}', '${owner}', '${owner}/screened.mp4');
+          ('${screenedOutContentId}', '${owner}', '${owner}/screened.mp4'),
+          ('${judgmentStageContentId}', '${owner}', '${owner}/judgment-stage.mp4');
       update public.analysis_jobs set status = 'completed', stage = 'complete',
         completed_at = now() where content_item_id = '${contentId}';
       update public.analysis_jobs set status = 'completed', stage = 'complete',
@@ -47,6 +49,12 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(await sqlFile("20261001100000_evidence_base_v0.sql"));
     await db.exec(await sqlFile("20261001140000_evidence_packages_v1.sql"));
     await db.exec(await sqlFile("20261002100000_fact_check_judgments_v1.sql"));
+    await db.exec(
+      await sqlFile("20261002120000_full_pipeline_judgment_stage.sql"),
+    );
+    await db.exec(
+      await sqlFile("20261002130000_fenced_fact_check_persistence.sql"),
+    );
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -164,6 +172,37 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     expect(content.rows[0].status).toBe("pending");
     await db.exec("rollback");
+  });
+
+  it("allows the judgment stage only through the fenced stage RPC", async () => {
+    const job = await db.query<{ id: string; generation: number }>(
+      "select id, generation from public.analysis_jobs where content_item_id = $1",
+      [judgmentStageContentId],
+    );
+    const jobId = job.rows[0]?.id;
+    expect(jobId).toBeTruthy();
+    await db.query(
+      `update public.analysis_jobs set status = 'running', run_id = 'session12-run'
+       where id = $1`,
+      [jobId],
+    );
+    const stage = await db.query<{ set_analysis_job_stage: boolean }>(
+      "select public.set_analysis_job_stage($1, 1, 'session12-run', 'judge_claims', 1)",
+      [jobId],
+    );
+    expect(stage.rows[0]?.set_analysis_job_stage).toBe(true);
+    expect(
+      await db.query<{ stage: string }>(
+        "select stage from public.analysis_jobs where id = $1",
+        [jobId],
+      ),
+    ).toMatchObject({ rows: [{ stage: "judge_claims" }] });
+    await expect(
+      db.query(
+        "select public.set_analysis_job_stage($1, 1, 'session12-run', 'unknown_stage', 1)",
+        [jobId],
+      ),
+    ).rejects.toThrow(/Invalid analysis stage/);
   });
 
   it("keeps RLS status reads private and rejects anonymous enqueue", async () => {
@@ -343,7 +382,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     const evidenceChunkId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
     await db.query(
       `insert into public.content_items(id, user_id, storage_path)
-       values ($1, $2, null)`,
+       values ($1, $2, $2::uuid::text || '/package.mp4')`,
       [packageContentId, owner],
     );
     const transcript = await db.query<{ id: string }>(
@@ -456,13 +495,29 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
         },
       ],
     };
-    const saveFactCheck = (judgment = factCheckInput) =>
+    const analysisJob = await db.query<{ id: string; generation: number }>(
+      "select id, generation from public.analysis_jobs where content_item_id = $1",
+      [packageContentId],
+    );
+    await transition(analysisJob.rows[0]!.id, 1, "judgment_run", "running");
+    await db.query(
+      "select public.set_analysis_job_stage($1, 1, 'judgment_run', 'judge_claims', 1)",
+      [analysisJob.rows[0]?.id],
+    );
+    const saveFactCheck = (
+      judgment = factCheckInput,
+      generation = 1,
+      runId = "judgment_run",
+    ) =>
       db.query<{ id: string }>(
-        `select public.save_fact_check(
-          $1, $2, 'fact-check-judgment-v1', 'openai', 'gpt-4o-mini',
-          'instructions-v1', 'schema-v1', $3::jsonb
+        `select public.save_fact_check_for_analysis_run(
+          $1, $2, $3, $4, $5, 'fact-check-judgment-v1', 'openai', 'gpt-4o-mini',
+          'instructions-v1', 'schema-v1', $6::jsonb
         ) as id`,
         [
+          analysisJob.rows[0]?.id,
+          generation,
+          runId,
           claim.rows[0]?.id,
           evidencePackageRow.rows[0]?.id,
           JSON.stringify(judgment),
@@ -472,6 +527,9 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     expect(savedFactCheck.rows[0]?.id).toMatch(/^[0-9a-f-]{36}$/);
     expect((await saveFactCheck()).rows[0]?.id).toBe(
       savedFactCheck.rows[0]?.id,
+    );
+    await expect(saveFactCheck(factCheckInput, 1, "obsolete_run")).rejects.toThrow(
+      /Analysis run is no longer current/,
     );
     expect(
       (

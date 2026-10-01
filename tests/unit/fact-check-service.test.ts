@@ -64,6 +64,9 @@ describe("fact-check service", () => {
       service.judgeAndSave({
         claimId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
         evidencePackageId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        jobId: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        generation: 3,
+        runId: "workflow-run-3",
       }),
     ).resolves.toBe("ffffffff-ffff-4fff-8fff-ffffffffffff");
 

@@ -6,12 +6,12 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. Session 10's evidence-package migration and Worker version `7279e730-7eae-4a78-8126-2a67ebf045ed` are deployed; browser E2E verification remains pending. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Synthetic and provisional evals do not measure model quality, and the MVP is not release-ready.
 
-Session 11 now has a standalone versioned judgment prompt/provider, strict output validation, Evidence Package citation checks, and persistence migration/repository. Migration `20261002100000_fact_check_judgments_v1.sql` was applied to Production on 2026-10-02 and the remote migration history matches local. It is not wired into the Worker; Session 12 owns full-pipeline composition. The expert-reviewed golden cases required to accept verdict quality do not yet exist, and no live Production judgment verification has been run.
+Session 11 has a versioned judgment prompt/provider, strict output validation, Evidence Package citation checks, and persistence migration/repository. Migration `20261002100000_fact_check_judgments_v1.sql` was applied to Production on 2026-10-02 and the remote migration history matches local. A live provider contract check passed locally on a synthetic package; no judgment was written to Production. Session 12 connects the provider to the Worker locally. Expert-reviewed golden cases do not exist, so verdict quality remains unverified.
 
-The next planned session is 11 verification, followed by Session 12. The roadmap
-currently contains 11 remaining sessions (11–21); the pending Session 10
-browser E2E verification is a check on completed work, not an additional
-roadmap session.
+Session 12 is in progress locally. Its Worker and migration have not been
+deployed, and the full upload-to-fact-check path still needs E2E verification.
+The existing usage interfaces have no concrete service or policy; this session
+does not invent one. Do not begin Session 13 until Session 12 is accepted.
 
 ## Session 0 — Foundation
 
@@ -208,6 +208,8 @@ roadmap session.
 - **Definition of Done:** Golden cases meet thresholds with zero fabricated citation acceptance.
 
 ## Session 12 — Full Pipeline
+
+**Status:** The local Worker now runs one durable judgment step per claim and persists validated fact checks before completing the job. The `judge_claims` stage is fenced in SQL; retries skip judgments already saved for the current Evidence Package and judgment version. Local workflow and database tests cover resume, empty extractions, missing packages, and stage authorization. Deployment and full upload-to-fact-check E2E verification remain open. The existing `UsageService` remains an interface only because no usage policy or implementation is defined.
 
 - **Goal:** Connect upload through final persisted fact checks.
 - **Why:** Validate contracts, state transitions, idempotency, and recovery end-to-end.

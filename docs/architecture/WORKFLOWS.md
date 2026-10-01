@@ -1,4 +1,4 @@
-# Background workflow — Sessions 5–10
+# Background workflow — Sessions 5–12
 
 ## Scope and completion
 
@@ -73,6 +73,21 @@ Migration `20261001140000_evidence_packages_v1.sql` and Worker version
 completed jobs were not requeued; a new upload is needed to verify this stage
 in a live analysis.
 
+Session 12 connects the Session 11 evidence-bound judgment service after
+Evidence Package persistence. The Worker validates each current package,
+judges its claim with `gpt-4o-mini`, and saves the immutable fact check and
+package-member citations through a run-fenced fact-check RPC. It locks the job,
+checks generation/run/stage and claim ownership, then calls `save_fact_check`.
+Each claim judgment is a separate durable Cloudflare Workflow step. Before judging, the workflow skips
+only a fact check already saved for the same claim, package, and judgment
+version; retries resume unfinished claims and the idempotent SQL RPC preserves
+the first saved result. Jobs enter `judge_claims` and complete only after all
+claims have current persisted fact checks. Empty claim extractions complete
+without model calls. Report generation and its UI remain out of scope.
+
+The Session 12 code and migration are implemented locally but have not been
+deployed. Production continues to use the Session 10 Worker until deployment.
+
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
 source of truth for job state and ownership. The Production dashboard has the
@@ -108,9 +123,10 @@ There is no fake executor in production.
 
 Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queued
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
-`screen_video`, `transcribe_video`, `extract_claims`, `build_evidence`, or
-`complete`. In-scope jobs complete after Evidence Packages are saved; judgment
-and report generation are not part of the workflow yet. `generation` counts explicit restarts;
+`screen_video`, `transcribe_video`, `extract_claims`, `build_evidence`,
+`judge_claims`, or `complete`. In-scope jobs complete after fact checks and
+citations are saved. Report generation is not part of the workflow yet.
+`generation` counts explicit restarts;
 `attempt` records Workflow step retries. Technical errors returned to the
 browser are fixed messages, never raw provider errors. The step retries
 transient failures up to three total attempts. OpenAI requests time out after

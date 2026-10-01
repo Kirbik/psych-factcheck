@@ -17,6 +17,10 @@ import {
 import type { EvidencePackage, ExtractedClaim } from "@/server/ai/providers";
 import { EVIDENCE_RERANKING_VERSION } from "@/server/evidence/reranking";
 import { EVIDENCE_RETRIEVAL_VERSION } from "@/server/evidence/search";
+import {
+  FACT_CHECK_JUDGMENT_VERSION,
+  validateEvidencePackage,
+} from "@/server/ai/judgment";
 import type { Json } from "@/types/database";
 import { z } from "zod";
 import {
@@ -237,7 +241,10 @@ export function workflowRepository(client: WorkflowClient) {
     },
     async saveEvidencePackages(
       extractionId: string,
-      packages: readonly { readonly claimId: string; readonly package: EvidencePackage }[],
+      packages: readonly {
+        readonly claimId: string;
+        readonly package: EvidencePackage;
+      }[],
     ) {
       if (packages.length === 0) return;
       const payload = packages.map(({ claimId, package: evidencePackage }) => ({
@@ -254,6 +261,58 @@ export function workflowRepository(client: WorkflowClient) {
         p_packages: payload as unknown as Json,
       });
       if (error) throw new Error("Evidence packages write failed");
+    },
+    async listEvidencePackages(claimIds: readonly string[]) {
+      if (claimIds.length === 0) return [];
+      const { data, error } = await client
+        .from("evidence_packages")
+        .select("id, claim_id, payload")
+        .in("claim_id", [...claimIds])
+        .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
+        .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
+      if (error) throw new Error("Evidence package read failed");
+      return data.map(({ id, claim_id, payload }) => {
+        const evidencePackage = validateEvidencePackage(payload);
+        return {
+          evidencePackageId: id,
+          claimId: claim_id,
+          packageClaim: evidencePackage.claim,
+        };
+      });
+    },
+    async existingFactCheckPairs(
+      pairs: readonly {
+        readonly claimId: string;
+        readonly evidencePackageId: string;
+      }[],
+    ) {
+      if (pairs.length === 0) return [];
+      const { data, error } = await client
+        .from("fact_checks")
+        .select("claim_id, evidence_package_id")
+        .in(
+          "claim_id",
+          pairs.map(({ claimId }) => claimId),
+        )
+        .in(
+          "evidence_package_id",
+          pairs.map(({ evidencePackageId }) => evidencePackageId),
+        )
+        .eq("judgment_version", FACT_CHECK_JUDGMENT_VERSION);
+      if (error) throw new Error("Fact-check read failed");
+      const requestedPairs = new Set(
+        pairs.map(({ claimId, evidencePackageId }) =>
+          JSON.stringify([claimId, evidencePackageId]),
+        ),
+      );
+      return data
+        .filter(({ claim_id, evidence_package_id }) =>
+          requestedPairs.has(JSON.stringify([claim_id, evidence_package_id])),
+        )
+        .map(({ claim_id, evidence_package_id }) => ({
+          claimId: claim_id,
+          evidencePackageId: evidence_package_id,
+        }));
     },
     async getScreening(contentItemId: string): Promise<VideoScreening | null> {
       const { data, error } = await client

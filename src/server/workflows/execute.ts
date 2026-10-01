@@ -12,6 +12,7 @@ import type {
 import { buildEvidencePackage } from "@/server/evidence/reranking";
 import type { EvidenceSearchResult } from "@/server/evidence/search";
 import { MAX_OPENAI_TRANSCRIPTION_BYTES } from "@/server/ai/openai-transcription-provider";
+import { FactCheckJudgmentError } from "@/server/ai/judgment";
 import {
   SCREENING_REJECTION_CONFIDENCE,
   type VideoScreening,
@@ -28,6 +29,31 @@ type ScreenInput = {
   contentType: string;
   size: number;
 };
+
+function sameExtractedClaim(
+  left: {
+    readonly original: string;
+    readonly normalized: string;
+    readonly startSeconds: number;
+    readonly endSeconds: number;
+    readonly claimType: string;
+  },
+  right: {
+    readonly original: string;
+    readonly normalized: string;
+    readonly startSeconds: number;
+    readonly endSeconds: number;
+    readonly claimType: string;
+  },
+) {
+  return (
+    left.original === right.original &&
+    left.normalized === right.normalized &&
+    left.startSeconds === right.startSeconds &&
+    left.endSeconds === right.endSeconds &&
+    left.claimType === right.claimType
+  );
+}
 
 async function inspectOwnedUpload(
   payload: JobPayload,
@@ -250,13 +276,90 @@ export async function executeEvidencePackageStage(
     await repository.saveEvidencePackages(extractionId, packages);
   }
 
-  const completed = await repository.advance(
+  const stillCurrent = await repository.setStage(
+    payload,
+    runId,
+    "build_evidence",
+    attempt,
+  );
+  return {
+    outcome: stillCurrent ? "ready_for_fact_checks" : "obsolete",
+  } as const;
+}
+
+export async function executeJudgmentStage(
+  payload: JobPayload,
+  runId: string,
+  attempt: number,
+  repository: WorkflowRepository,
+  judgeClaim: (input: {
+    readonly claimId: string;
+    readonly claim: import("@/server/ai/providers").ExtractedClaim;
+    readonly evidencePackageId: string;
+  }) => Promise<string>,
+) {
+  const job = await repository.get(payload);
+  if (!job || job.run_id !== runId || job.status !== "running")
+    return { outcome: "obsolete" } as const;
+  const transcript = await repository.getTranscript(job.content_item_id);
+  if (!transcript) throw new PermanentWorkflowError("TRANSCRIPT_MISSING");
+  const extractionId = await repository.getClaimExtractionId(transcript.id);
+  if (!extractionId)
+    throw new PermanentWorkflowError("CLAIM_EXTRACTION_MISSING");
+  if (!(await repository.setStage(payload, runId, "judge_claims", attempt)))
+    return { outcome: "obsolete" } as const;
+
+  const claims = await repository.listClaims(extractionId);
+  let packages: Awaited<ReturnType<typeof repository.listEvidencePackages>>;
+  try {
+    packages = await repository.listEvidencePackages(
+      claims.map(({ id }) => id),
+    );
+  } catch (error) {
+    if (error instanceof FactCheckJudgmentError)
+      throw new PermanentWorkflowError("EVIDENCE_PACKAGE_INVALID");
+    throw error;
+  }
+  const packageByClaim = new Map(
+    packages.map(({ claimId, evidencePackageId, packageClaim }) => [
+      claimId,
+      { evidencePackageId, packageClaim },
+    ]),
+  );
+  const targets = claims.map(({ id, claim }) => {
+    const packageRecord = packageByClaim.get(id);
+    if (!packageRecord)
+      throw new PermanentWorkflowError("EVIDENCE_PACKAGE_MISSING");
+    if (!sameExtractedClaim(claim, packageRecord.packageClaim))
+      throw new PermanentWorkflowError("EVIDENCE_PACKAGE_CLAIM_MISMATCH");
+    return {
+      claimId: id,
+      claim,
+      evidencePackageId: packageRecord.evidencePackageId,
+    };
+  });
+  const completedPairs = await repository.existingFactCheckPairs(targets);
+  const completed = new Set(
+    completedPairs.map(({ claimId, evidencePackageId }) =>
+      JSON.stringify([claimId, evidencePackageId]),
+    ),
+  );
+
+  for (const target of targets) {
+    if (
+      completed.has(JSON.stringify([target.claimId, target.evidencePackageId]))
+    )
+      continue;
+    await judgeClaim(target);
+  }
+
+  const finished = await repository.advance(
     payload,
     runId,
     "completed",
     attempt,
   );
-  return { outcome: completed ? "evidence_packages_ready" : "obsolete" } as const;
+  return { outcome: finished ? "fact_checks_ready" : "obsolete" } as const;
 }
 
 /** Test helper for the screening/transcription stages; production uses the staged Worker entrypoint. */

@@ -22,6 +22,7 @@ export const jobViewSchema = z.object({
     "transcribe_video",
     "extract_claims",
     "build_evidence",
+    "judge_claims",
     "complete",
   ]),
   attempt: z.number().int().nonnegative(),
@@ -54,7 +55,7 @@ export const workflowMessages = {
   queued: "Видео загружено. Подготовка к анализу ожидает запуска.",
   running: "Проверяем видео и создаём транскрипт.",
   completed:
-    "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
+    "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
   failed:
     "Подготовка не завершена. Повторите запуск; если ошибка повторяется, загрузите видео заново.",
   cancelled: "Подготовка остановлена. Можно повторить запуск.",
@@ -65,6 +66,8 @@ export const workflowErrorMessages: Readonly<Record<string, string>> = {
     "Не удалось проверить утверждения по тексту транскрипта. Повторите запуск.",
   OPENAI_UNAVAILABLE:
     "Сервис обработки временно недоступен. Повторите запуск позже.",
+  FACT_CHECK_JUDGMENT_INVALID:
+    "Не удалось проверить результат анализа. Повторите запуск.",
 };
 
 export const SCREENED_OUT_ERROR_CODE = "VIDEO_OUT_OF_SCOPE";

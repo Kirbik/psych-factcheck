@@ -11,6 +11,7 @@ import {
 import {
   executeClaimExtractionStage,
   executeEvidencePackageStage,
+  executeJudgmentStage,
   executeScreeningStage,
   executeTranscriptionStage,
   PermanentWorkflowError,
@@ -39,6 +40,12 @@ import { searchEvidenceBatch } from "@/server/evidence/search";
 import { EvidenceRerankingError } from "@/server/evidence/reranking";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
+import {
+  createOpenAIJudgmentProvider,
+  JudgmentProviderError,
+} from "@/server/ai/openai-judgment-provider";
+import { createFactCheckService } from "@/server/ai/fact-check-service";
+import { factCheckRepository } from "@/server/ai/fact-check-repository";
 import { createWorkerClient } from "./client";
 
 export class AnalysisWorkflow extends WorkflowEntrypoint<
@@ -57,6 +64,11 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
     const embeddingProvider = createOpenAIEmbeddingProvider(apiKey);
+    const judgmentProvider = createOpenAIJudgmentProvider(apiKey);
+    const factCheckService = createFactCheckService(
+      factCheckRepository(client),
+      judgmentProvider,
+    );
     let attempt = 1;
     let failureCode: string | undefined;
 
@@ -242,7 +254,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
       if (claimExtraction.outcome !== "ready_for_evidence_packages")
         return claimExtraction;
 
-      return await step.do(
+      const evidence = await step.do(
         "retrieve and package claim evidence",
         {
           retries: {
@@ -293,6 +305,54 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
             throw error;
           }
         },
+      );
+      if (evidence.outcome !== "ready_for_fact_checks") return evidence;
+
+      return await executeJudgmentStage(
+        payload,
+        event.instanceId,
+        attempt,
+        repository,
+        async ({ claimId, evidencePackageId }) =>
+          step.do(
+            `judge claim ${claimId}`,
+            {
+              retries: {
+                limit: 2,
+                delay: "1 second",
+                backoff: "exponential",
+              },
+              timeout: "4 minutes",
+            },
+            async (context) => {
+              attempt = context.attempt;
+              const active = await repository.setStage(
+                payload,
+                event.instanceId,
+                "judge_claims",
+                context.attempt,
+              );
+              if (!active) {
+                failureCode = "RUN_OBSOLETE";
+                throw new NonRetryableError("RUN_OBSOLETE");
+              }
+              try {
+                return await factCheckService.judgeAndSave({
+                  claimId,
+                  evidencePackageId,
+                  jobId: payload.jobId,
+                  generation: payload.generation,
+                  runId: event.instanceId,
+                });
+              } catch (error) {
+                if (error instanceof JudgmentProviderError) {
+                  failureCode = error.code;
+                  if (!error.retryable) throw new NonRetryableError(error.code);
+                }
+                throw error;
+              }
+            },
+          ),
       );
     } catch (error) {
       await repository.advance(

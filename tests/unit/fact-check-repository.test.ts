@@ -100,6 +100,9 @@ function repositoryWithPersistedPackage(persistedPackage: EvidencePackage) {
 }
 
 const metadata = {
+  jobId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  generation: 3,
+  runId: "workflow-run-3",
   claimId,
   evidencePackageId: packageId,
   judgmentVersion: "fact-check-judgment-v1",
@@ -138,8 +141,11 @@ describe("fact-check repository", () => {
       repository.save(metadata, savedPackage, judgment),
     ).resolves.toBe("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee");
     expect(rpc).toHaveBeenCalledWith(
-      "save_fact_check",
+      "save_fact_check_for_analysis_run",
       expect.objectContaining({
+        p_job_id: metadata.jobId,
+        p_generation: metadata.generation,
+        p_run_id: metadata.runId,
         p_claim_id: claimId,
         p_evidence_package_id: packageId,
         p_judgment: expect.objectContaining({ verdict: "SUPPORTED" }),

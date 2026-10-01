@@ -197,7 +197,9 @@ export function WorkflowProgress({
         job?.status === "completed" &&
         job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
-          : job?.stage === "extract_claims" || job?.stage === "build_evidence"
+          : job?.stage === "extract_claims" ||
+              job?.stage === "build_evidence" ||
+              job?.stage === "judge_claims"
             ? "completed"
             : job?.stage === "transcribe_video" && job.status === "running"
               ? "processing"
@@ -209,13 +211,13 @@ export function WorkflowProgress({
         job?.status === "completed" &&
         job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
-          : job?.stage === "build_evidence"
+          : job?.stage === "build_evidence" || job?.stage === "judge_claims"
             ? "completed"
             : job?.stage === "extract_claims" && job.status === "running"
-            ? "processing"
-            : job?.stage === "extract_claims" && job.status === "failed"
-              ? "failed"
-            : "pending"
+              ? "processing"
+              : job?.stage === "extract_claims" && job.status === "failed"
+                ? "failed"
+                : "pending"
       }
       evidenceSearchStatus={
         job?.status === "completed" &&
@@ -224,6 +226,18 @@ export function WorkflowProgress({
           : job?.stage === "build_evidence" && job.status === "running"
             ? "processing"
             : job?.stage === "build_evidence" && job.status === "failed"
+              ? "failed"
+              : job?.stage === "judge_claims"
+                ? "completed"
+                : "pending"
+      }
+      factCheckStatus={
+        job?.status === "completed" &&
+        job.error_code !== SCREENED_OUT_ERROR_CODE
+          ? "completed"
+          : job?.stage === "judge_claims" && job.status === "running"
+            ? "processing"
+            : job?.stage === "judge_claims" && job.status === "failed"
               ? "failed"
               : "pending"
       }
@@ -250,12 +264,15 @@ export function WorkflowProgress({
                   ? "Выделяем и классифицируем утверждения."
                   : job.status === "running" && job.stage === "build_evidence"
                     ? "Ищем научные источники и сохраняем пакеты доказательств."
-                  : job.status === "running" && job.stage === "validate_upload"
-                    ? "Проверяем загруженное видео."
-                    : job.status === "failed"
-                      ? (workflowErrorMessages[job.error_code ?? ""] ??
-                        workflowMessages.failed)
-                      : workflowMessages[job.status]
+                    : job.status === "running" && job.stage === "judge_claims"
+                      ? "Сверяем утверждения с найденными источниками."
+                      : job.status === "running" &&
+                          job.stage === "validate_upload"
+                        ? "Проверяем загруженное видео."
+                        : job.status === "failed"
+                          ? (workflowErrorMessages[job.error_code ?? ""] ??
+                            workflowMessages.failed)
+                          : workflowMessages[job.status]
           : "Видео сохранено. Получаем состояние подготовки."
       }
       onRetry={

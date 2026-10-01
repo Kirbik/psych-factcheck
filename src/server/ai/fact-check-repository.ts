@@ -8,6 +8,9 @@ import {
 import type { EvidencePackage, FactCheckJudgment } from "./providers";
 
 export interface FactCheckMetadata {
+  readonly jobId: string;
+  readonly generation: number;
+  readonly runId: string;
   readonly claimId: string;
   readonly evidencePackageId: string;
   readonly judgmentVersion: string;
@@ -67,7 +70,10 @@ export function factCheckRepository(client: SupabaseClient<Database>) {
         persistedPackage,
         judgmentInput,
       );
-      const { data, error } = await client.rpc("save_fact_check", {
+      const { data, error } = await client.rpc("save_fact_check_for_analysis_run", {
+        p_job_id: metadata.jobId,
+        p_generation: metadata.generation,
+        p_run_id: metadata.runId,
         p_claim_id: metadata.claimId,
         p_evidence_package_id: metadata.evidencePackageId,
         p_judgment_version: metadata.judgmentVersion,

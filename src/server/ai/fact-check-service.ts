@@ -22,6 +22,9 @@ export function createFactCheckService(
     async judgeAndSave(input: {
       readonly claimId: string;
       readonly evidencePackageId: string;
+      readonly jobId: string;
+      readonly generation: number;
+      readonly runId: string;
     }): Promise<string> {
       const evidencePackage = await repository.getEvidencePackage(
         input.claimId,

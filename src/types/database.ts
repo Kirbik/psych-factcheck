@@ -843,6 +843,22 @@ export type Database = {
         };
         Returns: string;
       };
+      save_fact_check_for_analysis_run: {
+        Args: {
+          p_evidence_package_id: string;
+          p_generation: number;
+          p_instructions_version: string;
+          p_job_id: string;
+          p_judgment: Json;
+          p_judgment_version: string;
+          p_model: string;
+          p_provider: string;
+          p_run_id: string;
+          p_schema_version: string;
+          p_claim_id: string;
+        };
+        Returns: string;
+      };
       set_analysis_job_stage: {
         Args: {
           p_attempt?: number;

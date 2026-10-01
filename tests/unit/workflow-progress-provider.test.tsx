@@ -145,7 +145,7 @@ describe("workflow progress upload lock", () => {
 
     expect(
       await screen.findByText(
-        "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
+        "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Новая проверка" }));
@@ -229,6 +229,24 @@ describe("workflow progress upload lock", () => {
       new: {
         id: "44444444-4444-4444-8444-444444444444",
         generation: 1,
+        status: "running",
+        stage: "judge_claims",
+        attempt: 1,
+        error_code: null,
+      },
+    });
+
+    expect(
+      await screen.findByText("Сверяем утверждения с найденными источниками."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Сопоставление данных").closest("li"),
+    ).toHaveTextContent("Выполняется");
+
+    realtime.onChange?.({
+      new: {
+        id: "44444444-4444-4444-8444-444444444444",
+        generation: 1,
         status: "completed",
         stage: "complete",
         attempt: 1,
@@ -238,9 +256,15 @@ describe("workflow progress upload lock", () => {
 
     expect(
       await screen.findByText(
-        "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
+        "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Сопоставление данных").closest("li"),
+    ).toHaveTextContent("Готово");
+    expect(
+      screen.getByText("Подготовка отчета").closest("li"),
+    ).toHaveTextContent("Ожидает");
     expect(fetch).toHaveBeenCalledTimes(2);
     unmount();
     expect(realtime.removeChannel).toHaveBeenCalled();
