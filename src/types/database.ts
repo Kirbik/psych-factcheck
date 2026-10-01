@@ -445,6 +445,101 @@ export type Database = {
           },
         ];
       };
+      fact_checks: {
+        Row: {
+          claim_id: string;
+          confidence: number;
+          created_at: string;
+          evidence_package_id: string;
+          explanation: string;
+          id: string;
+          instructions_version: string;
+          judgment_version: string;
+          limitations: Json;
+          model: string;
+          provider: string;
+          schema_version: string;
+          verdict: string;
+        };
+        Insert: {
+          claim_id: string;
+          confidence: number;
+          created_at?: string;
+          evidence_package_id: string;
+          explanation: string;
+          id?: string;
+          instructions_version: string;
+          judgment_version: string;
+          limitations: Json;
+          model: string;
+          provider: string;
+          schema_version: string;
+          verdict: string;
+        };
+        Update: {
+          claim_id?: string;
+          confidence?: number;
+          created_at?: string;
+          evidence_package_id?: string;
+          explanation?: string;
+          id?: string;
+          instructions_version?: string;
+          judgment_version?: string;
+          limitations?: Json;
+          model?: string;
+          provider?: string;
+          schema_version?: string;
+          verdict?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_checks_package_claim_fkey";
+            columns: ["evidence_package_id", "claim_id"];
+            isOneToOne: false;
+            referencedRelation: "evidence_packages";
+            referencedColumns: ["id", "claim_id"];
+          },
+        ];
+      };
+      fact_check_evidence: {
+        Row: {
+          evidence_chunk_id: string;
+          fact_check_id: string;
+          ordinal: number;
+          rationale: string;
+          relation: string;
+        };
+        Insert: {
+          evidence_chunk_id: string;
+          fact_check_id: string;
+          ordinal: number;
+          rationale: string;
+          relation: string;
+        };
+        Update: {
+          evidence_chunk_id?: string;
+          fact_check_id?: string;
+          ordinal?: number;
+          rationale?: string;
+          relation?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fact_check_evidence_evidence_chunk_id_fkey";
+            columns: ["evidence_chunk_id"];
+            isOneToOne: false;
+            referencedRelation: "evidence_chunks";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fact_check_evidence_fact_check_id_fkey";
+            columns: ["fact_check_id"];
+            isOneToOne: false;
+            referencedRelation: "fact_checks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           created_at: string;
@@ -734,6 +829,19 @@ export type Database = {
           p_retrieval_version: string;
         };
         Returns: number;
+      };
+      save_fact_check: {
+        Args: {
+          p_claim_id: string;
+          p_evidence_package_id: string;
+          p_instructions_version: string;
+          p_judgment: Json;
+          p_judgment_version: string;
+          p_model: string;
+          p_provider: string;
+          p_schema_version: string;
+        };
+        Returns: string;
       };
       set_analysis_job_stage: {
         Args: {

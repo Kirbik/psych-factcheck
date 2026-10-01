@@ -55,10 +55,7 @@ export interface EvidenceItem {
     readonly journal: string;
     readonly publishedAt: string;
     readonly type:
-      | "journal_article"
-      | "systematic_review"
-      | "meta_analysis"
-      | "commentary";
+      "journal_article" | "systematic_review" | "meta_analysis" | "commentary";
     readonly canonicalUrl: string;
   };
   readonly retrievalScore: number;
@@ -80,12 +77,14 @@ export interface EvidencePackage {
       readonly filters: {
         readonly sourceStatus: "active";
         readonly language: string | null;
-        readonly sourceTypes: readonly (
-          | "journal_article"
-          | "systematic_review"
-          | "meta_analysis"
-          | "commentary"
-        )[] | null;
+        readonly sourceTypes:
+          | readonly (
+              | "journal_article"
+              | "systematic_review"
+              | "meta_analysis"
+              | "commentary"
+            )[]
+          | null;
         readonly publishedAfter: string | null;
         readonly publishedBefore: string | null;
         readonly limit: number;
@@ -102,12 +101,20 @@ export interface FactCheckJudgment {
   readonly verdict: Verdict;
   readonly confidence: number;
   readonly explanation: string;
-  readonly citedChunkIds: readonly string[];
+  readonly limitations: readonly string[];
+  readonly citations: readonly {
+    readonly chunkId: string;
+    readonly relation: "supports" | "qualifies" | "contradicts";
+    readonly rationale: string;
+  }[];
 }
 
-export interface LLMProvider extends ClaimExtractionProvider {
+export interface JudgmentProvider {
   judge(evidencePackage: EvidencePackage): Promise<FactCheckJudgment>;
 }
+
+export interface LLMProvider
+  extends ClaimExtractionProvider, JudgmentProvider {}
 
 export interface TranscriptionProvider {
   transcribe(input: {

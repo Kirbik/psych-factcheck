@@ -6,9 +6,12 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. Session 10's evidence-package migration and Worker version `7279e730-7eae-4a78-8126-2a67ebf045ed` are deployed; browser E2E verification remains pending. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Synthetic and provisional evals do not measure model quality, and the MVP is not release-ready.
 
-The next planned session is 11. The roadmap currently contains 11 remaining
-sessions (11–21); the pending Session 10 browser E2E verification is a check on
-completed work, not an additional roadmap session.
+Session 11 now has a standalone versioned judgment prompt/provider, strict output validation, Evidence Package citation checks, and a local persistence migration/repository. It is not wired into the Worker; Session 12 owns full-pipeline composition. The expert-reviewed golden cases required to accept verdict quality do not yet exist, and the migration has not been applied to Production.
+
+The next planned session is 11 verification, followed by Session 12. The roadmap
+currently contains 11 remaining sessions (11–21); the pending Session 10
+browser E2E verification is a check on completed work, not an additional
+roadmap session.
 
 ## Session 0 — Foundation
 
@@ -190,6 +193,8 @@ completed work, not an additional roadmap session.
 - **Definition of Done:** Candidate-to-package selection improves or preserves agreed retrieval baseline.
 
 ## Session 11 — Fact-check Engine
+
+**Status:** The judgment contract, OpenAI adapter/service, evidence/citation validator, immutable persistence RPC, and owner-readable RLS are implemented locally. Session 11's quality Definition of Done remains open: the repository has no expert-reviewed fact-check golden dataset, and no Production judgment verification has been run. The workflow integration belongs to Session 12.
 
 - **Goal:** Produce validated evidence-bound verdicts and explanations.
 - **Why:** This is the core trust-critical comparison step.

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "supported-with-package-citation",
+    "claim": "A specific intervention improves the measured outcome.",
+    "chunkIds": ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
+    "judgment": {
+      "verdict": "SUPPORTED",
+      "confidence": 0.7,
+      "explanation": "The passage reports the measured outcome for the intervention.",
+      "limitations": ["The package contains one source."],
+      "citations": [
+        {
+          "chunk_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "relation": "supports",
+          "rationale": "The passage reports the same intervention and outcome."
+        }
+      ]
+    },
+    "expected": "accepted",
+    "synthetic": true
+  },
+  {
+    "id": "no-evidence-insufficient",
+    "claim": "A testable claim with no retrieved passages.",
+    "chunkIds": [],
+    "judgment": {
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "confidence": 0.95,
+      "explanation": "The package contains no relevant passages.",
+      "limitations": ["No evidence was retrieved."],
+      "citations": []
+    },
+    "expected": "accepted",
+    "synthetic": true
+  },
+  {
+    "id": "fabricated-citation-rejected",
+    "claim": "A bounded claim with one supplied passage.",
+    "chunkIds": ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
+    "judgment": {
+      "verdict": "SUPPORTED",
+      "confidence": 0.7,
+      "explanation": "The package passage supports the claim.",
+      "limitations": [],
+      "citations": [
+        {
+          "chunk_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "relation": "supports",
+          "rationale": "This ID does not occur in the package."
+        }
+      ]
+    },
+    "expected": "citation_rejected",
+    "synthetic": true
+  }
+]

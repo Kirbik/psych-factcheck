@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned fact-check and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, three token-auth tables, and a private video bucket. The Session 9 retrieval and Session 10 evidence-package migrations are deployed to Production. Production contains 23 evidence chunk vectors; claim embeddings are supported by schema but are not currently populated. Fact-check judgments and billing entities remain future schema.
+This document distinguishes the implemented repository schema from deployed Production state and planned domains. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, Session 11's `fact_checks` and `fact_check_evidence`, three token-auth tables, and a private video bucket. Session 9 retrieval and Session 10 evidence-package migrations are deployed to Production. Session 11's fact-check migration is local and is not deployed. Production contains 23 evidence chunk vectors; claim embeddings are supported by schema but are not currently populated. Billing entities remain future schema.
 
 ## Identity and content
 
@@ -104,19 +104,19 @@ This document distinguishes the current Supabase schema from the planned fact-ch
 - Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs; fact-check judgments are not implemented yet.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
-### `fact_checks`
+### `fact_checks` — Session 11, implemented locally
 
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
-- **Important fields:** `id`, `claim_id`, verdict, confidence, explanation, pipeline/prompt versions, status, limitations.
-- **Relations/ownership:** belongs to claim; has evidence links. Ownership derives from the claim's content item.
-- **Lifecycle:** created pending, completed/failed, never silently mutated after publication; reruns create versions.
+- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, verdict, confidence, explanation, limitations, and creation time.
+- **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
+- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. The Worker does not call the judgment service yet, and the migration is not deployed to Production.
 
-### `fact_check_evidence`
+### `fact_check_evidence` — Session 11, implemented locally
 
 - **Purpose:** auditable join between a fact check and evidence used or cited.
-- **Important fields:** `fact_check_id`, `evidence_chunk_id`, rank, retrieval/rerank scores, `is_cited`, stance.
+- **Implemented fields:** `fact_check_id`, `evidence_chunk_id`, citation ordinal, relation (`supports`, `qualifies`, or `contradicts`), and rationale.
 - **Relations/ownership:** many-to-many join; ownership derives from fact check while evidence is shared.
-- **Lifecycle:** frozen with the Evidence Package and retained with the fact check.
+- **Lifecycle:** citations are frozen with the fact check. The service-role RPC rejects chunk IDs absent from the linked Evidence Package.
 
 ## Orchestration
 

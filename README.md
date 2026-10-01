@@ -1,10 +1,10 @@
 # Psych Factcheck
 
-An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Session 6 connects versioned timestamped transcription to OpenAI `whisper-1` through Cloudflare Workflows. Its database migration, Worker secret, deployment, and live provider check remain pending. Claim extraction, evidence retrieval, judgment and report persistence are not connected yet.
+An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Cloudflare Workflows connect screening, timestamped OpenAI transcription, claim extraction, evidence retrieval/reranking, and Evidence Package persistence. Session 11 adds the standalone evidence-bound judgment provider and fact-check persistence schema; judgment is not yet connected to the workflow, and report generation/UI remain incomplete. See [Architecture](ARCHITECTURE.md) for the current status.
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Session 6 connects transcription to OpenAI; claim extraction, embeddings, retrieval, judgment, and report generation are not connected.
+Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, embeddings/retrieval, reranking, and Evidence Package persistence are implemented; judgment exists as a standalone provider/repository and is not yet part of the Workflow. Report generation and persisted report UI are not connected.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ pnpm test:unit         # unit tests
 pnpm test:integration  # Supabase Auth and PostgreSQL RLS integration tests
 pnpm test:db           # PostgreSQL schema/RLS tests; needs local Supabase and SUPABASE_TEST_DB_URL
 pnpm test:e2e          # Playwright UI smoke and configured auth/upload flows
-pnpm evals             # synthetic fixture-shape check only; no AI evaluation pipeline yet
+pnpm evals             # synthetic contract checks and provisional offline retrieval references
 pnpm check             # lint + typecheck + all current Vitest tests
 pnpm dev:vinext        # experimental Vinext/Vite development server on port 3001
 pnpm build:vinext      # experimental Cloudflare/Vinext build
@@ -52,7 +52,7 @@ Supabase configuration, migrations, type generation, RLS, local setup, hosted se
 
 ## Testing status
 
-The suite includes unit tests for auth validation/actions, Supabase configuration, upload validation, and UI components; Supabase Auth and PostgreSQL/RLS integration suites that require explicit local test configuration; and Playwright tests for login/registration UI, preview pages, and optionally configured auth/upload flows. Without test service variables, only those dependent cases skip. `pnpm evals` currently validates one synthetic fixture's shape; it does not evaluate an AI pipeline. Synthetic examples are not medical ground truth.
+The suite includes unit tests for auth validation/actions, Supabase configuration, upload validation, and UI components; Supabase Auth and PostgreSQL/RLS integration suites that require explicit local test configuration; and Playwright tests for login/registration UI, preview pages, and optionally configured auth/upload flows. Without test service variables, only those dependent cases skip. `pnpm evals` validates synthetic AI output contracts and computes small provisional retrieval references; it does not call a model or establish model quality. Synthetic examples are not medical ground truth.
 
 ## Deployment concept
 

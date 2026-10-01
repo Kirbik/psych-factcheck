@@ -46,6 +46,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(await sqlFile("20260930160000_claim_extraction_v1.sql"));
     await db.exec(await sqlFile("20261001100000_evidence_base_v0.sql"));
     await db.exec(await sqlFile("20261001140000_evidence_packages_v1.sql"));
+    await db.exec(await sqlFile("20261002100000_fact_check_judgments_v1.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -438,6 +439,78 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
       );
     expect((await save()).rows[0]?.saved).toBe(1);
     expect((await save()).rows[0]?.saved).toBe(0);
+    const evidencePackageRow = await db.query<{ id: string }>(
+      "select id from public.evidence_packages where claim_id = $1",
+      [claim.rows[0]?.id],
+    );
+    const factCheckInput = {
+      verdict: "SUPPORTED",
+      confidence: 0.72,
+      explanation: "The passage supports the bounded claim.",
+      limitations: ["Only one source was retrieved."],
+      citations: [
+        {
+          chunkId: evidenceChunkId,
+          relation: "supports",
+          rationale: "The passage reports the same result.",
+        },
+      ],
+    };
+    const saveFactCheck = (judgment = factCheckInput) =>
+      db.query<{ id: string }>(
+        `select public.save_fact_check(
+          $1, $2, 'fact-check-judgment-v1', 'openai', 'gpt-4o-mini',
+          'instructions-v1', 'schema-v1', $3::jsonb
+        ) as id`,
+        [
+          claim.rows[0]?.id,
+          evidencePackageRow.rows[0]?.id,
+          JSON.stringify(judgment),
+        ],
+      );
+    const savedFactCheck = await saveFactCheck();
+    expect(savedFactCheck.rows[0]?.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect((await saveFactCheck()).rows[0]?.id).toBe(
+      savedFactCheck.rows[0]?.id,
+    );
+    expect(
+      (
+        await saveFactCheck({
+          ...factCheckInput,
+          explanation:
+            "A conflicting retry must not change the saved judgment.",
+        })
+      ).rows[0]?.id,
+    ).toBe(savedFactCheck.rows[0]?.id);
+    expect(
+      await db.query<{ explanation: string }>(
+        "select explanation from public.fact_checks where id = $1",
+        [savedFactCheck.rows[0]?.id],
+      ),
+    ).toMatchObject({
+      rows: [{ explanation: "The passage supports the bounded claim." }],
+    });
+    await expect(
+      saveFactCheck({
+        ...factCheckInput,
+        citations: [
+          {
+            ...factCheckInput.citations[0],
+            chunkId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          },
+        ],
+      }),
+    ).rejects.toThrow(/outside evidence package/);
+    await expect(
+      saveFactCheck({
+        ...factCheckInput,
+        verdict: "UNVERIFIABLE",
+        citations: [],
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      saveFactCheck({ ...factCheckInput, verdict: "UNSUPPORTED" }),
+    ).rejects.toThrow(/Invalid fact-check judgment fields/);
     expect(
       await db.query<{ count: string }>(
         "select count(*)::text as count from public.evidence_package_items",
@@ -447,16 +520,56 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec("reset role");
     const ownerPackages = await asUser(owner, async () => ({
       packages: await db.query("select payload from public.evidence_packages"),
-      items: await db.query("select snapshot from public.evidence_package_items"),
+      items: await db.query(
+        "select snapshot from public.evidence_package_items",
+      ),
+      judgments: await db.query("select verdict from public.fact_checks"),
+      citations: await db.query(
+        "select evidence_chunk_id from public.fact_check_evidence",
+      ),
     }));
     expect(ownerPackages.packages.rows).toHaveLength(1);
     expect(ownerPackages.items.rows).toHaveLength(1);
+    expect(ownerPackages.judgments.rows).toHaveLength(1);
+    expect(ownerPackages.citations.rows).toHaveLength(1);
+    expect(
+      await db.query<{
+        serviceInsert: boolean;
+        serviceUpdate: boolean;
+        serviceDelete: boolean;
+        citationInsert: boolean;
+        citationUpdate: boolean;
+        citationDelete: boolean;
+      }>(
+        `select has_table_privilege('service_role', 'public.fact_checks', 'insert') as "serviceInsert",
+          has_table_privilege('service_role', 'public.fact_checks', 'update') as "serviceUpdate",
+          has_table_privilege('service_role', 'public.fact_checks', 'delete') as "serviceDelete",
+          has_table_privilege('service_role', 'public.fact_check_evidence', 'insert') as "citationInsert",
+          has_table_privilege('service_role', 'public.fact_check_evidence', 'update') as "citationUpdate",
+          has_table_privilege('service_role', 'public.fact_check_evidence', 'delete') as "citationDelete"`,
+      ),
+    ).toMatchObject({
+      rows: [
+        {
+          serviceInsert: false,
+          serviceUpdate: false,
+          serviceDelete: false,
+          citationInsert: false,
+          citationUpdate: false,
+          citationDelete: false,
+        },
+      ],
+    });
     const otherPackages = await asUser(other, async () => ({
       packages: await db.query("select * from public.evidence_packages"),
       items: await db.query("select * from public.evidence_package_items"),
+      judgments: await db.query("select * from public.fact_checks"),
+      citations: await db.query("select * from public.fact_check_evidence"),
     }));
     expect(otherPackages.packages.rows).toEqual([]);
     expect(otherPackages.items.rows).toEqual([]);
+    expect(otherPackages.judgments.rows).toEqual([]);
+    expect(otherPackages.citations.rows).toEqual([]);
   });
 
   it("stores one diagnostic screening result per version without giving users access", async () => {

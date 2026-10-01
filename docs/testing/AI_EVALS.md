@@ -23,6 +23,8 @@ The repository currently contains one synthetic fixture demonstrating the expect
 
 `evals/fixtures/retrieval-v2.json` contains three provisional AI-reviewed query-to-passage relevance sets. Version 2 excludes the growth-mindset association passage from the intervention query because it is observational rather than intervention evidence. The ego-depletion task-effectiveness passage is retained as a secondary methodological caveat. The deterministic lexical P@5 is a reproducible reference; human/expert review is still needed, and this tiny sample does not establish broad retrieval quality. Production semantic retrieval was measured for Session 9; local pgvector integration coverage still requires a dedicated test database.
 
+`evals/fixtures/fact-check-judgment-v1.json` exercises the Session 11 judgment contract with synthetic accepted and rejected outputs, including empty-evidence handling and fabricated-citation rejection. It does not assess whether a passage semantically supports its assigned verdict. The expert-reviewed golden verdict/citation set required for a judgment quality gate has not yet been created; no verdict-quality claim can be based on this fixture.
+
 The screening fixture includes an incidental psychology mention as a false-positive guard, an ambiguous short excerpt as a false-negative guard, and one clear psychology case. These examples document desired behavior only; no model output is scored against them yet.
 
 ## Metrics
