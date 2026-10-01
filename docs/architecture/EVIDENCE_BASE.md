@@ -5,14 +5,16 @@
 Session 8 adds a small, shared catalog of curated psychology publications and
 verbatim evidence passages. It stores publication metadata, current editorial
 status, reuse license, passage text, section locator, language, and a SHA-256
-digest of the stored text. It does not retrieve passages for claims, create
-embeddings, or produce judgments.
+digest of the stored text. The Session 8 catalog itself does not retrieve
+passages for claims or produce judgments.
 
 The schema migration and curated seed were applied to the linked Production
 project on 2026-10-01. A remote readback confirmed 10 sources, 23 chunks, and
 no chunks with missing source rows.
-Session 9 adds local versioned embeddings and a pgvector search migration; that
-migration has not yet been applied to Production.
+Session 9's versioned embedding schema and pgvector search migration were
+deployed to Production on 2026-10-01. Production has 23 evidence chunk vectors;
+the claim-vector table is available but is not populated by the current seed
+workflow.
 
 ## Tables and access
 
@@ -62,9 +64,9 @@ environment. The command also requires
 remote-capable database write. It prints only import counts and never prints
 credentials or passage contents.
 
-## Next stage
+## Session 9 — Embeddings and retrieval
 
-Session 9 adds `evidence_embeddings` and `claim_embeddings`, keyed by the source
+Session 9 added `evidence_embeddings` and `claim_embeddings`, keyed by the source
 row and embedding version, with model, dimension, and source-content digest.
 The search RPC returns current active-source candidates with chunk and source
 provenance and supports language, source type, and publication-date filters.
@@ -72,10 +74,18 @@ Topic metadata is not present in Evidence Base v0. Original passages and source
 provenance remain canonical. Reranking, Evidence Packages, and verdicts remain
 future work.
 
-After the Session 9 migration is applied to a target project, the explicit
-`pnpm evidence:embed` command reuses vectors whose source hashes are current,
-embeds changed passages, and reports the small retrieval relevance score. It
-requires `OPENAI_API_KEY`, service-role access, the exact
+The explicit `pnpm evidence:embed` command reuses vectors whose source hashes
+are current, embeds changed passages, and measures retrieval P@5 against the
+small provisional fixture. It requires `OPENAI_API_KEY`, service-role access,
+the exact
 `EVIDENCE_EMBEDDING_PROJECT_REF`, and `EVIDENCE_EMBEDDING_CONFIRM=EMBED_EVIDENCE_V1`.
-The command performs privileged database writes and external embedding API
-calls; inspect the configured Supabase target before running it.
+The command may perform privileged database writes and external embedding API
+calls; inspect the configured Supabase target before running it. Production
+retrieval on dataset v2 scored P@5 0.400 across three cases; this is not a
+human-reviewed quality benchmark.
+
+## Next stage
+
+Session 10 adds reranking and bounded Evidence Package construction. It should
+compare its results with the provisional retrieval baseline and report coverage
+gaps without weakening source traceability.

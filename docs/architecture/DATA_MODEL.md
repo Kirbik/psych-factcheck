@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, three token-auth tables, and a private video bucket. The Session 9 migration has not yet been applied to Production. Fact-check and billing entities remain future schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, three token-auth tables, and a private video bucket. The Session 9 migration was applied to Production on 2026-10-01. Production contains 23 evidence chunk vectors; the claim embedding table is available but is not populated by the current evidence-seeding workflow. Fact-check and billing entities remain future schema.
 
 ## Identity and content
 

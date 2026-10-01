@@ -2,7 +2,7 @@
 
 ## Current status
 
-The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8's source/chunk schema and reviewed, idempotent seed are deployed to Production with 10 sources and 23 evidence chunks. Session 9 adds a local `EmbeddingProvider` for OpenAI `text-embedding-3-small`, versioned 1536-dimensional vectors for claims and evidence chunks, stale-content protection, and a provenance-preserving pgvector similarity RPC with active-source, language, source-type, and publication-date filters. Reranking, Evidence Package creation, judgment, and explanation are not connected. The SQL migration has not been applied or live-verified against Production. `pnpm evals` records an offline lexical P@5 reference; it does not measure live embedding retrieval or model quality.
+The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8's source/chunk schema and reviewed, idempotent seed are deployed to Production with 10 sources and 23 evidence chunks. Session 9's versioned 1536-dimensional embedding schema and provenance-preserving pgvector search RPC are also deployed. Production has 23 evidence chunk embeddings; live semantic retrieval scored P@5 0.400 across three provisional AI-reviewed cases. Claim-level embeddings are supported by the schema but are not part of the current workflow. Reranking, Evidence Package creation, judgment, and explanation are not connected. The retrieval baseline is small and not human/expert-reviewed, so it is not a quality sign-off. `pnpm evals` records an offline lexical reference; it does not call a model or measure semantic retrieval.
 
 ## Contract
 
@@ -30,8 +30,8 @@ Every stage accepts a typed input, produces a versioned typed output, validates 
 
 The current Evidence Base v0 consists of shared `sources` metadata and
 licensed, verbatim `evidence_chunks`; see [Evidence Base](EVIDENCE_BASE.md).
-Session 9 adds the local vector schema/provider/search repository; it has not
-yet been applied or verified against the deployed database.
+Session 9's vector schema, provider, and search repository are implemented;
+the migration and live semantic search have been verified against Production.
 
 ## Retrieval responsibility
 

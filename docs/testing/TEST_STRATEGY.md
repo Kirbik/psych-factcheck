@@ -8,7 +8,7 @@ Tests use real behavior at the smallest practical boundary. Unit tests stay dete
 - **Unit:** auth action/validation, Supabase configuration, upload validation, auth proxy behavior, UI components, and preview screens.
 - **Integration:** Supabase Auth session/profile lifecycle and PostgreSQL schema/RLS tests. Each suite is environment-gated and skips when its required test service variables are absent.
 - **E2E:** Playwright covers the token-auth entry/registration interactions and UI preview routes. Authenticated registration, login/logout, protected route, and video-upload flows run only when a dedicated Supabase test environment and test token are configured.
-- **AI evals:** currently one synthetic fixture schema check only; there are no provider calls, retrieval evaluations, or verdict-quality scores.
+- **AI evals:** synthetic fixture checks plus a deterministic lexical P@5 baseline over three provisional AI-reviewed query cases. Session 9 also recorded live Production semantic retrieval at P@5 0.400; this small set is not human/expert-reviewed and does not establish retrieval or verdict quality. See [AI eval plan](AI_EVALS.md).
 - **Session 5 workflow:** unit tests cover dispatch/reconciliation and retry races; PGlite runs the actual workflow migration in isolated PostgreSQL for RLS, RPC grants, transitions and fencing; API tests verify ownership and safe responses; Playwright mocks the workflow API for progress/reload/retry. These do not verify hosted Cloudflare/Supabase connectivity. See [Session 5 QA](SESSION_5.md).
 - **Session 8 Evidence Base:** Zod tests validate the curated seed and stable identifiers; PGlite applies the actual migration and verifies transactional imports, idempotency, foreign-key integrity, status preservation, and catalog RLS. These tests do not apply the migration or seed to Production. See [Session 8 verification](SESSION_8.md).
 
@@ -34,7 +34,7 @@ pnpm test:unit
 
 ## Level 3 — Integration tests
 
-The current suites verify Supabase Auth/profile lifecycle and real PostgreSQL migration/RLS behavior. `SUPABASE_TEST_URL` plus `SUPABASE_TEST_ANON_KEY` enable Auth integration; `SUPABASE_TEST_DB_URL` enables PostgreSQL/RLS integration. Use a local disposable Supabase stack. Tests skip when configuration is absent and do not silently substitute mocks. Future integrations include repositories, Storage policy behavior, vector retrieval, provider adapters, background workflows, and billing adapters.
+The current suites verify Supabase Auth/profile lifecycle and real PostgreSQL migration/RLS behavior. `SUPABASE_TEST_URL` plus `SUPABASE_TEST_ANON_KEY` enable Auth integration; `SUPABASE_TEST_DB_URL` enables PostgreSQL/RLS integration. Use a local disposable Supabase stack. Tests skip when configuration is absent and do not silently substitute mocks. A pgvector migration/search integration test is present but requires `SUPABASE_TEST_DB_URL`; it was skipped in Session 9. Production migration and retrieval were verified separately. Future integrations include repositories, Storage policy behavior, provider adapters, background workflows, and billing adapters.
 
 ```bash
 pnpm test:integration
@@ -53,7 +53,7 @@ pnpm test:e2e
 
 ## Level 5 — AI evals
 
-The current `pnpm evals` command checks the Zod shape of synthetic fact-check, topic-screening, and claim-extraction fixtures. It does not call a model or establish extraction or fact-check quality. Future versioned evals will assess claim extraction/normalization, retrieval relevance, verdict quality, citation accuracy, unsupported claims, hallucinations, and correlation/causation errors. See [AI eval plan](AI_EVALS.md).
+The current `pnpm evals` command checks synthetic fixture schemas and computes an offline lexical retrieval baseline; it does not call a model or establish extraction or fact-check quality. `pnpm evidence:embed` separately runs live semantic retrieval and may write vectors or incur OpenAI usage, so its Production target must be verified before execution. Future versioned evals will assess claim extraction/normalization, retrieval relevance, verdict quality, citation accuracy, unsupported claims, hallucinations, and correlation/causation errors. See [AI eval plan](AI_EVALS.md).
 
 ```bash
 pnpm evals
