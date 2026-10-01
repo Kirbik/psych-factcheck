@@ -77,7 +77,7 @@ Header содержит бренд и ссылки «Проверки» / «Пр
 - `/` (`?mode=signup` и `?mode=reset`) — авторизация/регистрация/восстановление; по умолчанию открывается вход.
 - `/history` — список проверок, фильтры, pagination, context menu, clickable rows.
 - `/new-check` — новая проверка и выбор видеофайла.
-- `/processing` — вертикальный прогресс обработки.
+- `/processing` — вертикальный прогресс обработки. Во время активной workflow-задачи текущее статусное сообщение показывает индикатор выполнения, отключаемый при `prefers-reduced-motion`; завершённый результат `VIDEO_OUT_OF_SCOPE` использует общий `Alert` в warning-тоне.
 - `/report` — отчёт с метаданными, segmented verdict chart, tabs утверждений и источниками.
 - `/profile` — email, editable password и modal 6-digit confirmation.
 

@@ -2,9 +2,9 @@
 
 Use one session per bounded objective. Do not begin a later session until the user accepts the current one. Every session starts with `AGENTS.md`, `ARCHITECTURE.md`, relevant documents, tests, and `git status`, and ends with actual check results plus `git diff --stat`.
 
-## Repository progress (2026-09-30)
+## Repository progress (2026-10-01)
 
-Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. The user explicitly directed work to proceed to Session 6 despite those open acceptance items. Session 6's migration, Worker deployment/secret, and live transcription are now verified in Production; a completed job and persisted transcript row were checked on 2026-09-30. Session 6 is ready to close; this is not a claim that the MVP is release-ready.
+Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. The current Worker is `fdd311f2-5cda-4d0b-bb3e-c448ccdb6955`. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Synthetic evals do not measure model quality, and the MVP is not release-ready.
 
 ## Session 0 — Foundation
 
@@ -113,12 +113,12 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 6A — Topic Screening
 
-**Status:** Implemented locally; Production verification remains outstanding. Session 6 Production transcription verification predates this change.
+**Status:** Implemented and deployed in Production. Screening uses bounded compressed-audio samples, fails open when uncertain, and stores a versioned decision. A Production MP4 reached transcription after screening returned `sample_unavailable` because the audio track had no duration metadata. Packet-based duration fallback was deployed on 2026-09-30; verification with a fresh upload is pending. Session 6's live transcription check predates this screening fix.
 
 - **Goal:** Reject only clearly off-topic videos before full transcription by screening bounded samples.
 - **Why:** Reduce full-transcription spend on unsuitable long videos while preserving uncertain or potentially relevant videos.
 - **Scope:** MP4/WebM compressed-audio sample demux/remux, server-only OpenAI sample transcription and structured topic classification, Zod validation, fail-open policy, versioned diagnostic result, workflow stage and status copy.
-- **Out of scope:** Claim extraction, truth evaluation, video decoding, full audio extraction, UI redesign, production rollout.
+- **Out of scope:** Claim extraction, truth evaluation, video decoding, and full audio extraction.
 - **Acceptance criteria:** Only high-confidence out-of-scope decisions skip full transcription; errors and uncertainty continue; sample text is not persisted; retry/fencing remain intact.
 - **Required tests:** screening provider contract, malformed output, workflow gate/retry, DB idempotency/RLS, E2E progress, eval fixture shape, lint, typecheck, unit tests, build.
 - **Definition of Done:** Required local checks pass and documentation distinguishes local implementation from Production verification.
@@ -126,7 +126,7 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 7 — Claim Extraction
 
-**Status:** Implemented locally with OpenAI `gpt-4o-mini`; automated extraction quality and Production verification remain outstanding.
+**Status:** Implemented with OpenAI `gpt-4o-mini` and deployed to Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Automated extraction quality measurement and a reviewed golden dataset remain outstanding.
 
 - **Goal:** Extract, normalize, and classify claims via the OpenAI `ClaimExtractionProvider` structured output.
 - **Why:** Retrieval needs faithful standalone propositions.
@@ -137,7 +137,7 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 - **Required tests:** schema/domain unit, adapter/workflow integration, claim evals, build.
 - **Suggested Codex model:** Sol for design; Terra for implementation.
 - **QA requirements:** Reviewer, Test Engineer, independent AI QA.
-- **Definition of Done:** Versioned validated claims are persisted with measurable extraction quality. This local implementation has not yet met the AI quality measurement or Production verification parts of this gate.
+- **Definition of Done:** Versioned validated claims are persisted with measurable extraction quality. Production execution is verified for at least one job; the model-quality evaluation part of this gate remains open.
 - **Verification record:** [Session 7 checks and limits](../testing/SESSION_7.md).
 
 ## Session 8 — Evidence Base v0

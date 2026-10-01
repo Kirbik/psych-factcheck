@@ -12,7 +12,7 @@ transcript per content item and `transcription-v1` version. Content remains
 `pending`; claims, evidence, and reports were not produced by Session 6.
 
 Session 6A adds `screen_video` between upload validation and full
-transcription. For videos longer than 40 seconds with a supported audio track,
+transcription. For videos longer than 12 seconds with a supported audio track,
 the Worker demuxes and remuxes no more than three four-second audio ranges
 using Mediabunny; it does not decode media or send the full video to the
 screening transcription request. The short sample is transcribed by
@@ -20,8 +20,10 @@ screening transcription request. The short sample is transcribed by
 validates both API responses. Only `unrelated` with confidence >= 0.9 and an
 out-of-scope reason completes the job early with `VIDEO_OUT_OF_SCOPE`. Every
 other result, unsupported sample, or screening error proceeds to full
-transcription. Videos at or below 40 seconds skip sample API calls and proceed
-directly to full transcription.
+transcription. Videos at or below 12 seconds are screened using their full
+audio track. If MP4 metadata omits audio duration, the Worker computes it from
+encoded packet timestamps. If duration still cannot be determined, screening
+fails open and full transcription proceeds.
 
 The `video_screenings` table stores one result per content item and
 `topic-screening-v1`: decision, reason code, confidence, brief rationale,
@@ -51,20 +53,24 @@ reuse existing extraction records. The job pipeline version is
 `claim-extraction-v1`, and stage `extract_claims` follows `transcribe_video`.
 The migration requeues previously completed in-scope transcription jobs so
 they can run claim extraction while preserving completed `VIDEO_OUT_OF_SCOPE`
-jobs. Sessions 6A–7 are deployed in Production. The first reported claim-
-extraction attempt failed because model excerpts/segment indexes did not pass
-source validation; the matching logic fix was deployed on 2026-09-30. A
-successful retry remains unverified.
+jobs. Sessions 6A–7 are deployed in Production. Earlier claim-extraction
+attempts failed because model excerpts/segment indexes did not pass source
+validation; matching and schema-limit fixes were deployed on 2026-09-30. A
+Production job later completed through claim extraction. This confirms one
+successful workflow run, not extraction quality. The screening duration
+fallback was deployed on 2026-09-30; the previously affected clip must be
+uploaded again to verify the fresh screening path.
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
 source of truth for job state and ownership. The Production dashboard has the
 Session 6 binding and cron configured, and the transcription migration and
 `OPENAI_API_KEY` Worker secret are deployed. On 2026-09-30, a Production job
-completed with `stage = complete` and its matching `transcripts` row. The user
-confirmed a successful live transcription. The automated E2E suite uses mocked
-workflow APIs and skips dedicated live auth/upload cases. If the Worker binding is unavailable, the API
-returns HTTP 503 with an explicit unavailable message; uploads remain saved.
+completed with `stage = complete` and its matching `transcripts` row. A later
+Production generation also completed through claim extraction. The automated
+E2E suite uses mocked workflow APIs and skips dedicated live auth/upload cases.
+If the Worker binding is unavailable, the API returns HTTP 503 with an
+explicit unavailable message; uploads remain saved.
 There is no fake executor in production.
 
 ## Durable state and concurrency
@@ -115,8 +121,12 @@ the UI immediately, and a ten-second status read reconciles missed events even
 when the channel reports a connection; returning to a visible tab also triggers
 a fresh read. These are GET status reads; workflow dispatch still occurs once
 through POST, and an explicit retry uses the API. Upload validation, screening,
-transcription, and claim extraction update their existing progress states;
-evidence and report steps remain pending, and report navigation stays disabled.
+transcription, and claim extraction update the existing progress messages.
+While dispatch is busy or the job is running, the message carries an animated
+activity marker and `aria-busy`; the animation respects
+`prefers-reduced-motion`. A completed `VIDEO_OUT_OF_SCOPE` result uses the
+shared warning Alert. Evidence and report steps remain pending, and report
+navigation stays disabled.
 
 During a video byte upload, reloading the page interrupts the TUS transfer.
 The same tab restores the paused upload from `sessionStorage` and then shows
@@ -127,8 +137,9 @@ the original file again. Cancel clears the upload state so another file can be
 chosen. Returning from completed progress to a new check also clears the old
 file selection.
 
-Session 6A adds status copy for the existing progress screen and the existing
-terminal job contract; it adds no CSS, layout, or visual pattern.
+Session 6A adds screening status copy to the persisted progress screen.
+Screening activity reuses the processing indicator pattern; terminal
+out-of-scope results use the shared Alert component with the warning token.
 
 ## Setup and deployment
 
@@ -152,10 +163,12 @@ terminal job contract; it adds no CSS, layout, or visual pattern.
    were verified in Supabase. Automated tests cover duplicate start, retry,
    provider failure and reload. Content remains pending with no report; MOV
    and larger files currently fail explicitly.
-7. Session 6A–7 rollout is live in Production. The claim-extraction code fix
-   was deployed as Worker version `f24f7c46-bbaf-4507-8002-6bd811cb60ab` on
-   2026-09-30. Retry the failed owned job and verify persisted extraction and
-   claim rows before treating claim extraction as live-verified.
+7. Sessions 6A–7 and their migrations are deployed in Production. A job reached
+   `complete` after claim extraction on 2026-09-30. The latest Worker deployment
+   is `fdd311f2-5cda-4d0b-bb3e-c448ccdb6955`; it includes the packet-duration
+   fallback and processing-screen feedback. A fresh unrelated video upload is
+   still required to verify that screening fix against the previously missed
+   MP4 case. Model-quality evaluation remains outstanding.
 
 Tasks execute in the Cloudflare Worker runtime, separately from the web
 request. Shared workflow modules depend on domain and repository contracts,

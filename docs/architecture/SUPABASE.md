@@ -4,7 +4,7 @@
 
 Supabase is used by the application, rather than being only a planned integration. The current code provides typed browser/server/admin clients, token-based registration and login through Supabase Auth, cookie sessions, a protected dashboard, owned content listing, and a server-validated direct-to-Storage TUS video upload backed by a private bucket. Migrations also define profile, content, job, access-token, pending-token, and recovery-code tables.
 
-Session 5 migrations atomically queue a job with uploaded content. Session 6's transcript schema, Worker secret, and live transcription were deployed and verified in Production on 2026-09-30. Sessions 6A–7 add local topic-screening and claim-extraction migrations/workflow stages; those migrations and the `analysis-claim-extraction-v1` Worker binding have not been deployed or verified in Production. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
+Session 5 migrations atomically queue a job with uploaded content. Session 6's transcript schema and the Session 6A–7 screening/claim-extraction migrations and `analysis-claim-extraction-v1` Worker binding are deployed in Production. Live transcription was verified on 2026-09-30, and a later Production job completed through claim extraction. A fresh upload is still needed to verify the packet-duration fallback for an MP4 that previously failed screening. See [Workflows](WORKFLOWS.md) and [Authentication](AUTH.md).
 
 ## Dependencies
 
@@ -129,8 +129,10 @@ derived from the validated extension and container signature, not from the
 browser. Storage cleanup is attempted on validation or database failures when
 safe to do so.
 
-The application accepts MP4, WebM, and MOV files up to 100 MiB. On success,
-the row remains `pending`: no analysis workflow currently advances it. Apply
-migrations with the reviewed local/hosted workflow above; no database columns
-changed, so `src/types/database.ts` does not need regeneration for the bucket
-settings migration.
+The upload application accepts MP4, WebM, and MOV files up to 100 MiB. The
+analysis workflow supports MP4/WebM up to 25 MB; unsupported MOV and larger
+files fail explicitly during workflow validation. After a successful upload,
+the `content_items` row remains `pending` even when the analysis job completes;
+no content lifecycle transition to `ready` or `failed` is currently wired.
+Apply migrations with the reviewed local/hosted workflow above. The topic
+screening and claim-extraction migrations are already deployed to Production.

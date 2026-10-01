@@ -9,8 +9,9 @@ the server, and persists versioned extraction metadata and claims atomically.
 
 The Session 7 Definition of Done is **not fully met**: `pnpm evals` validates
 synthetic fixture shape only and does not measure model extraction quality.
-Production migration/deployment are complete, but successful live claim
-extraction is still pending. This is not a release-readiness claim.
+Production migration/deployment are complete, and a Production job later
+completed through claim extraction. This confirms a successful workflow run,
+not extraction quality or release readiness.
 
 ## Production incident and correction — 2026-09-30
 
@@ -34,8 +35,28 @@ verbatim transcript excerpt, aligns the model-facing JSON Schema string limits
 with local validation, persists the provider error code instead of a generic
 workflow error, and logs the validation category plus job ID on future failures
 without logging transcript/model text. The UI now gives an actionable message
-for this failure code. A new successful Production retry is required to verify
-this change.
+for this failure code. At the time of this follow-up, a successful retry was
+still required; subsequent Production results are recorded below.
+
+## Production workflow and UI update — 2026-09-30
+
+Job `2bab8bce-273d-4e41-ba84-4140e2cf173d` later reached
+`status = completed`, `stage = complete`. This confirms that a Production run
+passed the claim-extraction workflow stage; it does not measure the quality or
+usefulness of the returned claims. The same run's screening record was
+`uncertain/sample_unavailable` because MP4 duration metadata was absent, so it
+does not verify off-topic rejection.
+
+The current Worker deployment is `fdd311f2-5cda-4d0b-bb3e-c448ccdb6955`.
+It includes packet-based audio-duration fallback and the processing-screen
+feedback update: active jobs show a reduced-motion-aware activity marker, and
+`VIDEO_OUT_OF_SCOPE` is displayed with the shared warning Alert.
+
+Latest verification after the UI feedback change: `pnpm check` passed with 173
+tests and two existing lint warnings; the focused screened-out E2E test passed
+(1/1); `pnpm evals` passed (4 fixture-shape checks); Next and Vinext production
+builds passed; the Worker deployment succeeded and the Production home and
+processing routes returned HTTP 200.
 
 ## Implementation
 
@@ -80,12 +101,13 @@ this change.
 
 ## Limits and next actions
 
-- No live OpenAI extraction was run; no model-quality scores are claimed.
-- The Worker, migration, and new workflow binding have not been deployed to
-  Production. Rollout must coordinate the migration with Worker deployment so
-  a legacy Worker cannot complete a job after it is upgraded.
+- One live Production workflow completed through claim extraction, but its
+  returned claims have not been reviewed as a labeled quality evaluation.
+- Production deployment is complete. Any future migration rollout must still
+  coordinate the schema change with Worker deployment so a legacy Worker
+  cannot complete a job after it is upgraded.
 - A reviewed claim-extraction dataset and actual precision/recall and
   normalization-preservation evaluation are still needed.
-- Visual source review used the existing processing reference; status wiring
-  now drives the pre-existing “Выделение утверждений” step. No CSS, spacing,
-  colors, typography, or layout changed.
+- The original Session 7 implementation reused the existing
+  “Выделение утверждений” step. The later progress-feedback update reuses the
+  processing indicator pattern and shared warning Alert with existing tokens.
