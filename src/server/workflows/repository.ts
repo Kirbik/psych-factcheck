@@ -11,8 +11,14 @@ import type {
 } from "@/server/ai/providers";
 import {
   CLAIM_EXTRACTION_VERSION,
+  claimTypeSchema,
   transcriptSegmentsSchema,
 } from "@/server/ai/claim-extraction";
+import type { EvidencePackage, ExtractedClaim } from "@/server/ai/providers";
+import { EVIDENCE_RERANKING_VERSION } from "@/server/evidence/reranking";
+import { EVIDENCE_RETRIEVAL_VERSION } from "@/server/evidence/search";
+import type { Json } from "@/types/database";
+import { z } from "zod";
 import {
   SCREENING_VERSION,
   videoScreeningSchema,
@@ -21,6 +27,22 @@ import {
 
 export type AnalysisJob = Database["public"]["Tables"]["analysis_jobs"]["Row"];
 export type WorkflowClient = SupabaseClient<Database>;
+
+const persistedClaimSchema = z
+  .object({
+    id: z.uuid(),
+    original_text: z.string().min(1).max(1_200),
+    normalized_text: z.string().min(1).max(1_200),
+    start_seconds: z.number().finite().nonnegative(),
+    end_seconds: z.number().finite().nonnegative(),
+    claim_type: claimTypeSchema,
+  })
+  .strict();
+
+export interface PersistedClaim {
+  readonly id: string;
+  readonly claim: ExtractedClaim;
+}
 
 // Used by both the Next server and the standalone Trigger worker. No browser imports.
 export function workflowRepository(client: WorkflowClient) {
@@ -169,6 +191,69 @@ export function workflowRepository(client: WorkflowClient) {
         })),
       });
       if (error || !data) throw new Error("Claim extraction write failed");
+    },
+    async getClaimExtractionId(transcriptId: string) {
+      const { data, error } = await client
+        .from("claim_extractions")
+        .select("id")
+        .eq("transcript_id", transcriptId)
+        .eq("extraction_version", CLAIM_EXTRACTION_VERSION)
+        .maybeSingle();
+      if (error) throw new Error("Claim extraction read failed");
+      return data?.id ?? null;
+    },
+    async listClaims(extractionId: string): Promise<readonly PersistedClaim[]> {
+      const { data, error } = await client
+        .from("claims")
+        .select(
+          "id, original_text, normalized_text, start_seconds, end_seconds, claim_type",
+        )
+        .eq("claim_extraction_id", extractionId)
+        .order("ordinal", { ascending: true });
+      if (error) throw new Error("Claims read failed");
+      const parsed = z.array(persistedClaimSchema).safeParse(data);
+      if (!parsed.success) throw new Error("Claim records invalid");
+      return parsed.data.map((claim) => ({
+        id: claim.id,
+        claim: {
+          original: claim.original_text,
+          normalized: claim.normalized_text,
+          startSeconds: claim.start_seconds,
+          endSeconds: claim.end_seconds,
+          claimType: claim.claim_type,
+        },
+      }));
+    },
+    async existingEvidencePackageClaimIds(claimIds: readonly string[]) {
+      if (claimIds.length === 0) return new Set<string>();
+      const { data, error } = await client
+        .from("evidence_packages")
+        .select("claim_id")
+        .in("claim_id", [...claimIds])
+        .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
+        .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
+      if (error) throw new Error("Evidence package read failed");
+      return new Set(data.map(({ claim_id }) => claim_id));
+    },
+    async saveEvidencePackages(
+      extractionId: string,
+      packages: readonly { readonly claimId: string; readonly package: EvidencePackage }[],
+    ) {
+      if (packages.length === 0) return;
+      const payload = packages.map(({ claimId, package: evidencePackage }) => ({
+        claimId,
+        retrievalVersion: evidencePackage.retrievalVersion,
+        rerankingVersion: evidencePackage.rerankingVersion,
+        coverage: evidencePackage.coverage,
+        payload: evidencePackage,
+      }));
+      const { error } = await client.rpc("save_evidence_packages", {
+        p_claim_extraction_id: extractionId,
+        p_retrieval_version: EVIDENCE_RETRIEVAL_VERSION,
+        p_reranking_version: EVIDENCE_RERANKING_VERSION,
+        p_packages: payload as unknown as Json,
+      });
+      if (error) throw new Error("Evidence packages write failed");
     },
     async getScreening(contentItemId: string): Promise<VideoScreening | null> {
       const { data, error } = await client

@@ -29,6 +29,7 @@ type ProcessingPreviewProps = {
   uploadStatus?: UploadProgressStatus;
   transcriptionStatus?: UploadProgressStatus;
   claimExtractionStatus?: UploadProgressStatus;
+  evidenceSearchStatus?: UploadProgressStatus;
   workflowMessage?: string;
   workflowMessageTone?: "warning";
   workflowActive?: boolean;
@@ -87,6 +88,7 @@ export function ProcessingPreview({
   uploadStatus = "pending",
   transcriptionStatus = "pending",
   claimExtractionStatus = "pending",
+  evidenceSearchStatus = "pending",
   workflowMessage,
   workflowMessageTone,
   workflowActive = false,
@@ -107,9 +109,11 @@ export function ProcessingPreview({
         ? uploadStatus
         : index === 1
           ? transcriptionStatus
-          : index === 2
-            ? claimExtractionStatus
-            : "pending",
+        : index === 2
+          ? claimExtractionStatus
+          : index === 3
+            ? evidenceSearchStatus
+          : "pending",
   }));
   const isComplete = steps.every((step) => step.status === "completed");
 

@@ -145,7 +145,7 @@ describe("workflow progress upload lock", () => {
 
     expect(
       await screen.findByText(
-        "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
+        "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Новая проверка" }));
@@ -238,7 +238,7 @@ describe("workflow progress upload lock", () => {
 
     expect(
       await screen.findByText(
-        "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
+        "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
       ),
     ).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(2);

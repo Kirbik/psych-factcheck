@@ -111,7 +111,18 @@ describe("evidence package relevance baseline", () => {
         },
         {
           retrievalVersion: "offline-lexical-reference",
-          candidates,
+          provider: "offline-eval",
+          model: "lexical-reference",
+          embeddingVersion: "none",
+          filters: {
+            sourceStatus: "active",
+            language: null,
+            sourceTypes: null,
+            publishedAfter: null,
+            publishedBefore: null,
+            limit: 10,
+          },
+          candidates: [...candidates],
           warnings: [],
         },
       );

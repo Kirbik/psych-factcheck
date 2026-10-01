@@ -13,7 +13,7 @@ import {
 import type { EmbeddingProvider } from "../ai/providers.ts";
 import type { Database } from "../../types/database.ts";
 
-type EvidenceClient = SupabaseClient<Database>;
+export type EvidenceClient = SupabaseClient<Database>;
 
 export const EVIDENCE_RETRIEVAL_VERSION = "evidence-retrieval-v1";
 
@@ -106,29 +106,13 @@ export class EvidenceSearchError extends Error {
   }
 }
 
-export async function searchEvidence(
+async function searchWithVector(
   client: EvidenceClient,
   provider: EmbeddingProvider,
   claimText: string,
-  rawFilters: EvidenceSearchFilters = {},
+  rawVector: readonly number[] | undefined,
+  filters: z.output<typeof searchOptionsSchema>,
 ) {
-  const filters = searchOptionsSchema.safeParse(rawFilters);
-  if (
-    !filters.success ||
-    claimText.trim().length === 0 ||
-    claimText.length > 1_200
-  )
-    throw new EvidenceSearchError("EVIDENCE_SEARCH_INPUT_INVALID");
-  if (
-    provider.provider !== EMBEDDING_PROVIDER ||
-    provider.model !== EMBEDDING_MODEL ||
-    provider.version !== EMBEDDING_VERSION ||
-    provider.dimensions !== EMBEDDING_DIMENSIONS
-  ) {
-    throw new EvidenceSearchError("EMBEDDING_MODEL_VERSION_UNSUPPORTED");
-  }
-
-  const [rawVector] = await provider.embed([claimText]);
   const vector = embeddingVectorSchema.safeParse(rawVector);
   if (!vector.success)
     throw new EvidenceSearchError("EMBEDDING_DIMENSION_MISMATCH");
@@ -137,11 +121,11 @@ export async function searchEvidence(
     p_query_embedding: serializeEmbedding(vector.data),
     p_embedding_model: provider.model,
     p_embedding_version: provider.version,
-    p_language: filters.data.language ?? null,
-    p_source_types: filters.data.sourceTypes ?? null,
-    p_published_after: filters.data.publishedAfter ?? null,
-    p_published_before: filters.data.publishedBefore ?? null,
-    p_match_count: filters.data.limit,
+    p_language: filters.language ?? null,
+    p_source_types: filters.sourceTypes ?? null,
+    p_published_after: filters.publishedAfter ?? null,
+    p_published_before: filters.publishedBefore ?? null,
+    p_match_count: filters.limit,
   });
   if (error) throw new EvidenceSearchError("EVIDENCE_SEARCH_FAILED");
 
@@ -174,13 +158,74 @@ export async function searchEvidence(
     embeddingVersion: provider.version,
     filters: {
       sourceStatus: "active" as const,
-      language: filters.data.language ?? null,
-      sourceTypes: filters.data.sourceTypes ?? null,
-      publishedAfter: filters.data.publishedAfter ?? null,
-      publishedBefore: filters.data.publishedBefore ?? null,
-      limit: filters.data.limit,
+      language: filters.language ?? null,
+      sourceTypes: filters.sourceTypes ?? null,
+      publishedAfter: filters.publishedAfter ?? null,
+      publishedBefore: filters.publishedBefore ?? null,
+      limit: filters.limit,
     },
     candidates,
     warnings: candidates.length === 0 ? ["no_matching_evidence"] : [],
   };
+}
+
+function validateSearchInput(
+  provider: EmbeddingProvider,
+  claimTexts: readonly string[],
+  rawFilters: EvidenceSearchFilters,
+) {
+  const filters = searchOptionsSchema.safeParse(rawFilters);
+  if (
+    !filters.success ||
+    claimTexts.length === 0 ||
+    claimTexts.length > 100 ||
+    claimTexts.some(
+      (claimText) =>
+        claimText.trim().length === 0 || claimText.length > 1_200,
+    )
+  ) {
+    throw new EvidenceSearchError("EVIDENCE_SEARCH_INPUT_INVALID");
+  }
+  if (
+    provider.provider !== EMBEDDING_PROVIDER ||
+    provider.model !== EMBEDDING_MODEL ||
+    provider.version !== EMBEDDING_VERSION ||
+    provider.dimensions !== EMBEDDING_DIMENSIONS
+  ) {
+    throw new EvidenceSearchError("EMBEDDING_MODEL_VERSION_UNSUPPORTED");
+  }
+  return filters.data;
+}
+
+export async function searchEvidence(
+  client: EvidenceClient,
+  provider: EmbeddingProvider,
+  claimText: string,
+  rawFilters: EvidenceSearchFilters = {},
+) {
+  const filters = validateSearchInput(provider, [claimText], rawFilters);
+  const [vector] = await provider.embed([claimText]);
+  return searchWithVector(client, provider, claimText, vector, filters);
+}
+
+export type EvidenceSearchResult = Awaited<ReturnType<typeof searchEvidence>>;
+
+export async function searchEvidenceBatch(
+  client: EvidenceClient,
+  provider: EmbeddingProvider,
+  claimTexts: readonly string[],
+  rawFilters: EvidenceSearchFilters = {},
+) {
+  const filters = validateSearchInput(provider, claimTexts, rawFilters);
+  const vectors = await provider.embed(claimTexts);
+  if (vectors.length !== claimTexts.length)
+    throw new EvidenceSearchError("EMBEDDING_RESPONSE_INVALID");
+
+  const results = [];
+  for (const [index, claimText] of claimTexts.entries()) {
+    results.push(
+      await searchWithVector(client, provider, claimText, vectors[index], filters),
+    );
+  }
+  return results;
 }

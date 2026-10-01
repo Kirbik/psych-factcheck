@@ -6,7 +6,7 @@ import {
   EMBEDDING_PROVIDER,
   EMBEDDING_VERSION,
 } from "@/server/ai/embeddings";
-import { searchEvidence } from "@/server/evidence/search";
+import { searchEvidence, searchEvidenceBatch } from "@/server/evidence/search";
 import type { Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -137,5 +137,34 @@ describe("evidence search", () => {
       candidates: [],
       warnings: ["no_matching_evidence"],
     });
+  });
+
+  it("embeds claim batches once and returns one ordered retrieval result per claim", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [result()], error: null });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+    const embeddings = provider({ embed: vi.fn(async () => [vector, vector]) });
+
+    const found = await searchEvidenceBatch(client, embeddings, ["claim one", "claim two"]);
+
+    expect(embeddings.embed).toHaveBeenCalledExactlyOnceWith([
+      "claim one",
+      "claim two",
+    ]);
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(found.map(({ candidates }) => candidates[0]?.chunkKey)).toEqual([
+      "main-result",
+      "main-result",
+    ]);
+  });
+
+  it("rejects a partial batch response before searching", async () => {
+    const rpc = vi.fn();
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+    const embeddings = provider({ embed: vi.fn(async () => [vector]) });
+
+    await expect(
+      searchEvidenceBatch(client, embeddings, ["claim one", "claim two"]),
+    ).rejects.toMatchObject({ code: "EMBEDDING_RESPONSE_INVALID" });
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

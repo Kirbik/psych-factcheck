@@ -7,6 +7,21 @@ import {
 } from "@/server/evidence/reranking";
 import type { EvidenceCandidate } from "@/server/evidence/search";
 
+const retrievalMetadata = {
+  retrievalVersion: "evidence-retrieval-v1",
+  provider: "openai",
+  model: "text-embedding-3-small",
+  embeddingVersion: "openai-text-embedding-3-small-1536-v1",
+  filters: {
+    sourceStatus: "active" as const,
+    language: null,
+    sourceTypes: null,
+    publishedAfter: null,
+    publishedBefore: null,
+    limit: 10,
+  },
+};
+
 vi.mock("server-only", () => ({}));
 
 const claim: ExtractedClaim = {
@@ -52,7 +67,7 @@ describe("evidence reranking and package construction", () => {
     const result = await buildEvidencePackage(
       claim,
       {
-        retrievalVersion: "evidence-retrieval-v1",
+        ...retrievalMetadata,
         candidates,
         warnings: [],
       },
@@ -94,7 +109,7 @@ describe("evidence reranking and package construction", () => {
     const result = await buildEvidencePackage(
       claim,
       {
-        retrievalVersion: "evidence-retrieval-v1",
+        ...retrievalMetadata,
         candidates,
         warnings: [],
       },
@@ -118,7 +133,7 @@ describe("evidence reranking and package construction", () => {
     const empty = await buildEvidencePackage(
       claim,
       {
-        retrievalVersion: "evidence-retrieval-v1",
+        ...retrievalMetadata,
         candidates: [],
         warnings: ["no_matching_evidence"],
       },
@@ -126,7 +141,7 @@ describe("evidence reranking and package construction", () => {
     const narrow = await buildEvidencePackage(
       claim,
       {
-        retrievalVersion: "evidence-retrieval-v1",
+        ...retrievalMetadata,
         candidates: [
           candidate("a1", "source-a", "Stress impairs memory."),
           candidate("a2", "source-a", "Stress reduced memory accuracy."),
@@ -148,7 +163,7 @@ describe("evidence reranking and package construction", () => {
 
   it("fails safely when a reranker errors or returns altered, incomplete, or invalid results", async () => {
     const retrieval = {
-      retrievalVersion: "evidence-retrieval-v1",
+      ...retrievalMetadata,
       candidates: [candidate("candidate-1", "source-a", "Stress impaired memory.")],
       warnings: [],
     };

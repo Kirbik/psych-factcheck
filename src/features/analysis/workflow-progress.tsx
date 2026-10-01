@@ -197,7 +197,7 @@ export function WorkflowProgress({
         job?.status === "completed" &&
         job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
-          : job?.stage === "extract_claims"
+          : job?.stage === "extract_claims" || job?.stage === "build_evidence"
             ? "completed"
             : job?.stage === "transcribe_video" && job.status === "running"
               ? "processing"
@@ -209,9 +209,21 @@ export function WorkflowProgress({
         job?.status === "completed" &&
         job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
-          : job?.stage === "extract_claims" && job.status === "running"
+          : job?.stage === "build_evidence"
+            ? "completed"
+            : job?.stage === "extract_claims" && job.status === "running"
             ? "processing"
             : job?.stage === "extract_claims" && job.status === "failed"
+              ? "failed"
+            : "pending"
+      }
+      evidenceSearchStatus={
+        job?.status === "completed" &&
+        job.error_code !== SCREENED_OUT_ERROR_CODE
+          ? "completed"
+          : job?.stage === "build_evidence" && job.status === "running"
+            ? "processing"
+            : job?.stage === "build_evidence" && job.status === "failed"
               ? "failed"
               : "pending"
       }
@@ -236,6 +248,8 @@ export function WorkflowProgress({
                 ? "Транскрибируем видео через OpenAI."
                 : job.status === "running" && job.stage === "extract_claims"
                   ? "Выделяем и классифицируем утверждения."
+                  : job.status === "running" && job.stage === "build_evidence"
+                    ? "Ищем научные источники и сохраняем пакеты доказательств."
                   : job.status === "running" && job.stage === "validate_upload"
                     ? "Проверяем загруженное видео."
                     : job.status === "failed"

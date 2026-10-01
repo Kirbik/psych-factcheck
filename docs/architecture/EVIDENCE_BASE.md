@@ -86,15 +86,18 @@ human-reviewed quality benchmark.
 
 ## Next stage
 
-Session 10 implements local deterministic reranking and bounded Evidence
-Package construction in `src/server/evidence/reranking.ts`. It combines cosine
+Session 10 implements deterministic reranking and bounded Evidence Package
+construction in `src/server/evidence/reranking.ts`. It combines cosine
 similarity and normalized-claim term coverage, deduplicates identical passage
 text, caps packages at five chunks and two chunks per source, and preserves
-source metadata, verbatim text, scores, versions, and candidate/selection
-trace. Empty and narrow packages carry explicit coverage warnings. The
-provisional retrieval-v2 eval checks package P@5 against the offline lexical
-baseline; it is not an expert-reviewed quality measure. The package builder is
-not yet connected to the video workflow or persisted with fact checks.
+source metadata, verbatim text, scores, versions, filters, and candidate/
+selection trace. Empty and narrow packages carry explicit coverage warnings.
+The `build_evidence` workflow stage batches claim embeddings, retrieves
+candidates, and persists packages through `save_evidence_packages`; package
+rows and ordered chunk links are idempotent and owner-readable under RLS. The
+schema and Worker integration were deployed on 2026-10-01. The provisional
+retrieval-v2 eval checks package P@5 against the offline lexical baseline; it
+is not an expert-reviewed quality measure.
 
-The next stage is workflow integration and judgment preparation. Do not infer a
-verdict from retrieval or the Evidence Package.
+The next stage is judgment preparation. Do not infer a verdict from retrieval
+or the Evidence Package.

@@ -9,6 +9,8 @@ import type {
   ClaimExtractionProvider,
   TranscriptionResult,
 } from "@/server/ai/providers";
+import { buildEvidencePackage } from "@/server/evidence/reranking";
+import type { EvidenceSearchResult } from "@/server/evidence/search";
 import { MAX_OPENAI_TRANSCRIPTION_BYTES } from "@/server/ai/openai-transcription-provider";
 import {
   SCREENING_REJECTION_CONFIDENCE,
@@ -204,13 +206,57 @@ export async function executeClaimExtractionStage(
     );
     await repository.saveClaimExtraction(transcript.id, result);
   }
+  return { outcome: "ready_for_evidence_packages" } as const;
+}
+
+export async function executeEvidencePackageStage(
+  payload: JobPayload,
+  runId: string,
+  attempt: number,
+  repository: WorkflowRepository,
+  retrieveEvidence: (
+    normalizedClaims: readonly string[],
+  ) => Promise<readonly EvidenceSearchResult[]>,
+) {
+  const job = await repository.advance(payload, runId, "running", attempt);
+  if (!job) return { outcome: "obsolete" } as const;
+  const transcript = await repository.getTranscript(job.content_item_id);
+  if (!transcript) throw new PermanentWorkflowError("TRANSCRIPT_MISSING");
+  const extractionId = await repository.getClaimExtractionId(transcript.id);
+  if (!extractionId)
+    throw new PermanentWorkflowError("CLAIM_EXTRACTION_MISSING");
+  if (!(await repository.setStage(payload, runId, "build_evidence", attempt)))
+    return { outcome: "obsolete" } as const;
+
+  const claims = await repository.listClaims(extractionId);
+  const existingPackages = await repository.existingEvidencePackageClaimIds(
+    claims.map(({ id }) => id),
+  );
+  const pendingClaims = claims.filter(({ id }) => !existingPackages.has(id));
+  if (pendingClaims.length > 0) {
+    const retrievalResults = await retrieveEvidence(
+      pendingClaims.map(({ claim }) => claim.normalized),
+    );
+    const packages = await Promise.all(
+      pendingClaims.map(async (item, index) => {
+        const retrieval = retrievalResults[index];
+        if (!retrieval) throw new Error("Evidence search result missing");
+        return {
+          claimId: item.id,
+          package: await buildEvidencePackage(item.claim, retrieval),
+        };
+      }),
+    );
+    await repository.saveEvidencePackages(extractionId, packages);
+  }
+
   const completed = await repository.advance(
     payload,
     runId,
     "completed",
     attempt,
   );
-  return { outcome: completed ? "claims_extracted" : "obsolete" } as const;
+  return { outcome: completed ? "evidence_packages_ready" : "obsolete" } as const;
 }
 
 /** Test helper for the screening/transcription stages; production uses the staged Worker entrypoint. */

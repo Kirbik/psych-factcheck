@@ -73,6 +73,24 @@ export interface EvidencePackage {
   readonly coverage: "none" | "limited" | "multi_source";
   readonly warnings: readonly string[];
   readonly trace: {
+    readonly retrieval: {
+      readonly provider: string;
+      readonly model: string;
+      readonly embeddingVersion: string;
+      readonly filters: {
+        readonly sourceStatus: "active";
+        readonly language: string | null;
+        readonly sourceTypes: readonly (
+          | "journal_article"
+          | "systematic_review"
+          | "meta_analysis"
+          | "commentary"
+        )[] | null;
+        readonly publishedAfter: string | null;
+        readonly publishedBefore: string | null;
+        readonly limit: number;
+      };
+    };
     readonly candidateCount: number;
     readonly selectedChunkIds: readonly string[];
     readonly maximumEvidence: number;

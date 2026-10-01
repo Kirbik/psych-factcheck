@@ -12,6 +12,7 @@ import {
 } from "@/server/workflows/dispatch";
 import {
   executeClaimExtractionStage,
+  executeEvidencePackageStage,
   executeWorkflow,
   PermanentWorkflowError,
 } from "@/server/workflows/execute";
@@ -35,12 +36,16 @@ import {
 import { MAX_VIDEO_SIZE_BYTES } from "@/server/storage/video-validator";
 import type { Database } from "@/types/database";
 
+vi.mock("server-only", () => ({}));
+
 const userId = "11111111-1111-4111-8111-111111111111";
 const contentId = "22222222-2222-4222-8222-222222222222";
 const jobId = "33333333-3333-4333-8333-333333333333";
 const uploadId = "44444444-4444-4444-8444-444444444444";
 const payload = { jobId, generation: 1 };
 const runId = "run_workflow_1";
+const extractionId = "66666666-6666-4666-8666-666666666666";
+const claimId = "77777777-7777-4777-8777-777777777777";
 const timestamp = "2026-09-27T00:00:00.000Z";
 type ScreenVideo = NonNullable<Parameters<typeof executeWorkflow>[6]>;
 
@@ -128,6 +133,18 @@ function repository() {
       .mockResolvedValue(false),
     saveClaimExtraction: vi
       .fn<WorkflowRepository["saveClaimExtraction"]>()
+      .mockResolvedValue(undefined),
+    getClaimExtractionId: vi
+      .fn<WorkflowRepository["getClaimExtractionId"]>()
+      .mockResolvedValue(extractionId),
+    listClaims: vi
+      .fn<WorkflowRepository["listClaims"]>()
+      .mockResolvedValue([]),
+    existingEvidencePackageClaimIds: vi
+      .fn<WorkflowRepository["existingEvidencePackageClaimIds"]>()
+      .mockResolvedValue(new Set()),
+    saveEvidencePackages: vi
+      .fn<WorkflowRepository["saveEvidencePackages"]>()
       .mockResolvedValue(undefined),
     getScreening: vi
       .fn<WorkflowRepository["getScreening"]>()
@@ -253,13 +270,13 @@ describe("workflow payload and response contracts", () => {
 });
 
 describe("workflow execution", () => {
-  it("persists a validated claim extraction before completing the job", async () => {
+  it("persists validated claim extraction before advancing to evidence retrieval", async () => {
     const repo = repository();
     const provider = claimExtractionProvider();
 
     await expect(
       executeClaimExtractionStage(payload, runId, 2, repo, provider),
-    ).resolves.toEqual({ outcome: "claims_extracted" });
+    ).resolves.toEqual({ outcome: "ready_for_evidence_packages" });
 
     expect(provider.extractClaims).toHaveBeenCalledExactlyOnceWith([
       { startSeconds: 0, endSeconds: 1, text: "Тестовый сегмент." },
@@ -268,12 +285,7 @@ describe("workflow execution", () => {
       "55555555-5555-4555-8555-555555555555",
       expect.objectContaining({ extractionVersion: CLAIM_EXTRACTION_VERSION }),
     );
-    expect(repo.advance).toHaveBeenLastCalledWith(
-      payload,
-      runId,
-      "completed",
-      2,
-    );
+    expect(repo.advance).toHaveBeenLastCalledWith(payload, runId, "running", 2);
   });
 
   it("reuses the immutable extraction marker on workflow retry", async () => {
@@ -283,9 +295,117 @@ describe("workflow execution", () => {
 
     await expect(
       executeClaimExtractionStage(payload, runId, 2, repo, provider),
-    ).resolves.toEqual({ outcome: "claims_extracted" });
+    ).resolves.toEqual({ outcome: "ready_for_evidence_packages" });
     expect(provider.extractClaims).not.toHaveBeenCalled();
     expect(repo.saveClaimExtraction).not.toHaveBeenCalled();
+  });
+
+  it("retrieves and persists an idempotent evidence package before completing the job", async () => {
+    const repo = repository();
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "Stress impairs memory.",
+          normalized: "Stress impairs memory.",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "causal_mechanistic",
+        },
+      },
+    ]);
+    const retrieveEvidence = vi.fn(async () => [
+      {
+        retrievalVersion: "evidence-retrieval-v1",
+        provider: "openai",
+        model: "text-embedding-3-small",
+        embeddingVersion: "openai-text-embedding-3-small-1536-v1",
+        filters: {
+          sourceStatus: "active" as const,
+          language: null,
+          sourceTypes: null,
+          publishedAfter: null,
+          publishedBefore: null,
+          limit: 10,
+        },
+        candidates: [
+          {
+            chunkId: "88888888-8888-4888-8888-888888888888",
+            sourceId: "99999999-9999-4999-8999-999999999999",
+            chunkKey: "memory-result",
+            content: "Stress impaired memory performance in the study.",
+            language: "en",
+            locator: "Abstract > Results",
+            source: {
+              key: "doi:10.0000/memory",
+              title: "Stress and memory",
+              authors: ["A. Author"],
+              journal: "Example Journal",
+              publishedAt: "2024-01-01",
+              type: "journal_article" as const,
+              canonicalUrl: "https://example.org/study",
+            },
+            similarity: 0.8,
+          },
+        ],
+        warnings: [],
+      },
+    ]);
+
+    await expect(
+      executeEvidencePackageStage(payload, runId, 2, repo, retrieveEvidence),
+    ).resolves.toEqual({ outcome: "evidence_packages_ready" });
+    expect(repo.setStage).toHaveBeenCalledExactlyOnceWith(
+      payload,
+      runId,
+      "build_evidence",
+      2,
+    );
+    expect(retrieveEvidence).toHaveBeenCalledExactlyOnceWith([
+      "Stress impairs memory.",
+    ]);
+    expect(repo.saveEvidencePackages).toHaveBeenCalledWith(
+      extractionId,
+      [
+        expect.objectContaining({
+          claimId,
+          package: expect.objectContaining({
+            rerankingVersion: "evidence-reranking-v1",
+            trace: expect.objectContaining({ candidateCount: 1 }),
+          }),
+        }),
+      ],
+    );
+    expect(repo.advance).toHaveBeenLastCalledWith(
+      payload,
+      runId,
+      "completed",
+      2,
+    );
+  });
+
+  it("does not repeat retrieval for evidence packages already persisted on retry", async () => {
+    const repo = repository();
+    repo.listClaims.mockResolvedValue([
+      {
+        id: claimId,
+        claim: {
+          original: "Claim",
+          normalized: "Claim",
+          startSeconds: 0,
+          endSeconds: 1,
+          claimType: "historical",
+        },
+      },
+    ]);
+    repo.existingEvidencePackageClaimIds.mockResolvedValue(new Set([claimId]));
+    const retrieveEvidence = vi.fn();
+
+    await expect(
+      executeEvidencePackageStage(payload, runId, 2, repo, retrieveEvidence),
+    ).resolves.toEqual({ outcome: "evidence_packages_ready" });
+    expect(retrieveEvidence).not.toHaveBeenCalled();
+    expect(repo.saveEvidencePackages).not.toHaveBeenCalled();
   });
 
   it("reports an obsolete run without reading content or Storage", async () => {
@@ -626,17 +746,17 @@ describe("workflow execution", () => {
     expect(repo.advance).toHaveBeenCalledTimes(1);
   });
 
-  it("propagates a failed completion write after claim persistence", async () => {
+  it("propagates a failed completion write after evidence packages are built", async () => {
     const repo = repository();
     const failure = new Error("Database unavailable");
     repo.advance.mockResolvedValueOnce(job()).mockRejectedValueOnce(failure);
     await expect(
-      executeClaimExtractionStage(
+      executeEvidencePackageStage(
         payload,
         runId,
         1,
         repo,
-        claimExtractionProvider(),
+        async () => [],
       ),
     ).rejects.toBe(failure);
   });

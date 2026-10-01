@@ -6,7 +6,7 @@ import type {
   EvidenceItem,
   ExtractedClaim,
 } from "../ai/providers.ts";
-import type { EvidenceCandidate } from "./search.ts";
+import type { EvidenceCandidate, EvidenceSearchResult } from "./search.ts";
 
 export const EVIDENCE_RERANKING_VERSION = "evidence-reranking-v1";
 export const MAX_EVIDENCE_PACKAGE_SIZE = 5;
@@ -138,11 +138,7 @@ function toEvidenceItem(
 
 export async function buildEvidencePackage(
   claim: ExtractedClaim,
-  retrieval: {
-    readonly retrievalVersion: string;
-    readonly candidates: readonly EvidenceCandidate[];
-    readonly warnings: readonly string[];
-  },
+  retrieval: EvidenceSearchResult,
   reranker: EvidenceReranker = deterministicEvidenceReranker,
 ): Promise<EvidencePackage> {
   if (
@@ -230,6 +226,12 @@ export async function buildEvidencePackage(
     coverage,
     warnings,
     trace: {
+      retrieval: {
+        provider: retrieval.provider,
+        model: retrieval.model,
+        embeddingVersion: retrieval.embeddingVersion,
+        filters: retrieval.filters,
+      },
       candidateCount: retrieval.candidates.length,
       selectedChunkIds: selected.map((item) => item.chunkId),
       maximumEvidence: MAX_EVIDENCE_PACKAGE_SIZE,

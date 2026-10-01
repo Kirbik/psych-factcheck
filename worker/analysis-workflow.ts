@@ -10,6 +10,7 @@ import {
 } from "@/features/analysis/job-contract";
 import {
   executeClaimExtractionStage,
+  executeEvidencePackageStage,
   executeScreeningStage,
   executeTranscriptionStage,
   PermanentWorkflowError,
@@ -29,6 +30,13 @@ import {
   createOpenAIClaimExtractionProvider,
   ClaimExtractionProviderError,
 } from "@/server/ai/openai-claim-extraction-provider";
+import {
+  createOpenAIEmbeddingProvider,
+  EmbeddingProviderError,
+} from "@/server/ai/openai-embedding-provider";
+import { EvidenceSearchError } from "@/server/evidence/search";
+import { searchEvidenceBatch } from "@/server/evidence/search";
+import { EvidenceRerankingError } from "@/server/evidence/reranking";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
 import { createWorkerClient } from "./client";
@@ -39,7 +47,8 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
 > {
   async run(event: WorkflowEvent<JobPayload>, step: WorkflowStep) {
     const payload = jobPayloadSchema.parse(event.payload);
-    const repository = workflowRepository(createWorkerClient(this.env));
+    const client = createWorkerClient(this.env);
+    const repository = workflowRepository(client);
     const apiKey =
       typeof this.env.OPENAI_API_KEY === "string"
         ? this.env.OPENAI_API_KEY
@@ -47,6 +56,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const transcriptionProvider = createOpenAITranscriptionProvider(apiKey);
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
+    const embeddingProvider = createOpenAIEmbeddingProvider(apiKey);
     let attempt = 1;
     let failureCode: string | undefined;
 
@@ -189,7 +199,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
           return transcription;
       }
 
-      return await step.do(
+      const claimExtraction = await step.do(
         "extract claims from transcript",
         {
           retries: {
@@ -220,6 +230,61 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               }
               if (!error.retryable) throw new NonRetryableError(error.code);
               throw error;
+            }
+            if (error instanceof PermanentWorkflowError) {
+              failureCode = error.message;
+              throw new NonRetryableError(error.message);
+            }
+            throw error;
+          }
+        },
+      );
+      if (claimExtraction.outcome !== "ready_for_evidence_packages")
+        return claimExtraction;
+
+      return await step.do(
+        "retrieve and package claim evidence",
+        {
+          retries: {
+            limit: 2,
+            delay: "1 second",
+            backoff: "exponential",
+          },
+          timeout: "4 minutes",
+        },
+        async (context) => {
+          attempt = context.attempt;
+          try {
+            return await executeEvidencePackageStage(
+              payload,
+              event.instanceId,
+              context.attempt,
+              repository,
+              (claims) =>
+                searchEvidenceBatch(client, embeddingProvider, claims),
+            );
+          } catch (error) {
+            if (error instanceof EmbeddingProviderError) {
+              failureCode = error.code;
+              if (!error.retryable) throw new NonRetryableError(error.code);
+              throw error;
+            }
+            if (error instanceof EvidenceSearchError) {
+              failureCode = error.code;
+              if (
+                error.code === "EVIDENCE_SEARCH_INPUT_INVALID" ||
+                error.code === "EMBEDDING_MODEL_VERSION_UNSUPPORTED" ||
+                error.code === "EMBEDDING_DIMENSION_MISMATCH" ||
+                error.code === "EMBEDDING_RESPONSE_INVALID" ||
+                error.code === "EVIDENCE_SEARCH_RESPONSE_INVALID"
+              ) {
+                throw new NonRetryableError(error.code);
+              }
+              throw error;
+            }
+            if (error instanceof EvidenceRerankingError) {
+              failureCode = error.code;
+              throw new NonRetryableError(error.code);
             }
             if (error instanceof PermanentWorkflowError) {
               failureCode = error.message;

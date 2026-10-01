@@ -44,6 +44,8 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
         error_code = 'VIDEO_OUT_OF_SCOPE', completed_at = now()
         where content_item_id = '${screenedOutContentId}';`);
     await db.exec(await sqlFile("20260930160000_claim_extraction_v1.sql"));
+    await db.exec(await sqlFile("20261001100000_evidence_base_v0.sql"));
+    await db.exec(await sqlFile("20261001140000_evidence_packages_v1.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -333,6 +335,128 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     expect(stale.rows[0]?.updated).toBe(false);
     await db.exec("rollback");
+  });
+
+  it("saves versioned evidence packages atomically, idempotently, and owner-only", async () => {
+    const packageContentId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const evidenceChunkId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    await db.query(
+      `insert into public.content_items(id, user_id, storage_path)
+       values ($1, $2, null)`,
+      [packageContentId, owner],
+    );
+    const transcript = await db.query<{ id: string }>(
+      `insert into public.transcripts(content_item_id, provider, model, language, segments)
+       values ($1, 'openai', 'whisper-1', 'en', '[]') returning id`,
+      [packageContentId],
+    );
+    await db.exec("set role service_role");
+    const extraction = await db.query<{ extraction_id: string }>(
+      `select public.save_claim_extraction(
+        $1, 'claim-extraction-v1', 'openai', 'gpt-4o-mini', 'instructions-v1', 'schema-v1',
+        '[{"original":"Stress impairs memory.","normalized":"Stress impairs memory.","startSeconds":0,"endSeconds":1,"claimType":"causal_mechanistic"}]'::jsonb
+      ) as extraction_id`,
+      [transcript.rows[0]?.id],
+    );
+    const claim = await db.query<{ id: string }>(
+      "select id from public.claims where claim_extraction_id = $1",
+      [extraction.rows[0]?.extraction_id],
+    );
+    const source = await db.query<{ id: string }>(
+      `insert into public.sources
+       (source_key, title, authors, journal, publisher, published_at, doi, canonical_url,
+        source_type, status, license_code, license_url)
+       values ('doi:10.0000/package', 'Stress and memory', array['A. Author'],
+        'Example Journal', 'Example Publisher', '2024-01-01', '10.0000/package',
+        'https://example.org/study', 'journal_article', 'active', 'CC-BY-4.0',
+        'https://creativecommons.org/licenses/by/4.0/') returning id`,
+    );
+    await db.query(
+      `insert into public.evidence_chunks
+       (id, source_id, chunk_key, content, locator, language, content_sha256)
+       values ($1, $2, 'memory-result', 'Stress impaired memory performance in this study.',
+        'Abstract > Results', 'en', repeat('a', 64))`,
+      [evidenceChunkId, source.rows[0]?.id],
+    );
+    const evidenceItem = {
+      sourceId: source.rows[0]?.id,
+      chunkId: evidenceChunkId,
+      chunkKey: "memory-result",
+      text: "Stress impaired memory performance in this study.",
+      language: "en",
+      locator: "Abstract > Results",
+      source: {
+        key: "doi:10.0000/package",
+        title: "Stress and memory",
+        authors: ["A. Author"],
+        journal: "Example Journal",
+        publishedAt: "2024-01-01",
+        type: "journal_article",
+        canonicalUrl: "https://example.org/study",
+      },
+      retrievalScore: 0.8,
+      relevanceScore: 0.95,
+    };
+    const evidencePackage = {
+      claim: {
+        original: "Stress impairs memory.",
+        normalized: "Stress impairs memory.",
+        startSeconds: 0,
+        endSeconds: 1,
+        claimType: "causal_mechanistic",
+      },
+      evidence: [evidenceItem],
+      retrievalVersion: "evidence-retrieval-v1",
+      rerankingVersion: "evidence-reranking-v1",
+      coverage: "limited",
+      warnings: ["limited_evidence_coverage"],
+      trace: {
+        candidateCount: 1,
+        selectedChunkIds: [evidenceChunkId],
+        maximumEvidence: 5,
+        maximumChunksPerSource: 2,
+      },
+    };
+    const packageInput = [
+      {
+        claimId: claim.rows[0]?.id,
+        retrievalVersion: "evidence-retrieval-v1",
+        rerankingVersion: "evidence-reranking-v1",
+        coverage: "limited",
+        payload: evidencePackage,
+      },
+    ];
+    const save = () =>
+      db.query<{ saved: number }>(
+        `select public.save_evidence_packages($1, $2, $3, $4::jsonb) as saved`,
+        [
+          extraction.rows[0]?.extraction_id,
+          "evidence-retrieval-v1",
+          "evidence-reranking-v1",
+          JSON.stringify(packageInput),
+        ],
+      );
+    expect((await save()).rows[0]?.saved).toBe(1);
+    expect((await save()).rows[0]?.saved).toBe(0);
+    expect(
+      await db.query<{ count: string }>(
+        "select count(*)::text as count from public.evidence_package_items",
+      ),
+    ).toMatchObject({ rows: [{ count: "1" }] });
+
+    await db.exec("reset role");
+    const ownerPackages = await asUser(owner, async () => ({
+      packages: await db.query("select payload from public.evidence_packages"),
+      items: await db.query("select snapshot from public.evidence_package_items"),
+    }));
+    expect(ownerPackages.packages.rows).toHaveLength(1);
+    expect(ownerPackages.items.rows).toHaveLength(1);
+    const otherPackages = await asUser(other, async () => ({
+      packages: await db.query("select * from public.evidence_packages"),
+      items: await db.query("select * from public.evidence_package_items"),
+    }));
+    expect(otherPackages.packages.rows).toEqual([]);
+    expect(otherPackages.items.rows).toEqual([]);
   });
 
   it("stores one diagnostic screening result per version without giving users access", async () => {

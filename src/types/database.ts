@@ -401,6 +401,50 @@ export type Database = {
           },
         ];
       };
+      evidence_packages: {
+        Row: {
+          claim_id: string;
+          coverage: string;
+          created_at: string;
+          id: string;
+          payload: Json;
+          reranking_version: string;
+          retrieval_version: string;
+          trace: Json;
+          warnings: Json;
+        };
+        Insert: {
+          claim_id: string;
+          coverage: string;
+          created_at?: string;
+          id?: string;
+          payload: Json;
+          reranking_version: string;
+          retrieval_version: string;
+          trace: Json;
+          warnings: Json;
+        };
+        Update: {
+          claim_id?: string;
+          coverage?: string;
+          created_at?: string;
+          id?: string;
+          payload?: Json;
+          reranking_version?: string;
+          retrieval_version?: string;
+          trace?: Json;
+          warnings?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_packages_claim_id_fkey";
+            columns: ["claim_id"];
+            isOneToOne: false;
+            referencedRelation: "claims";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           created_at: string;
@@ -681,6 +725,15 @@ export type Database = {
           p_transcript_id: string;
         };
         Returns: string;
+      };
+      save_evidence_packages: {
+        Args: {
+          p_claim_extraction_id: string;
+          p_packages: Json;
+          p_reranking_version: string;
+          p_retrieval_version: string;
+        };
+        Returns: number;
       };
       set_analysis_job_stage: {
         Args: {

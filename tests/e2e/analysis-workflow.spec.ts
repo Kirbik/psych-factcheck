@@ -80,7 +80,7 @@ test("shows durable progress after reload without claiming AI completion", async
   await page.reload();
   await expect(
     page.getByText(
-      "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
+      "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
     ),
   ).toBeVisible();
   await expect(
@@ -157,7 +157,7 @@ test("retries a failed generation explicitly", async ({ page }) => {
   await page.getByRole("button", { name: "Повторить запуск" }).click();
   await expect(
     page.getByText(
-      "Транскрипт и проверяемые утверждения сохранены. Фактчекинг пока недоступен.",
+      "Транскрипт, утверждения и связанные источники сохранены. Отчёт пока недоступен.",
     ),
   ).toBeVisible();
   expect(retried).toBe(true);
