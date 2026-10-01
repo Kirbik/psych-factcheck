@@ -16,7 +16,7 @@ interface RetrievalDataset {
 
 const dataset = JSON.parse(
   await readFile(
-    new URL("./fixtures/retrieval-v1.json", import.meta.url),
+    new URL("./fixtures/retrieval-v2.json", import.meta.url),
     "utf8",
   ),
 ) as RetrievalDataset;
@@ -58,7 +58,7 @@ function precisionAtK(
 
 describe("retrieval relevance dataset v1", () => {
   it("records a reproducible lexical precision@5 reference over curated evidence chunks", () => {
-    expect(dataset.datasetVersion).toBe("retrieval-relevance-v1");
+    expect(dataset.datasetVersion).toBe("retrieval-relevance-v2");
     expect(dataset.cases).toHaveLength(3);
     const seedChunkKeys = new Set(
       evidenceSeedV0.chunks.map((chunk) => chunk.chunkKey),
@@ -80,10 +80,10 @@ describe("retrieval relevance dataset v1", () => {
     const aggregate =
       scores.reduce((sum, score) => sum + score, 0) / scores.length;
     console.info(
-      `retrieval-relevance-v1 lexical baseline: P@5=${aggregate.toFixed(3)} (${scores.map((score) => score.toFixed(3)).join(", ")})`,
+      `retrieval-relevance-v2 lexical baseline: P@5=${aggregate.toFixed(3)} (${scores.map((score) => score.toFixed(3)).join(", ")})`,
     );
-    expect(scores).toEqual([0.4, 0.6, 0.4]);
-    expect(aggregate).toBeCloseTo(0.467, 3);
+    expect(scores).toEqual([0.4, 0.6, 0.2]);
+    expect(aggregate).toBeCloseTo(0.4, 3);
     expect(aggregate).toBeGreaterThan(0);
   });
 });

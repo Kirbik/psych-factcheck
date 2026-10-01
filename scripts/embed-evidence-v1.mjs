@@ -3,7 +3,7 @@ import { createOpenAIEmbeddingProvider } from "../src/server/ai/openai-embedding
 import { EMBEDDING_VERSION } from "../src/server/ai/embeddings.ts";
 import { embedEvidenceChunks } from "../src/server/evidence/embeddings.ts";
 import { searchEvidence } from "../src/server/evidence/search.ts";
-import relevanceDataset from "../evals/fixtures/retrieval-v1.json" with { type: "json" };
+import relevanceDataset from "../evals/fixtures/retrieval-v2.json" with { type: "json" };
 
 const targetUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const targetRef = targetUrl ? new URL(targetUrl).hostname.split(".")[0] : "";

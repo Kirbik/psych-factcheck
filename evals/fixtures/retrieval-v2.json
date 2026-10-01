@@ -1,6 +1,6 @@
 {
-  "datasetVersion": "retrieval-relevance-v1",
-  "description": "Initial query-to-passage relevance labels over the Session 8 Evidence Base seed. These labels have not been expert-reviewed and do not establish scientific ground truth.",
+  "datasetVersion": "retrieval-relevance-v2",
+  "description": "Provisional AI-reviewed query-to-passage relevance labels over the Session 8 Evidence Base seed. Labels were checked against the query intent and source passages on 2026-10-01; they still require human/expert review and do not establish scientific ground truth.",
   "cases": [
     {
       "id": "learning-styles-benefits",
@@ -19,7 +19,7 @@
     {
       "id": "growth-mindset-academics",
       "query": "Do growth mindset interventions improve students' academic outcomes?",
-      "relevantChunkKeys": ["review-findings", "cross-cultural-association"]
+      "relevantChunkKeys": ["review-findings"]
     }
   ]
 }
