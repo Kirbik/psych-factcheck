@@ -8,9 +8,9 @@ status, reuse license, passage text, section locator, language, and a SHA-256
 digest of the stored text. It does not retrieve passages for claims, create
 embeddings, or produce judgments.
 
-The schema migration was applied to the linked Production project on
-2026-10-01. The curated seed is not imported yet, so the catalog tables are
-deployed but currently unpopulated by this seed.
+The schema migration and curated seed were applied to the linked Production
+project on 2026-10-01. A remote readback confirmed 10 sources, 23 chunks, and
+no chunks with missing source rows.
 
 ## Tables and access
 

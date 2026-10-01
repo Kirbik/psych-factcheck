@@ -142,7 +142,7 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 8 — Evidence Base v0
 
-**Status:** The migration is deployed to Production. The reviewed seed has 10 publications and 23 verbatim passages; one SAGE source is metadata-only under CC BY-NC 4.0. Seed data has not been imported; see [Session 8 checks and limits](../testing/SESSION_8.md).
+**Status:** The migration and reviewed seed are deployed to Production. The catalog has 10 publications and 23 verbatim passages; one SAGE source is metadata-only under CC BY-NC 4.0. Remote readback confirmed counts and source links; see [Session 8 checks and limits](../testing/SESSION_8.md).
 
 - **Goal:** Create a small traceable source/chunk store and controlled import mechanism.
 - **Why:** Fact checking requires real evidence, not model memory.
