@@ -6,7 +6,8 @@ import {
 } from "./providers";
 import { verdicts } from "../../types/fact-check";
 
-export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
+export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
+export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
 export const FACT_CHECK_JUDGMENT_SCHEMA_VERSION =
   "fact-check-judgment-schema-v1";
 export const FACT_CHECK_JUDGMENT_MODEL = "gpt-4o-mini";

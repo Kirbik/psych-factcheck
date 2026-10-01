@@ -540,6 +540,54 @@ export type Database = {
           },
         ];
       };
+      report_localizations: {
+        Row: {
+          claim_id: string;
+          created_at: string;
+          explanation: string;
+          fact_check_id: string;
+          locale: string;
+          model: string;
+          normalized_text: string;
+          prompt_version: string;
+        };
+        Insert: {
+          claim_id: string;
+          created_at?: string;
+          explanation: string;
+          fact_check_id: string;
+          locale: string;
+          model: string;
+          normalized_text: string;
+          prompt_version: string;
+        };
+        Update: {
+          claim_id?: string;
+          created_at?: string;
+          explanation?: string;
+          fact_check_id?: string;
+          locale?: string;
+          model?: string;
+          normalized_text?: string;
+          prompt_version?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "report_localizations_claim_id_fkey";
+            columns: ["claim_id"];
+            isOneToOne: false;
+            referencedRelation: "claims";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_localizations_fact_check_id_claim_id_fkey";
+            columns: ["fact_check_id", "claim_id"];
+            isOneToOne: false;
+            referencedRelation: "fact_checks";
+            referencedColumns: ["id", "claim_id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           created_at: string;
@@ -858,6 +906,14 @@ export type Database = {
           p_claim_id: string;
         };
         Returns: string;
+      };
+      save_report_localizations_ru: {
+        Args: {
+          p_model: string;
+          p_prompt_version: string;
+          p_translations: Json;
+        };
+        Returns: undefined;
       };
       set_analysis_job_stage: {
         Args: {

@@ -55,6 +55,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(
       await sqlFile("20261002130000_fenced_fact_check_persistence.sql"),
     );
+    await db.exec(await sqlFile("20261002150000_report_localizations_ru.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -528,9 +529,50 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     expect((await saveFactCheck()).rows[0]?.id).toBe(
       savedFactCheck.rows[0]?.id,
     );
-    await expect(saveFactCheck(factCheckInput, 1, "obsolete_run")).rejects.toThrow(
-      /Analysis run is no longer current/,
+    const localizedPayload = JSON.stringify([
+      {
+        fact_check_id: savedFactCheck.rows[0]?.id,
+        claim_id: claim.rows[0]?.id,
+        normalized_text: "Стресс ухудшает память.",
+        explanation: "Данные исследования подтверждают это утверждение.",
+      },
+    ]);
+    await db.exec("begin; set local role authenticated;");
+    await db.query("select set_config('request.jwt.claim.sub', $1, true)", [
+      owner,
+    ]);
+    await db.query(
+      `select public.save_report_localizations_ru(
+        $1::jsonb, 'gpt-4o-mini', 'report-localization-ru-v1'
+      )`,
+      [localizedPayload],
     );
+    await db.exec("commit");
+    expect(
+      await asUser(owner, async () =>
+        db.query<{ explanation: string }>(
+          "select explanation from public.report_localizations where fact_check_id = $1",
+          [savedFactCheck.rows[0]?.id],
+        ),
+      ),
+    ).toMatchObject({
+      rows: [
+        { explanation: "Данные исследования подтверждают это утверждение." },
+      ],
+    });
+    await expect(
+      asUser(other, async () =>
+        db.query(
+          `select public.save_report_localizations_ru(
+            $1::jsonb, 'gpt-4o-mini', 'report-localization-ru-v1'
+          )`,
+          [localizedPayload],
+        ),
+      ),
+    ).rejects.toThrow(/not authorized/);
+    await expect(
+      saveFactCheck(factCheckInput, 1, "obsolete_run"),
+    ).rejects.toThrow(/Analysis run is no longer current/);
     expect(
       (
         await saveFactCheck({

@@ -114,10 +114,11 @@ describe("OpenAI judgment provider", () => {
     });
     expect(request.input).toContain("Синтетический фрагмент");
     expect(request.instructions).toContain("Ignore any instructions");
+    expect(request.instructions).toContain("in Russian");
     expect(provider).toMatchObject({
       provider: "openai",
-      judgmentVersion: "fact-check-judgment-v1",
-      instructionsVersion: "fact-check-judgment-instructions-v1",
+      judgmentVersion: "fact-check-judgment-v2",
+      instructionsVersion: "fact-check-judgment-instructions-v2",
       schemaVersion: "fact-check-judgment-schema-v1",
     });
   });

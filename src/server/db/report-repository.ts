@@ -7,7 +7,14 @@ import {
   SCREENED_OUT_ERROR_CODE,
   TRANSCRIPTION_VERSION,
 } from "@/features/analysis/job-contract";
-import { FACT_CHECK_JUDGMENT_VERSION } from "@/server/ai/judgment";
+import {
+  FACT_CHECK_JUDGMENT_VERSION,
+  PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
+} from "@/server/ai/judgment";
+import {
+  ReportLocalizationError,
+  translateReportTextToRussian,
+} from "@/server/ai/report-localization";
 import { CLAIM_EXTRACTION_VERSION } from "@/server/ai/claim-extraction";
 import { EVIDENCE_RERANKING_VERSION } from "@/server/evidence/reranking";
 import { EVIDENCE_RETRIEVAL_VERSION } from "@/server/evidence/search";
@@ -141,16 +148,26 @@ export function reportRepository(client: ReportClient) {
       const { data: factChecks, error: factChecksError } = await client
         .from("fact_checks")
         .select(
-          "id, claim_id, evidence_package_id, verdict, confidence, explanation",
+          "id, claim_id, evidence_package_id, judgment_version, verdict, confidence, explanation",
         )
         .in("claim_id", claimIds)
         .in("evidence_package_id", packageIds)
-        .eq("judgment_version", FACT_CHECK_JUDGMENT_VERSION);
+        .in("judgment_version", [
+          PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
+          FACT_CHECK_JUDGMENT_VERSION,
+        ]);
       if (factChecksError || !factChecks)
         return { kind: "unavailable", ...common };
-      const checkByClaim = new Map(
-        factChecks.map((item) => [item.claim_id, item]),
-      );
+      const checkByClaim = new Map<string, (typeof factChecks)[number]>();
+      for (const item of factChecks) {
+        const previous = checkByClaim.get(item.claim_id);
+        if (
+          !previous ||
+          item.judgment_version === FACT_CHECK_JUDGMENT_VERSION
+        ) {
+          checkByClaim.set(item.claim_id, item);
+        }
+      }
       if (claims.some(({ id }) => !checkByClaim.has(id)))
         return { kind: "unavailable", ...common };
 
@@ -209,6 +226,90 @@ export function reportRepository(client: ReportClient) {
       if (chunks.some(({ source_id }) => !sourceById.has(source_id)))
         return { kind: "unavailable", ...common };
 
+      const { data: localizations, error: localizationError } = await client
+        .from("report_localizations")
+        .select("fact_check_id, normalized_text, explanation")
+        .in("fact_check_id", checkIds)
+        .eq("locale", "ru");
+      if (localizationError || !localizations)
+        return { kind: "localization_unavailable", ...common };
+      const localizedByCheck = new Map(
+        localizations.map((item) => [item.fact_check_id, item]),
+      );
+      const claimsByCheckId = new Map<string, (typeof claims)[number]>();
+      for (const claim of claims) {
+        const check = checkByClaim.get(claim.id);
+        if (check) claimsByCheckId.set(check.id, claim);
+      }
+      const untranslated = factChecks.flatMap((check) => {
+        if (localizedByCheck.has(check.id)) return [];
+        const claim = claimsByCheckId.get(check.id);
+        if (!claim) return [];
+        const isPredominantlyRussian = (value: string) => {
+          const cyrillicLetters = value.match(/[А-Яа-яЁё]/gu)?.length ?? 0;
+          const latinLetters = value.match(/[A-Za-z]/gu)?.length ?? 0;
+          return cyrillicLetters > latinLetters;
+        };
+        if (
+          isPredominantlyRussian(claim.normalized_text) &&
+          isPredominantlyRussian(check.explanation)
+        ) {
+          localizedByCheck.set(check.id, {
+            fact_check_id: check.id,
+            normalized_text: claim.normalized_text,
+            explanation: check.explanation,
+          });
+          return [];
+        }
+        return [
+          {
+            factCheckId: check.id,
+            normalizedText: claim.normalized_text,
+            explanation: check.explanation,
+          },
+        ];
+      });
+      if (untranslated.length > 0) {
+        try {
+          const translations = await translateReportTextToRussian(
+            process.env.OPENAI_API_KEY,
+            untranslated,
+          );
+          const claimIdByCheckId = new Map(
+            untranslated.flatMap((item) => {
+              const claim = claimsByCheckId.get(item.factCheckId);
+              return claim ? [[item.factCheckId, claim.id] as const] : [];
+            }),
+          );
+          const { error: saveLocalizationError } = await client.rpc(
+            "save_report_localizations_ru",
+            {
+              p_translations: translations.map((translation) => ({
+                fact_check_id: translation.fact_check_id,
+                claim_id: claimIdByCheckId.get(translation.fact_check_id),
+                normalized_text: translation.normalized_text,
+                explanation: translation.explanation,
+              })),
+              p_model: "gpt-4o-mini",
+              p_prompt_version: "report-localization-ru-v1",
+            },
+          );
+          if (saveLocalizationError)
+            return { kind: "localization_unavailable", ...common };
+          for (const translation of translations) {
+            localizedByCheck.set(translation.fact_check_id, {
+              fact_check_id: translation.fact_check_id,
+              normalized_text: translation.normalized_text,
+              explanation: translation.explanation,
+            });
+          }
+        } catch (error) {
+          if (error instanceof ReportLocalizationError)
+            return { kind: "localization_unavailable", ...common };
+          return { kind: "localization_unavailable", ...common };
+        }
+      }
+
       const citationsByCheck = new Map<string, Set<string>>();
       for (const citation of citations) {
         const chunk = chunkById.get(citation.evidence_chunk_id);
@@ -234,17 +335,19 @@ export function reportRepository(client: ReportClient) {
           return { kind: "unavailable", ...common };
         const citedSourceIds =
           citationsByCheck.get(check.id) ?? new Set<string>();
+        const localized = localizedByCheck.get(check.id);
+        if (!localized) return { kind: "localization_unavailable", ...common };
         reportClaims.push({
           id: claim.id,
-          title: claim.normalized_text,
+          title: localized.normalized_text,
           originalText: claim.original_text,
-          normalizedText: claim.normalized_text,
+          normalizedText: localized.normalized_text,
           startSeconds: claim.start_seconds,
           endSeconds: claim.end_seconds,
           verdict: verdict.data,
           status: toReportStatus(verdict.data),
           confidence: confidence.data,
-          explanation: check.explanation,
+          explanation: localized.explanation,
           sources: [...citedSourceIds].flatMap((id) => {
             const source = sourceById.get(id);
             return source ? [source] : [];

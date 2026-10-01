@@ -347,6 +347,19 @@ Session 13 until Session 12 is accepted.
 - **QA requirements:** Independent RELEASE GATE; PASS only when every required check succeeds.
 - **Definition of Done:** Release gate returns PASS with exact evidence, or release remains blocked.
 
+## Session 22 — Russian Report Text
+
+**Status:** Deployed to Production on 2026-10-01. Migration `20261002150000_report_localizations_ru.sql` is applied; Worker version `9a92ea4a-5421-47dc-88e4-bbeffadef73a` is live. New claim formulations and judgment explanations are requested in Russian. Previously saved generated text is translated on first report view and cached in the owner-readable localization table without changing immutable judgments or evidence. The unauthenticated production URL redirects to login; Russian rendering still needs confirmation in the report owner's authenticated session. Original video quotations and official source titles remain in their source language.
+
+- **Goal:** Display LLM-generated claim formulations and explanations in Russian, including for previously completed reports.
+- **Why:** The report language should be understandable to its Russian-speaking audience.
+- **Scope:** Prompt language requirements, validated server-side localization, owner-scoped cache, migration, regression tests.
+- **Out of scope:** Translating exact transcript excerpts, official source metadata, verdict codes, or evidence.
+- **Expected files:** AI prompts/provider, report repository, migration, generated database contract, tests, documentation.
+- **Acceptance criteria:** Russian presentation is validated and cached; original evidence and immutable judgment fields are preserved.
+- **Required tests:** Localization provider unit tests, database authorization integration, lint, typecheck, full unit suite, build.
+- **Definition of Done:** Current and previously saved reports render generated text in Russian without changing the underlying judgment.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

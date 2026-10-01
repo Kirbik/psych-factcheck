@@ -55,4 +55,9 @@ export type ReportLoadResult =
       readonly contentItemId: string;
       readonly fileName: string;
     }
+  | {
+      readonly kind: "localization_unavailable";
+      readonly contentItemId: string;
+      readonly fileName: string;
+    }
   | { readonly kind: "ready"; readonly report: ReportData };

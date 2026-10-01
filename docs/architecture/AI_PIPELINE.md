@@ -41,6 +41,10 @@ Retrieval output includes candidate identifiers, source metadata, verbatim chunk
 
 Quality is assessed with precision@k, relevance judgments, coverage, and adversarial retrieval cases. If retrieval is inadequate, judgment must be allowed to return `INSUFFICIENT_EVIDENCE`.
 
+## Report language
+
+Normalized claim formulations, judgment explanations, limitations, and citation rationales are requested in Russian. Exact transcript excerpts and bibliographic source metadata remain in their original language. When a saved judgment is in another language, the report view translates only the normalized formulation and explanation, validates the returned fact-check IDs and Russian text, then caches the rendering in `report_localizations`; immutable verdicts, evidence packages, and citations are not rewritten. The cache is owner-readable and populated through an authorization-checking database function.
+
 ## Judgment responsibility
 
 Judgment answers: **Given only this Evidence Package, how does the evidence bear on this normalized claim?** It cannot search, rely on unstated model knowledge, or cite identifiers outside the package. It must distinguish no evidence from contradictory evidence, association from causation, theory from established fact, and historical views from current consensus.
