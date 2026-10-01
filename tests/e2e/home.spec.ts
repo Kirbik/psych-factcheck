@@ -30,14 +30,21 @@ test("opens token login from the home page", async ({ page }) => {
   await expect(page.getByLabel("Токен авторизации")).toBeVisible();
 });
 
-test("keeps the checks preview available", async ({ page }) => {
+test("protects persisted check history behind authentication", async ({
+  page,
+}) => {
   await page.goto("/history");
-  await expect(
-    page.getByRole("heading", { name: "Все проверки" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Проверки", exact: true }),
-  ).toHaveAttribute("aria-current", "page");
+  if (loginEnvironmentIsConfigured) {
+    await signIn(page);
+    await expect(
+      page.getByRole("heading", { name: "Все проверки" }),
+    ).toBeVisible();
+  } else {
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("heading", { name: "Вход в аккаунт" }),
+    ).toBeVisible();
+  }
 });
 
 test("redirects legacy preview addresses to clean section paths", async ({
@@ -54,7 +61,10 @@ test("redirects legacy preview addresses to clean section paths", async ({
 
   for (const [legacyPath, cleanPath] of routes) {
     await page.goto(legacyPath);
-    await expect(page).toHaveURL(new RegExp(`${cleanPath.replace("?", "\\?")}$`));
+    const expectedPath = cleanPath === "/history" ? "/" : cleanPath;
+    await expect(page).toHaveURL(
+      new RegExp(`${expectedPath.replace("?", "\\?")}$`),
+    );
   }
 });
 
@@ -72,9 +82,7 @@ test("requires token generation before registration and clears registration stat
   const registrationButton = page.getByRole("button", {
     name: "Регистрация",
   });
-  await expect(
-    registrationButton,
-  ).toBeDisabled();
+  await expect(registrationButton).toBeDisabled();
   const tokenRowBox = await page
     .getByLabel("Токен регистрации")
     .locator("xpath=../..")
@@ -105,7 +113,13 @@ test("requires token generation before registration and clears registration stat
   ).toBeVisible();
 });
 
-test("keeps the upload running while navigating away and back", async ({ page }) => {
+test("keeps the upload running while navigating away and back", async ({
+  page,
+}) => {
+  test.skip(
+    !loginEnvironmentIsConfigured,
+    "Requires an authenticated E2E account",
+  );
   let uploadRequestBody = "";
   let notifyRequestStarted: () => void = () => undefined;
   let finishUpload: () => void = () => undefined;
@@ -127,6 +141,7 @@ test("keeps the upload running while navigating away and back", async ({ page })
     });
   });
 
+  await signIn(page);
   await page.goto("/new-check");
   await page.setInputFiles("#video-file", {
     name: "e2e-video.mp4",
@@ -164,7 +179,9 @@ test("shows a server validation error from upload preparation", async ({
     route.fulfill({
       status: 413,
       contentType: "application/json",
-      body: JSON.stringify({ error: "Размер запроса превышает допустимый предел." }),
+      body: JSON.stringify({
+        error: "Размер запроса превышает допустимый предел.",
+      }),
     }),
   );
 
@@ -280,8 +297,12 @@ test.describe("authentication", () => {
       if (!bounds) {
         throw new Error("First-login secrets dialog must have visible bounds");
       }
-      expect(Math.abs(bounds.x + bounds.width / 2 - viewportCenter.x)).toBeLessThan(2);
-      expect(Math.abs(bounds.y + bounds.height / 2 - viewportCenter.y)).toBeLessThan(2);
+      expect(
+        Math.abs(bounds.x + bounds.width / 2 - viewportCenter.x),
+      ).toBeLessThan(2);
+      expect(
+        Math.abs(bounds.y + bounds.height / 2 - viewportCenter.y),
+      ).toBeLessThan(2);
     }
     await expect(firstLoginDialog.getByLabel("Токен авторизации")).toHaveValue(
       /^pfc_[a-f0-9]{64}$/,

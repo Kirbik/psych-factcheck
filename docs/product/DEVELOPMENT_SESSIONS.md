@@ -243,6 +243,8 @@ Session 13 until Session 12 is accepted.
 
 ## Session 14 — Analysis History
 
+**Status:** Connected to owner-scoped persisted data. `/history` reads the signed-in user's content items and current pipeline jobs, plus saved claim and judgment counts. Completed entries link to `/report?contentItemId=...`; active and failed entries link to `/processing?contentItemId=...`. The existing filters and client-side pagination are retained. Server-side pagination, deletion, and browser E2E verification remain open.
+
 - **Goal:** Add an owned dashboard and past-analysis navigation.
 - **Why:** Users must revisit results and understand job status.
 - **Scope:** Paginated history query, dashboard states, report links.
