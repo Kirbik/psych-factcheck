@@ -78,5 +78,9 @@ export interface TranscriptionResult {
 }
 
 export interface EmbeddingProvider {
+  readonly provider: string;
+  readonly model: string;
+  readonly version: string;
+  readonly dimensions: number;
   embed(texts: readonly string[]): Promise<readonly (readonly number[])[]>;
 }

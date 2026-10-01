@@ -2,7 +2,7 @@
 
 ## Current status
 
-The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8's source/chunk schema and reviewed, idempotent seed are deployed to Production with 10 sources and 23 evidence chunks. Embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, and explanation are not connected. The `pnpm evals` command validates synthetic fixture shape; it is not a model-quality evaluation.
+The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8's source/chunk schema and reviewed, idempotent seed are deployed to Production with 10 sources and 23 evidence chunks. Session 9 adds a local `EmbeddingProvider` for OpenAI `text-embedding-3-small`, versioned 1536-dimensional vectors for claims and evidence chunks, stale-content protection, and a provenance-preserving pgvector similarity RPC with active-source, language, source-type, and publication-date filters. Reranking, Evidence Package creation, judgment, and explanation are not connected. The SQL migration has not been applied or live-verified against Production. `pnpm evals` records an offline lexical P@5 reference; it does not measure live embedding retrieval or model quality.
 
 ## Contract
 
@@ -20,9 +20,9 @@ Every stage accepts a typed input, produces a versioned typed output, validates 
 2. **Topic screening:** videos up to 12 seconds are screened using the full compressed audio track; longer videos use at most three four-second ranges near the start, middle, and end. Mediabunny demuxes/remuxes encoded audio packets without decoding the media. If container metadata omits audio-track duration, duration is computed from packet timestamps. The remuxed sample is capped at 2 MB. Only that sample is sent to OpenAI `whisper-1`; its temporary transcript is classified by `gpt-4o-mini` using strict JSON Schema and Zod validation. A high-confidence off-topic decision is the only result that stops processing. Missing/unsupported audio, unavailable duration, low-confidence output, malformed output, and API errors continue to full transcription. The sample transcript is not persisted; a versioned decision record stores models, instruction version, bounded rationale, reason, confidence, and sample duration.
 3. **Transcription:** OpenAI `whisper-1` receives supported MP4/WebM files up to 25 MB. The adapter requests `verbose_json` segment timestamps, validates the untrusted response with Zod, and persists language plus segments under `transcription-v1`. Larger videos currently fail explicitly. See the [OpenAI speech-to-text guide](https://developers.openai.com/api/docs/guides/speech-to-text), [structured outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs), and [GPT-4o mini model](https://developers.openai.com/api/docs/models/gpt-4o-mini).
 4. **Claim extraction, normalization, and classification:** OpenAI returns atomic checkable statements with a source excerpt, standalone normalized statement, claim type, and indexes into the input transcript segments. Server code verifies source tokens against those segments (including Russian `ё`/`е` spelling variation), stores the exact transcript excerpt, and derives timestamps from the transcript rather than trusting model-provided timestamps. Original and normalized wording are both persisted. A failed repair logs only the validation category and job ID, never transcript or model text.
-5. **Embedding:** create vectors through `EmbeddingProvider`; record model/version and dimensions.
-6. **Retrieval:** obtain a broader candidate set from the Evidence Base.
-7. **Metadata filtering:** enforce language, source status, retraction, date, topic, and study-type constraints where appropriate.
+5. **Embedding:** create vectors through `EmbeddingProvider`; record model/version and dimensions. Session 9 fixes the initial provider contract to OpenAI `text-embedding-3-small` (1536 dimensions). Stored content hashes prevent retrieval from using vectors for passages or claims that have since changed.
+6. **Retrieval:** Session 9's `match_evidence_chunks_v1` uses cosine distance and returns chunk text plus source identifiers, publication metadata, canonical URL, and similarity score. Only matching model/version vectors whose content hash is current are eligible.
+7. **Metadata filtering:** the current catalog supports active-source status, passage language, source type, and publication date range. Corrected, retracted, and withdrawn sources are excluded by default. Topic tags are not present in the current catalog and are not accepted as a filter.
 8. **Reranking:** score direct relevance to the exact normalized claim; preserve diverse, non-duplicative evidence.
 9. **Evidence Package:** freeze the selected chunks, source metadata, scores, and retrieval trace.
 10. **Judgment:** classify only from that package using the fixed verdict taxonomy.
@@ -30,7 +30,8 @@ Every stage accepts a typed input, produces a versioned typed output, validates 
 
 The current Evidence Base v0 consists of shared `sources` metadata and
 licensed, verbatim `evidence_chunks`; see [Evidence Base](EVIDENCE_BASE.md).
-No query-to-chunk retrieval or vector generation is wired yet.
+Session 9 adds the local vector schema/provider/search repository; it has not
+yet been applied or verified against the deployed database.
 
 ## Retrieval responsibility
 

@@ -157,6 +157,8 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 9 — Embeddings + Retrieval
 
+**Status:** Implemented in the working tree; verification is incomplete. OpenAI `text-embedding-3-small` produces validated 1536-dimensional vectors; claim/chunk vectors are versioned and content-hash guarded; pgvector search returns source provenance and applies supported metadata filters. Offline lexical P@5 is 0.467 on three initial, not-yet-expert-reviewed relevance queries. The pgvector integration test requires a dedicated local Supabase database with this migration applied; Production migration/live semantic retrieval and quality evaluation remain unverified. See [Session 9 verification](../testing/SESSION_9.md).
+
 - **Goal:** Embed claims/chunks and retrieve relevant candidates with pgvector.
 - **Why:** Scalable evidence selection needs semantic candidate search.
 - **Scope:** `EmbeddingProvider`, vector schema/index, version/dimension checks, similarity query, metadata filters.

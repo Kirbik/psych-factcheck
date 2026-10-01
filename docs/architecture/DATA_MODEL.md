@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, three token-auth tables, and a private video bucket. Fact-check and billing entities remain future schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, three token-auth tables, and a private video bucket. The Session 9 migration has not yet been applied to Production. Fact-check and billing entities remain future schema.
 
 ## Identity and content
 
@@ -82,11 +82,11 @@ This document distinguishes the current Supabase schema from the planned analysi
 - **Purpose:** concise, traceable source passages for later retrieval.
 - **Implemented fields:** `id`, `source_id`, stable `chunk_key`, verbatim `content`, section `locator`, `language`, SHA-256 content digest, provenance, and timestamps.
 - **Relations/ownership:** belongs to a shared source; deletion of a referenced source is restricted.
-- **Lifecycle:** the Session 8 seed contains 23 verbatim passages from 9 publications and metadata for 10 publications. The transactional service-role import validates source links and updates stable rows on repeat. Authenticated users can read the shared catalog; clients cannot write it. Embeddings and vector indexes are future scope.
+- **Lifecycle:** the Session 8 seed contains 23 verbatim passages from 9 publications and metadata for 10 publications. The transactional service-role import validates source links and updates stable rows on repeat. Authenticated users can read the shared catalog; clients cannot write it. Session 9 adds service-role-only `evidence_embeddings` and `claim_embeddings` rows keyed by the source entity and embedding version. Each row records provider, model, dimensions, source-text SHA-256, and a 1536-dimensional vector. Retrieval ignores stale chunk vectors and returns only active source records.
 
 ### Future evidence extensions
 
-- Session 9 may add versioned vectors and vector indexes for `evidence_chunks`.
+- Session 9 adds versioned vectors keyed to `evidence_chunks.id` and `claims.id`, with recorded model, dimension, and source-text digest. The current query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
 - Fact-check persistence will link judgments to a frozen set of evidence chunk IDs.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 

@@ -2,7 +2,7 @@
 
 ## Current status
 
-There is no AI quality runner yet. `pnpm evals` validates synthetic fact-check, topic-screening, and claim-extraction fixtures; it confirms only that demonstration fixtures match their schemas. It does not call OpenAI or measure model quality, false-positive/false-negative rates, or scientific correctness.
+`pnpm evals` validates synthetic fact-check, topic-screening, and claim-extraction fixtures and computes an offline lexical retrieval reference over three initial relevance-labeled queries. The labels have not been expert-reviewed. The lexical reference is P@5 0.467 (per-case 0.400, 0.600, 0.400) over the 23-passage Session 8 seed. The small curated set is not a medical/scientific gold standard. The command does not call OpenAI or measure live embedding retrieval or model quality.
 
 ## Golden dataset
 
@@ -20,6 +20,8 @@ Example:
 ```
 
 The repository currently contains one synthetic fixture demonstrating the expected case shape. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
+
+`evals/fixtures/retrieval-v1.json` contains three initial query-to-passage relevance sets. Its deterministic lexical P@5 result is a reproducible reference to compare with future retrieval runs; the labels still need expert review, and this tiny sample does not establish broad retrieval quality. A pgvector/OpenAI run against a dedicated test database is still required to record the semantic retriever's P@5.
 
 The screening fixture includes an incidental psychology mention as a false-positive guard, an ambiguous short excerpt as a false-negative guard, and one clear psychology case. These examples document desired behavior only; no model output is scored against them yet.
 

@@ -11,6 +11,8 @@ embeddings, or produce judgments.
 The schema migration and curated seed were applied to the linked Production
 project on 2026-10-01. A remote readback confirmed 10 sources, 23 chunks, and
 no chunks with missing source rows.
+Session 9 adds local versioned embeddings and a pgvector search migration; that
+migration has not yet been applied to Production.
 
 ## Tables and access
 
@@ -62,7 +64,10 @@ credentials or passage contents.
 
 ## Next stage
 
-Session 9 may add versioned vectors keyed to `evidence_chunks.id`, with a
-recorded embedding model and dimension. Original passages and source
-provenance remain canonical. Retrieval, metadata filtering, reranking, Evidence
-Packages, and verdicts are outside Session 8.
+Session 9 adds `evidence_embeddings` and `claim_embeddings`, keyed by the source
+row and embedding version, with model, dimension, and source-content digest.
+The search RPC returns current active-source candidates with chunk and source
+provenance and supports language, source type, and publication-date filters.
+Topic metadata is not present in Evidence Base v0. Original passages and source
+provenance remain canonical. Reranking, Evidence Packages, and verdicts remain
+future work.

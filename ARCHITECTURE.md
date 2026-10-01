@@ -8,7 +8,7 @@ Psych Factcheck is a modular monolith for evidence-grounded analysis of psycholo
 
 - Next.js App Router and strict TypeScript for the web application and server code
 - React for UI, Zod for runtime validation
-- Supabase PostgreSQL, Auth, and private Storage (current); pgvector is future scope
+- Supabase PostgreSQL, Auth, and private Storage (current); Session 9 adds a pgvector implementation whose migration is not yet applied to Production
 - Cloudflare Workflows and a Worker cron (Session 6 OpenAI transcription is deployed and live-verified in Production)
 - Vitest, Playwright, ESLint, and Prettier
 - pnpm for package management
@@ -69,7 +69,7 @@ Sessions 6A–7 add bounded topic screening, timestamped transcription, then Ope
 
 ## AI and Evidence Base
 
-The intended AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and the end-to-end claim-extraction workflow have completed Production jobs. Earlier claim-source validation failures led to fixes deployed on 2026-09-30; successful job completion does not establish model quality. Embedding, retrieval, reranking, judgment, and report generation are not connected. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and retrieved text are untrusted data, never instructions.
+The intended AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and the end-to-end claim-extraction workflow have completed Production jobs. Earlier claim-source validation failures led to fixes deployed on 2026-09-30; successful job completion does not establish model quality. Session 9 adds local embedding and retrieval primitives, but they are not connected to the workflow and the migration is not deployed. Reranking, judgment, and report generation remain unimplemented. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and retrieved text are untrusted data, never instructions.
 
 Session 8's shared `sources` and `evidence_chunks` tables and reviewed seed are deployed to Production. The catalog contains 10 publications and 23 verbatim passages; one CC BY-NC source is stored as metadata only. Remote readback confirmed 10 source rows, 23 chunk rows, and no missing source links. Embeddings, pgvector retrieval, reranking, fact-check persistence, judgment, and report generation remain future work. Judgment must receive a bounded Evidence Package, and every cited identifier must resolve to a real stored source. See [Session 8 verification](docs/testing/SESSION_8.md).
 

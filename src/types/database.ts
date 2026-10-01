@@ -319,6 +319,88 @@ export type Database = {
           },
         ];
       };
+      evidence_embeddings: {
+        Row: {
+          content_sha256: string;
+          created_at: string;
+          dimensions: number;
+          embedding: string;
+          embedding_version: string;
+          evidence_chunk_id: string;
+          model: string;
+          provider: string;
+        };
+        Insert: {
+          content_sha256: string;
+          created_at?: string;
+          dimensions: number;
+          embedding: string;
+          embedding_version: string;
+          evidence_chunk_id: string;
+          model: string;
+          provider: string;
+        };
+        Update: {
+          content_sha256?: string;
+          created_at?: string;
+          dimensions?: number;
+          embedding?: string;
+          embedding_version?: string;
+          evidence_chunk_id?: string;
+          model?: string;
+          provider?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_embeddings_evidence_chunk_id_fkey";
+            columns: ["evidence_chunk_id"];
+            isOneToOne: false;
+            referencedRelation: "evidence_chunks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      claim_embeddings: {
+        Row: {
+          claim_id: string;
+          content_sha256: string;
+          created_at: string;
+          dimensions: number;
+          embedding: string;
+          embedding_version: string;
+          model: string;
+          provider: string;
+        };
+        Insert: {
+          claim_id: string;
+          content_sha256: string;
+          created_at?: string;
+          dimensions: number;
+          embedding: string;
+          embedding_version: string;
+          model: string;
+          provider: string;
+        };
+        Update: {
+          claim_id?: string;
+          content_sha256?: string;
+          created_at?: string;
+          dimensions?: number;
+          embedding?: string;
+          embedding_version?: string;
+          model?: string;
+          provider?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "claim_embeddings_claim_id_fkey";
+            columns: ["claim_id"];
+            isOneToOne: false;
+            referencedRelation: "claims";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           created_at: string;
@@ -533,6 +615,34 @@ export type Database = {
         Returns: {
           chunk_count: number;
           source_count: number;
+        }[];
+      };
+      match_evidence_chunks_v1: {
+        Args: {
+          p_embedding_model: string;
+          p_embedding_version: string;
+          p_language?: string | null;
+          p_match_count?: number;
+          p_published_after?: string | null;
+          p_published_before?: string | null;
+          p_query_embedding: string;
+          p_source_types?: string[] | null;
+        };
+        Returns: {
+          authors: string[];
+          canonical_url: string;
+          chunk_id: string;
+          chunk_key: string;
+          content: string;
+          journal: string;
+          language: string;
+          locator: string;
+          published_at: string;
+          similarity: number;
+          source_id: string;
+          source_key: string;
+          source_type: string;
+          title: string;
         }[];
       };
       request_analysis_job: {
