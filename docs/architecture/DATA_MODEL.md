@@ -104,14 +104,14 @@ This document distinguishes the implemented repository schema from deployed Prod
 - Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence is deployed; the Worker does not call the judgment service yet.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
-### `fact_checks` — Session 11, implemented locally
+### `fact_checks` — Session 11, migration deployed
 
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
 - **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, verdict, confidence, explanation, limitations, and creation time.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
 - **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. The migration is deployed to Production, but the Worker does not call the judgment service yet.
 
-### `fact_check_evidence` — Session 11, implemented locally
+### `fact_check_evidence` — Session 11, migration deployed
 
 - **Purpose:** auditable join between a fact check and evidence used or cited.
 - **Implemented fields:** `fact_check_id`, `evidence_chunk_id`, citation ordinal, relation (`supports`, `qualifies`, or `contradicts`), and rationale.
