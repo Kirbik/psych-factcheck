@@ -2,7 +2,7 @@
 
 ## Current status
 
-The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8 adds a local source/chunk schema and reviewed, idempotent seed importer; the evidence seed has not been applied to Production. Embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, and explanation are not connected. The `pnpm evals` command validates synthetic fixture shape; it is not a model-quality evaluation.
+The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8's source/chunk schema and reviewed, idempotent seed are deployed to Production with 10 sources and 23 evidence chunks. Embedding, retrieval, metadata filtering, reranking, Evidence Package creation, judgment, and explanation are not connected. The `pnpm evals` command validates synthetic fixture shape; it is not a model-quality evaluation.
 
 ## Contract
 

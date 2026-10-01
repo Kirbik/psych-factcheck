@@ -2,7 +2,7 @@
 
 ## Result
 
-Implemented locally:
+Implemented and deployed to Production:
 
 - `sources` and `evidence_chunks` schema with stable DOI/chunk keys, license and
   publication provenance, immutable source relationships, content hashes, and

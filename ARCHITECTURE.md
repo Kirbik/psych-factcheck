@@ -71,7 +71,7 @@ Sessions 6A–7 add bounded topic screening, timestamped transcription, then Ope
 
 The intended AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and the end-to-end claim-extraction workflow have completed Production jobs. Earlier claim-source validation failures led to fixes deployed on 2026-09-30; successful job completion does not establish model quality. Embedding, retrieval, reranking, judgment, and report generation are not connected. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and retrieved text are untrusted data, never instructions.
 
-Session 8 adds shared `sources` and `evidence_chunks` tables plus a reviewed, idempotent 10-source/26-passage seed manifest. The schema and importer are implemented locally; the seed has not been applied to Production. There are still no fact-check persistence tables. Later retrieval may use pgvector and metadata filters, followed by reranking. Judgment must receive a bounded Evidence Package, and every cited identifier must resolve to a real stored source.
+Session 8's shared `sources` and `evidence_chunks` tables and reviewed seed are deployed to Production. The catalog contains 10 publications and 23 verbatim passages; one CC BY-NC source is stored as metadata only. Remote readback confirmed 10 source rows, 23 chunk rows, and no missing source links. Embeddings, pgvector retrieval, reranking, fact-check persistence, judgment, and report generation remain future work. Judgment must receive a bounded Evidence Package, and every cited identifier must resolve to a real stored source. See [Session 8 verification](docs/testing/SESSION_8.md).
 
 ## Billing abstraction
 
