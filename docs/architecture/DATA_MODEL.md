@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the implemented repository schema from deployed Production state and planned domains. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, Session 11's `fact_checks` and `fact_check_evidence`, three token-auth tables, and a private video bucket. Session 9 retrieval and Session 10 evidence-package migrations are deployed to Production. Session 11's fact-check migration is local and is not deployed. Production contains 23 evidence chunk vectors; claim embeddings are supported by schema but are not currently populated. Billing entities remain future schema.
+This document distinguishes the implemented repository schema from deployed Production state and planned domains. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, Session 11's `fact_checks` and `fact_check_evidence`, three token-auth tables, and a private video bucket. Session 9 retrieval, Session 10 evidence-package, and Session 11 fact-check migrations are deployed to Production. Production contains 23 evidence chunk vectors; claim embeddings are supported by schema but are not currently populated. Billing entities remain future schema.
 
 ## Identity and content
 
@@ -101,7 +101,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 ### Retrieval and judgment boundary
 
 - Session 9 deploys versioned 1536-dimensional vectors keyed to `evidence_chunks.id` and provides a `claim_embeddings` table. The current workflow embeds claim text in batches as retrieval queries but does not persist those query vectors. Stored chunk vectors include model/version and source-text digest; the query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
-- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs; fact-check judgments are not implemented yet.
+- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence is deployed; the Worker does not call the judgment service yet.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
 ### `fact_checks` — Session 11, implemented locally
@@ -109,7 +109,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
 - **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, verdict, confidence, explanation, limitations, and creation time.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
-- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. The Worker does not call the judgment service yet, and the migration is not deployed to Production.
+- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. The migration is deployed to Production, but the Worker does not call the judgment service yet.
 
 ### `fact_check_evidence` — Session 11, implemented locally
 

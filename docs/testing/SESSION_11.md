@@ -23,9 +23,9 @@ Implemented locally:
 
 The judgment adapter is not connected to the Cloudflare Workflow; full-pipeline
 composition belongs to Session 12. Migration
-`20261002100000_fact_check_judgments_v1.sql` is checked in but has not been
-applied to Production. No live OpenAI judgment or Production persistence run
-was performed.
+`20261002100000_fact_check_judgments_v1.sql` was applied to Production on
+2026-10-02. The linked migration history confirms local and remote versions
+match. No live OpenAI judgment or Production persistence run was performed.
 
 ## Checks
 
