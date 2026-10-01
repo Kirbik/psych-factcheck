@@ -144,9 +144,7 @@ describe("workflow progress upload lock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
 
     expect(
-      await screen.findByText(
-        "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
-      ),
+      await screen.findByText("Проверка завершена. Отчет готов к просмотру."),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Новая проверка" }));
 
@@ -255,16 +253,20 @@ describe("workflow progress upload lock", () => {
     });
 
     expect(
-      await screen.findByText(
-        "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
-      ),
+      await screen.findByText("Проверка завершена. Отчет готов к просмотру."),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Сопоставление данных").closest("li"),
     ).toHaveTextContent("Готово");
     expect(
       screen.getByText("Подготовка отчета").closest("li"),
-    ).toHaveTextContent("Ожидает");
+    ).toHaveTextContent("Готово");
+    expect(
+      screen.getByRole("link", { name: "Перейти к отчету" }),
+    ).toHaveAttribute(
+      "href",
+      "/report?contentItemId=33333333-3333-4333-8333-333333333333",
+    );
     expect(fetch).toHaveBeenCalledTimes(2);
     unmount();
     expect(realtime.removeChannel).toHaveBeenCalled();

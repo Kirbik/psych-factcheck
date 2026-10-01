@@ -1,10 +1,10 @@
 # Psych Factcheck
 
-An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Cloudflare Workflows connect screening, timestamped OpenAI transcription, claim extraction, evidence retrieval/reranking, Evidence Package persistence, and Session 12 evidence-bound judgment. Judgment is deployed to Production; a fresh authenticated full-path run and model-quality evaluation remain pending. Report generation/UI remain incomplete. See [Architecture](ARCHITECTURE.md) for the current status.
+An MVP in development for evidence-grounded fact-checking of psychological video content. The current application includes server-generated token registration/login, protected user pages, a Supabase PostgreSQL/Auth foundation, and one-video upload to private Supabase Storage. Cloudflare Workflows connect screening, timestamped OpenAI transcription, claim extraction, evidence retrieval/reranking, Evidence Package persistence, and Session 12 evidence-bound judgment. A fresh authenticated Production analysis completed through all stages on 2026-10-01; browser E2E and model-quality evaluation remain incomplete. `/report` assembles report data from persisted analysis records for owned completed checks. Separate report artifact persistence and release acceptance remain incomplete. See [Architecture](ARCHITECTURE.md) for the current status.
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, embeddings/retrieval, reranking, Evidence Package persistence, and evidence-bound judgment are implemented and deployed. Report generation and persisted report UI are not connected.
+Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, embeddings/retrieval, reranking, Evidence Package persistence, and evidence-bound judgment are implemented and deployed. The `/report` interface reads persisted results; it does not store a separate report artifact.
 
 ## Prerequisites
 
@@ -56,7 +56,7 @@ The suite includes unit tests for auth validation/actions, Supabase configuratio
 
 ## Deployment concept
 
-The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. Production Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` has the workflow binding and scheduled recovery; the endpoint returned HTTP 200. A fresh authenticated upload through fact-check persistence has not yet been verified. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, private Storage, and pgvector retrieval are used by server routes/workflows.
+The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. Production Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` has the workflow binding and scheduled recovery; the endpoint returned HTTP 200. A fresh authenticated analysis completed through fact-check persistence on 2026-10-01; the Playwright browser suite remains incomplete. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, private Storage, and pgvector retrieval are used by server routes/workflows.
 
 ## Documentation
 

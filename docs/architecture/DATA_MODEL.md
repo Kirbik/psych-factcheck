@@ -101,7 +101,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 ### Retrieval and judgment boundary
 
 - Session 9 deploys versioned 1536-dimensional vectors keyed to `evidence_chunks.id` and provides a `claim_embeddings` table. The current workflow embeds claim text in batches as retrieval queries but does not persist those query vectors. Stored chunk vectors include model/version and source-text digest; the query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
-- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence and Session 12's run-fenced Worker integration are deployed to Production. A full live analysis has not yet verified the combined path.
+- Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence and Session 12's run-fenced Worker integration are deployed to Production. A fresh authenticated Production analysis completed the combined path at `stage = complete` in generation 2.
 - Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
 ### `fact_checks` — Session 11, migration deployed

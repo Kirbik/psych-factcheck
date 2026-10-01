@@ -101,6 +101,6 @@ is not an expert-reviewed quality measure.
 
 Session 12 adds a separate judgment stage that consumes the persisted package
 and stores a versioned fact check with package-member citations. This integration
-is deployed to Production, though a fresh authenticated analysis has not yet
-verified the complete path. Do not infer a verdict from retrieval or the
-Evidence Package itself.
+is deployed to Production, and a fresh authenticated analysis completed the
+workflow through `stage = complete` in generation 2. Do not infer a verdict from
+retrieval or the Evidence Package itself.

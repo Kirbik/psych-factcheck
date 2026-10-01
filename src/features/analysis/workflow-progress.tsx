@@ -192,6 +192,7 @@ export function WorkflowProgress({
 
   return (
     <ProcessingPreview
+      contentItemId={contentItemId}
       uploadStatus="completed"
       transcriptionStatus={
         job?.status === "completed" &&

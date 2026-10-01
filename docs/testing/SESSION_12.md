@@ -18,7 +18,7 @@ evidence-bound fact checks:
   judgments are persisted. Empty claim extractions complete without judgment
   provider calls; missing packages fail explicitly.
 - The processing view reports judgment progress through the existing
-  “Сопоставление данных” step. Report preparation remains pending.
+  “Сопоставление данных” step. Session 13 connects completion to the report.
 
 Migrations `20261002120000_full_pipeline_judgment_stage.sql` and
 `20261002130000_fenced_fact_check_persistence.sql` expand the stage constraint
@@ -31,7 +31,8 @@ returned HTTP 200.
 
 There is no concrete `UsageService` or usage policy in the repository. Session
 12 leaves that interface unconfigured rather than introducing a default limit
-or a no-op implementation. Report generation and report UI remain future work.
+or a no-op implementation. Session 13 adds the report view; a separate stored
+report artifact remains future work.
 
 ## Checks
 
@@ -55,14 +56,17 @@ or a no-op implementation. Report generation and report UI remain future work.
 - `pnpm deploy:vinext`: PASS — deployed Worker version
   `1201cf3a-a17e-4782-a986-e003f24e88bb`.
 - Production endpoint health check: PASS — HTTP 200.
+- Live Production workflow: PASS — job `2fb0f3e6-deea-4e46-a206-9c330ef9b32f`,
+  generation 2, completed at `stage = complete` with `error_code = null` on
+  2026-10-01. This verifies the authenticated analysis reached terminal
+  success after judgment and fact-check persistence. Generation 1 had failed
+  with `RUN_INTERRUPTED`; generation 2 completed successfully.
 
 ## Remaining verification
 
-- Run a fresh authenticated upload through fact-check persistence. Existing
-  completed jobs are not automatically rerun; deployment and HTTP health do
-  not establish full-path workflow success.
-- Resolve the Playwright stall and pass full-path E2E before accepting the
-  workflow.
+- Resolve the Playwright stall and pass the browser E2E suite. The live
+  Production workflow succeeded, but this does not establish browser-suite
+  coverage.
 - Add expert-reviewed verdict/citation cases before making any judgment-quality
   claim. Current synthetic evals verify contracts, not semantic correctness.
 - Confidence is an uncalibrated model output. Citation membership is checked,

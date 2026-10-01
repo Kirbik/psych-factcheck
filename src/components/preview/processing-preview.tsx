@@ -24,6 +24,7 @@ export type UploadProgressStatus =
   "pending" | "processing" | "interrupted" | "completed" | "failed";
 
 type ProcessingPreviewProps = {
+  contentItemId?: string;
   onBack?: () => void;
   uploadError?: string;
   uploadStatus?: UploadProgressStatus;
@@ -84,6 +85,7 @@ const subtitleByUploadStatus: Record<UploadProgressStatus, string> = {
 };
 
 export function ProcessingPreview({
+  contentItemId,
   onBack,
   uploadError,
   uploadStatus = "pending",
@@ -117,9 +119,14 @@ export function ProcessingPreview({
               ? evidenceSearchStatus
               : index === 4
                 ? factCheckStatus
-                : "pending",
+                : factCheckStatus === "completed"
+                  ? "completed"
+                  : factCheckStatus === "failed"
+                    ? "failed"
+                    : "pending",
   }));
   const isComplete = steps.every((step) => step.status === "completed");
+  const canOpenReport = isComplete && Boolean(contentItemId);
 
   function handleResume() {
     if (!resumeFile) return;
@@ -312,11 +319,15 @@ export function ProcessingPreview({
             </button>
           ) : (
             <Link
-              className={`${processingStyles.reportButton} ${!isComplete ? processingStyles.disabled : ""}`}
-              aria-disabled={!isComplete}
-              href={isComplete ? "/report" : "#processing-title"}
+              className={`${processingStyles.reportButton} ${!canOpenReport ? processingStyles.disabled : ""}`}
+              aria-disabled={!canOpenReport}
+              href={
+                canOpenReport
+                  ? `/report?contentItemId=${encodeURIComponent(contentItemId ?? "")}`
+                  : "#processing-title"
+              }
               onClick={(event) => {
-                if (!isComplete) event.preventDefault();
+                if (!canOpenReport) event.preventDefault();
               }}
             >
               Перейти к отчету

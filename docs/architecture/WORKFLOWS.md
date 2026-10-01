@@ -83,12 +83,13 @@ only a fact check already saved for the same claim, package, and judgment
 version; retries resume unfinished claims and the idempotent SQL RPC preserves
 the first saved result. Jobs enter `judge_claims` and complete only after all
 claims have current persisted fact checks. Empty claim extractions complete
-without model calls. Report generation and its UI remain out of scope.
+without model calls. Session 13 renders persisted results after this workflow
+completes; report rendering does not add another Workflow stage.
 
 The Session 12 migrations and Worker were deployed to Production on 2026-10-01.
 The endpoint returned HTTP 200 and the deployed Worker exposes the workflow
-binding. A fresh authenticated analysis is still needed to verify the complete
-upload-to-fact-check path; see [Session 12 verification](../testing/SESSION_12.md).
+binding. A fresh authenticated Production analysis completed at `stage =
+complete` in generation 2; see [Session 12 verification](../testing/SESSION_12.md).
 
 The application Worker hosts the workflow binding and a minute cron that
 dispatches queued jobs and reconciles interrupted runs. Supabase remains the
@@ -127,7 +128,8 @@ Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queu
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
 `screen_video`, `transcribe_video`, `extract_claims`, `build_evidence`,
 `judge_claims`, or `complete`. In-scope jobs complete after fact checks and
-citations are saved. Report generation is not part of the workflow yet.
+citations are saved. The `/report` page then assembles the view from those
+persisted rows; it does not run as a Workflow step.
 `generation` counts explicit restarts;
 `attempt` records Workflow step retries. Technical errors returned to the
 browser are fixed messages, never raw provider errors. The step retries
@@ -157,8 +159,7 @@ transcription, and claim extraction update the existing progress messages.
 While dispatch is busy or the job is running, the message carries an animated
 activity marker and `aria-busy`; the animation respects
 `prefers-reduced-motion`. A completed `VIDEO_OUT_OF_SCOPE` result uses the
-shared warning Alert. Evidence search has persisted progress states. Judgment
-and report steps remain pending, and report navigation stays disabled.
+shared warning Alert. Evidence search has persisted progress states. Judgment remains pending until fact checks are saved; report navigation is enabled only after the job completes and carries the selected content item ID.
 
 During a video byte upload, reloading the page interrupts the TUS transfer.
 The same tab restores the paused upload from `sessionStorage` and then shows

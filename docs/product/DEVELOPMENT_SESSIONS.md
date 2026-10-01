@@ -6,12 +6,14 @@ Use one session per bounded objective. Do not begin a later session until the us
 
 Session 5's Production Workflow instances matched persisted job state and the cron succeeded, but fresh authenticated browser/retry/recovery and Figma acceptance remain open. Session 6's migration, Worker deployment/secret, and live transcription are verified in Production. Sessions 6A–7 and their migrations are also deployed; a Production job completed through claim extraction on 2026-09-30. Session 10's evidence-package migration and Worker version `7279e730-7eae-4a78-8126-2a67ebf045ed` are deployed; browser E2E verification remains pending. A fresh off-topic upload is still needed to verify the latest screening-duration fallback against the previously missed MP4. Synthetic and provisional evals do not measure model quality, and the MVP is not release-ready.
 
-Session 11 has a versioned judgment prompt/provider, strict output validation, Evidence Package citation checks, and persistence migration/repository. Migration `20261002100000_fact_check_judgments_v1.sql` was applied to Production and the remote migration history matches local. Session 12's Worker integration and migrations were deployed on 2026-10-01; no live judgment has yet been verified through a fresh Production analysis. Expert-reviewed golden cases do not exist, so verdict quality remains unverified.
+Session 11 has a versioned judgment prompt/provider, strict output validation, Evidence Package citation checks, and persistence migration/repository. Migration `20261002100000_fact_check_judgments_v1.sql` was applied to Production and the remote migration history matches local. Session 12's Worker integration and migrations were deployed on 2026-10-01. A fresh authenticated Production analysis completed successfully at `stage = complete` (job `2fb0f3e6-deea-4e46-a206-9c330ef9b32f`, generation 2); the browser Playwright suite remains incomplete. Expert-reviewed golden cases do not exist, so verdict quality remains unverified.
 
 Session 12 is deployed to Production. Worker version
 `1201cf3a-a17e-4782-a986-e003f24e88bb` returned HTTP 200; both migrations are
-present in the remote migration history. The full upload-to-fact-check path
-still needs authenticated E2E verification. The existing usage interfaces have
+present in the remote migration history. A fresh authenticated analysis
+completed through `stage = complete` (job
+`2fb0f3e6-deea-4e46-a206-9c330ef9b32f`, generation 2). Browser Playwright E2E
+remains incomplete. The existing usage interfaces have
 no concrete service or policy; this session does not invent one. Do not begin
 Session 13 until Session 12 is accepted.
 
@@ -211,7 +213,7 @@ Session 13 until Session 12 is accepted.
 
 ## Session 12 — Full Pipeline
 
-**Status:** The Production Worker runs one durable judgment step per claim and persists validated fact checks before completing the job. The `judge_claims` stage and fact-check writes are fenced in SQL; retries skip judgments already saved for the current Evidence Package and judgment version. Migrations and Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` were deployed on 2026-10-01, and the endpoint returned HTTP 200. `pnpm check`, `pnpm evals`, and `pnpm build` pass. The full Playwright run started 17 tests but stalled without results and was interrupted. Full upload-to-fact-check E2E verification remains open. Confidence is uncalibrated and judgment quality lacks an expert-reviewed golden set. The existing `UsageService` remains an interface only because no usage policy or implementation is defined.
+**Status:** The Production Worker runs one durable judgment step per claim and persists validated fact checks before completing the job. The `judge_claims` stage and fact-check writes are fenced in SQL; retries skip judgments already saved for the current Evidence Package and judgment version. Migrations and Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` were deployed on 2026-10-01, and the endpoint returned HTTP 200. A fresh authenticated Production analysis completed at `stage = complete` (job `2fb0f3e6-deea-4e46-a206-9c330ef9b32f`, generation 2). `pnpm check`, `pnpm evals`, and `pnpm build` pass. The full Playwright run started 17 tests but stalled without results and was interrupted; browser E2E remains incomplete. Confidence is uncalibrated and judgment quality lacks an expert-reviewed golden set. The existing `UsageService` remains an interface only because no usage policy or implementation is defined.
 
 - **Goal:** Connect upload through final persisted fact checks.
 - **Why:** Validate contracts, state transitions, idempotency, and recovery end-to-end.
@@ -225,6 +227,8 @@ Session 13 until Session 12 is accepted.
 - **Definition of Done:** Repeatable end-to-end analysis persists an auditable result.
 
 ## Session 13 — Report UI
+
+**Status:** Connected to persisted analysis data. `/report?contentItemId=...` checks the signed-in owner and requires a completed job at `stage = complete`. It assembles the completion date, uploaded video label, unique cited-source count, verdict distribution, claims, timing, explanations, and source metadata from existing tables. Processing links to the report after fact checks are saved. This is a read-time view, not a separately stored artifact. Browser E2E and final UI acceptance remain open; displayed confidence is an uncalibrated model score.
 
 - **Goal:** Present claims, verdicts, confidence, explanations, timestamps, evidence, and sources.
 - **Why:** Users need an understandable, inspectable result.

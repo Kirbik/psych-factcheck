@@ -79,13 +79,14 @@ test("shows durable progress after reload without claiming AI completion", async
   expect(requests).toBeGreaterThan(0);
   await page.reload();
   await expect(
-    page.getByText(
-      "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
-    ),
+    page.getByText("Проверка завершена. Отчет готов к просмотру."),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Перейти к отчету" }),
-  ).toHaveAttribute("aria-disabled", "true");
+  ).toHaveAttribute("aria-disabled", "false");
+  await expect(
+    page.getByRole("link", { name: "Перейти к отчету" }),
+  ).toHaveAttribute("href", `/report?contentItemId=${contentId}`);
   await expect(
     page.locator("li").filter({ hasText: "Создание транскрипта" }),
   ).toContainText("Готово");
@@ -156,9 +157,7 @@ test("retries a failed generation explicitly", async ({ page }) => {
   ).toBeVisible();
   await page.getByRole("button", { name: "Повторить запуск" }).click();
   await expect(
-    page.getByText(
-      "Транскрипт, утверждения, источники и результаты проверки сохранены. Отчёт пока недоступен.",
-    ),
+    page.getByText("Проверка завершена. Отчет готов к просмотру."),
   ).toBeVisible();
   expect(retried).toBe(true);
 });

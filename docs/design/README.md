@@ -20,7 +20,7 @@ The same image set is also present in the root `design-prototypes/` folder and i
 
 ## Preview routes
 
-These root-level pages are UI prototypes, not fully database-backed product flows:
+These root-level pages are UI prototypes, not fully database-backed product flows, except `/report`, which reads owner-scoped completed analysis data:
 
 - `/auth`
 - `/history`
@@ -29,7 +29,7 @@ These root-level pages are UI prototypes, not fully database-backed product flow
 - `/report`
 - `/profile`
 
-`/new-check` submits the selected video through the authenticated upload API and displays the real upload status. Reloading during upload interrupts byte transfer; the same tab restores the paused progress view without briefly showing the later analysis stages. The resume action is a text link directly under the upload percentage. The user can resume the original file where the browser permits access, or select it again, and can cancel to choose a replacement. After upload, `/new-check` and `/processing?contentItemId=...` show persisted validation, screening, transcription, claim-extraction, evidence-search, and Session 12 judgment status; completed jobs mark judgment complete while report preparation remains pending. While a job is active, its current status message has an animated indicator. A high-confidence out-of-scope result is shown in the shared warning Alert. `/processing` without an ID remains a visual prototype. Session 12 progress code is deployed to Production; a fresh unrelated-video upload is still needed to verify the latest screening-duration fallback.
+`/new-check` submits the selected video through the authenticated upload API and displays the real upload status. Reloading during upload interrupts byte transfer; the same tab restores the paused progress view without briefly showing the later analysis stages. The resume action is a text link directly under the upload percentage. The user can resume the original file where the browser permits access, or select it again, and can cancel to choose a replacement. After upload, `/new-check` and `/processing?contentItemId=...` show persisted validation, screening, transcription, claim-extraction, evidence-search, and Session 12 judgment status; after fact checks persist, processing opens `/report?contentItemId=...`. The report reads persisted claims, judgments, and cited source metadata without writing a separate report artifact. While a job is active, its current status message has an animated indicator. A high-confidence out-of-scope result is shown in the shared warning Alert. `/processing` without an ID remains a visual prototype. Session 12 progress code is deployed to Production; a fresh unrelated-video upload is still needed to verify the latest screening-duration fallback.
 
 The actual `/` route hosts token login/registration UI. `/dashboard` is the currently persisted checks list and single-video upload entry. Login redirects to `/history`; legacy `/ui-preview/*` URLs redirect to the corresponding root-level paths.
 
