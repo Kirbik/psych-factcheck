@@ -18,8 +18,11 @@
 - `pnpm build` — passed with Next.js 16.3.5.
 - `pnpm format:check` — repository-wide check reports pre-existing formatting violations across unrelated files; all changed TypeScript, JSON, and Markdown files were formatted. The SQL migration is not handled by the configured Prettier parser.
 
-## Remaining verification
+## Production verification — 2026-10-01
 
-The Production schema readback on 2026-10-01 returned `PGRST205` for both embedding tables and `PGRST202` for the search RPC, confirming Session 9 is not deployed. The migration and live semantic P@5 have not been verified because the environment has no Supabase CLI/login token and no OpenAI API key. `pnpm evidence:embed` is now prepared to embed changed chunks and run the three-case semantic P@5 against the configured target, but requires an exact target project ref and explicit confirmation token. It also requires the Session 9 migration to be applied first.
+- Applied `20261001120000_embeddings_retrieval_v1.sql` to the linked Production project. A dry-run confirmed it was the only pending migration.
+- `pnpm evidence:embed` wrote 23 evidence chunk embeddings; no current vectors were reused.
+- The live semantic search completed for all three retrieval fixture cases. Mean P@5 was 0.467 (per-case 0.400, 0.600, 0.400).
+- The local pgvector integration test remains unexecuted because `SUPABASE_TEST_DB_URL` is not configured; the Production migration and live search were verified directly.
 
-Applying the migration and writing vectors changes Production schema/data and incurs OpenAI API usage. Do not run the migration or `pnpm evidence:embed` until those actions are explicitly approved. The current relevance fixture is small and has not been expert-reviewed; its scores are not scientific ground truth.
+The relevance fixture is small and has not been expert-reviewed. Its score is an initial operational baseline, not a quality sign-off or scientific ground truth.
