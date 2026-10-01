@@ -14,6 +14,110 @@ export type Database = {
   };
   public: {
     Tables: {
+      evidence_chunks: {
+        Row: {
+          chunk_key: string;
+          content: string;
+          content_sha256: string;
+          created_at: string;
+          id: string;
+          language: string;
+          locator: string;
+          provenance: Json;
+          source_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          chunk_key: string;
+          content: string;
+          content_sha256: string;
+          created_at?: string;
+          id?: string;
+          language: string;
+          locator: string;
+          provenance?: Json;
+          source_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          chunk_key?: string;
+          content?: string;
+          content_sha256?: string;
+          created_at?: string;
+          id?: string;
+          language?: string;
+          locator?: string;
+          provenance?: Json;
+          source_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_chunks_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sources: {
+        Row: {
+          authors: string[];
+          canonical_url: string;
+          created_at: string;
+          doi: string | null;
+          id: string;
+          journal: string;
+          license_code: string;
+          license_url: string;
+          provenance: Json;
+          published_at: string;
+          publisher: string;
+          source_key: string;
+          source_type: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          authors: string[];
+          canonical_url: string;
+          created_at?: string;
+          doi?: string | null;
+          id?: string;
+          journal: string;
+          license_code: string;
+          license_url: string;
+          provenance?: Json;
+          published_at: string;
+          publisher: string;
+          source_key: string;
+          source_type: string;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          authors?: string[];
+          canonical_url?: string;
+          created_at?: string;
+          doi?: string | null;
+          id?: string;
+          journal?: string;
+          license_code?: string;
+          license_url?: string;
+          provenance?: Json;
+          published_at?: string;
+          publisher?: string;
+          source_key?: string;
+          source_type?: string;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       video_screenings: {
         Row: {
           classifier_model: string;
@@ -392,6 +496,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      import_evidence_seed: {
+        Args: { p_chunks: Json; p_sources: Json };
+        Returns: { chunk_count: number; source_count: number }[];
+      };
       advance_analysis_job: {
         Args: {
           p_attempt?: number;

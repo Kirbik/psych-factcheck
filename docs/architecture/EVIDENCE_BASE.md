@@ -1,0 +1,64 @@
+# Evidence Base v0
+
+## Scope
+
+Session 8 adds a small, shared catalog of curated psychology publications and
+verbatim evidence passages. It stores publication metadata, current editorial
+status, reuse license, passage text, section locator, language, and a SHA-256
+digest of the stored text. It does not retrieve passages for claims, create
+embeddings, or produce judgments.
+
+## Tables and access
+
+- `sources` has one stable DOI-derived `source_key` per publication. The unique
+  DOI and source key prevent duplicate imports. `status` is `active`,
+  `corrected`, `retracted`, or `withdrawn`.
+- `evidence_chunks` belongs to a source through a non-null foreign key with
+  `ON DELETE RESTRICT`; `(source_id, chunk_key)` is unique. Each passage retains
+  its section/abstract locator and content hash.
+- RLS permits authenticated users to read the shared catalog. Anonymous reads
+  and client writes are denied. Only the service role can call the transactional
+  import function.
+
+The service-only `import_evidence_seed` RPC upserts source and chunk rows in one
+transaction. A malformed source or a chunk that references an unknown source
+rolls back the whole import. Re-running the same seed updates the same stable
+rows. A source already marked corrected, retracted, or withdrawn is not silently
+reset to active by an old seed.
+
+## Curated seed and licenses
+
+`src/server/evidence/seed-v0.ts` is the reviewed manifest for ten publications
+and 23 short passages. Runtime Zod validation rejects duplicate identifiers,
+unknown source references, DOI/key mismatches, invalid URLs, and unapproved
+license identifiers. The importer computes a SHA-256 digest from the exact
+passage text before sending it to PostgreSQL.
+
+The seed includes one metadata-only SAGE record under CC BY-NC 4.0 and article
+metadata plus short passages from CC BY 4.0 records. No text passage is stored
+for the noncommercial-only publication. Each record stores its license URL and
+the date it was checked; every displayed citation must still attribute the
+authors, article, and canonical source URL. Stored passages are verbatim and
+are not model-generated summaries. The SQL import also verifies each passage's
+SHA-256 digest against its UTF-8 text. Re-check license/status metadata before
+adding or refreshing a source.
+
+Import is explicit and never runs during application startup:
+
+```bash
+pnpm evidence:seed
+```
+
+Before running it, apply the migration to the intended database and inspect
+`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the local
+environment. The command also requires
+`EVIDENCE_IMPORT_CONFIRM=IMPORT_EVIDENCE_SEED_V0`; it performs a privileged,
+remote-capable database write. It prints only import counts and never prints
+credentials or passage contents.
+
+## Next stage
+
+Session 9 may add versioned vectors keyed to `evidence_chunks.id`, with a
+recorded embedding model and dimension. Original passages and source
+provenance remain canonical. Retrieval, metadata filtering, reranking, Evidence
+Packages, and verdicts are outside Session 8.

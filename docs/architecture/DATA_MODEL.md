@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, three token-auth tables, and a private video bucket. Evidence, fact-check, and billing entities remain future schema.
+This document distinguishes the current Supabase schema from the planned analysis and billing model. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. Current migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, three token-auth tables, and a private video bucket. Fact-check and billing entities remain future schema.
 
 ## Identity and content
 
@@ -73,16 +73,22 @@ This document distinguishes the current Supabase schema from the planned analysi
 ### `sources`
 
 - **Purpose:** canonical metadata for a real publication or authoritative resource.
-- **Important fields:** `id`, title, authors, publication date, DOI/URL, source type, status, provenance.
-- **Relations/ownership:** has evidence chunks; shared system-curated data, not user-owned.
-- **Lifecycle:** imported, reviewed, corrected/versioned, optionally withdrawn/retracted without erasing audit history.
+- **Implemented fields:** `id`, stable DOI-derived `source_key`, `title`, `authors`, `journal`, `publisher`, `published_at`, nullable `doi`, `canonical_url`, `source_type`, editorial `status`, `license_code`, `license_url`, `provenance`, and timestamps.
+- **Relations/ownership:** shared curated catalog, not user-owned; has evidence chunks.
+- **Lifecycle:** imported idempotently from a reviewed seed. Corrected/retracted/withdrawn status is not reset by an older seed. Metadata retains canonical publication and reuse-license links.
 
 ### `evidence_chunks`
 
-- **Purpose:** retrievable source passages with vector representation.
-- **Important fields:** `id`, `source_id`, text, location, metadata, embedding, embedding model/version.
-- **Relations/ownership:** belongs to source; linked by fact-check evidence. Shared curated data.
-- **Lifecycle:** generated from a source version; re-embedded/versioned when models change.
+- **Purpose:** concise, traceable source passages for later retrieval.
+- **Implemented fields:** `id`, `source_id`, stable `chunk_key`, verbatim `content`, section `locator`, `language`, SHA-256 content digest, provenance, and timestamps.
+- **Relations/ownership:** belongs to a shared source; deletion of a referenced source is restricted.
+- **Lifecycle:** the Session 8 seed contains 23 verbatim passages from 9 publications and metadata for 10 publications. The transactional service-role import validates source links and updates stable rows on repeat. Authenticated users can read the shared catalog; clients cannot write it. Embeddings and vector indexes are future scope.
+
+### Future evidence extensions
+
+- Session 9 may add versioned vectors and vector indexes for `evidence_chunks`.
+- Fact-check persistence will link judgments to a frozen set of evidence chunk IDs.
+- Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
 
 ### `fact_checks`
 

@@ -142,6 +142,8 @@ Session 5's Production Workflow instances matched persisted job state and the cr
 
 ## Session 8 — Evidence Base v0
 
+**Status:** Implemented locally with a reviewed seed of 10 publications and 23 verbatim passages. One SAGE source is metadata-only under CC BY-NC 4.0. The migration/import have not been applied to Production; see [Session 8 checks and limits](../testing/SESSION_8.md).
+
 - **Goal:** Create a small traceable source/chunk store and controlled import mechanism.
 - **Why:** Fact checking requires real evidence, not model memory.
 - **Scope:** `sources`, `evidence_chunks`, provenance/status fields, idempotent validated seed/import.
