@@ -14,292 +14,6 @@ export type Database = {
   };
   public: {
     Tables: {
-      evidence_chunks: {
-        Row: {
-          chunk_key: string;
-          content: string;
-          content_sha256: string;
-          created_at: string;
-          id: string;
-          language: string;
-          locator: string;
-          provenance: Json;
-          source_id: string;
-          updated_at: string;
-        };
-        Insert: {
-          chunk_key: string;
-          content: string;
-          content_sha256: string;
-          created_at?: string;
-          id?: string;
-          language: string;
-          locator: string;
-          provenance?: Json;
-          source_id: string;
-          updated_at?: string;
-        };
-        Update: {
-          chunk_key?: string;
-          content?: string;
-          content_sha256?: string;
-          created_at?: string;
-          id?: string;
-          language?: string;
-          locator?: string;
-          provenance?: Json;
-          source_id?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "evidence_chunks_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "sources";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      sources: {
-        Row: {
-          authors: string[];
-          canonical_url: string;
-          created_at: string;
-          doi: string | null;
-          id: string;
-          journal: string;
-          license_code: string;
-          license_url: string;
-          provenance: Json;
-          published_at: string;
-          publisher: string;
-          source_key: string;
-          source_type: string;
-          status: string;
-          title: string;
-          updated_at: string;
-        };
-        Insert: {
-          authors: string[];
-          canonical_url: string;
-          created_at?: string;
-          doi?: string | null;
-          id?: string;
-          journal: string;
-          license_code: string;
-          license_url: string;
-          provenance?: Json;
-          published_at: string;
-          publisher: string;
-          source_key: string;
-          source_type: string;
-          status?: string;
-          title: string;
-          updated_at?: string;
-        };
-        Update: {
-          authors?: string[];
-          canonical_url?: string;
-          created_at?: string;
-          doi?: string | null;
-          id?: string;
-          journal?: string;
-          license_code?: string;
-          license_url?: string;
-          provenance?: Json;
-          published_at?: string;
-          publisher?: string;
-          source_key?: string;
-          source_type?: string;
-          status?: string;
-          title?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      video_screenings: {
-        Row: {
-          classifier_model: string;
-          confidence: number;
-          content_item_id: string;
-          created_at: string;
-          decision: string;
-          id: string;
-          instructions_version: string;
-          provider: string;
-          rationale: string;
-          reason_code: string;
-          sample_duration_seconds: number;
-          sample_model: string;
-          screening_version: string;
-        };
-        Insert: {
-          classifier_model: string;
-          confidence: number;
-          content_item_id: string;
-          created_at?: string;
-          decision: string;
-          id?: string;
-          instructions_version: string;
-          provider: string;
-          rationale: string;
-          reason_code: string;
-          sample_duration_seconds: number;
-          sample_model: string;
-          screening_version: string;
-        };
-        Update: {
-          classifier_model?: string;
-          confidence?: number;
-          content_item_id?: string;
-          created_at?: string;
-          decision?: string;
-          id?: string;
-          instructions_version?: string;
-          provider?: string;
-          rationale?: string;
-          reason_code?: string;
-          sample_duration_seconds?: number;
-          sample_model?: string;
-          screening_version?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "video_screenings_content_item_id_fkey";
-            columns: ["content_item_id"];
-            isOneToOne: false;
-            referencedRelation: "content_items";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      transcripts: {
-        Row: {
-          content_item_id: string;
-          created_at: string;
-          id: string;
-          language: string | null;
-          model: string;
-          pipeline_version: string;
-          provider: string;
-          segments: Json;
-        };
-        Insert: {
-          content_item_id: string;
-          created_at?: string;
-          id?: string;
-          language?: string | null;
-          model: string;
-          pipeline_version?: string;
-          provider: string;
-          segments: Json;
-        };
-        Update: {
-          content_item_id?: string;
-          created_at?: string;
-          id?: string;
-          language?: string | null;
-          model?: string;
-          pipeline_version?: string;
-          provider?: string;
-          segments?: Json;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "transcripts_content_item_id_fkey";
-            columns: ["content_item_id"];
-            isOneToOne: false;
-            referencedRelation: "content_items";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      claim_extractions: {
-        Row: {
-          created_at: string;
-          extraction_version: string;
-          id: string;
-          instructions_version: string;
-          model: string;
-          provider: string;
-          schema_version: string;
-          transcript_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          extraction_version: string;
-          id?: string;
-          instructions_version: string;
-          model: string;
-          provider: string;
-          schema_version: string;
-          transcript_id: string;
-        };
-        Update: {
-          created_at?: string;
-          extraction_version?: string;
-          id?: string;
-          instructions_version?: string;
-          model?: string;
-          provider?: string;
-          schema_version?: string;
-          transcript_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "claim_extractions_transcript_id_fkey";
-            columns: ["transcript_id"];
-            isOneToOne: false;
-            referencedRelation: "transcripts";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      claims: {
-        Row: {
-          claim_extraction_id: string;
-          claim_type: string;
-          created_at: string;
-          end_seconds: number;
-          id: string;
-          normalized_text: string;
-          ordinal: number;
-          original_text: string;
-          start_seconds: number;
-        };
-        Insert: {
-          claim_extraction_id: string;
-          claim_type: string;
-          created_at?: string;
-          end_seconds: number;
-          id?: string;
-          normalized_text: string;
-          ordinal: number;
-          original_text: string;
-          start_seconds: number;
-        };
-        Update: {
-          claim_extraction_id?: string;
-          claim_type?: string;
-          created_at?: string;
-          end_seconds?: number;
-          id?: string;
-          normalized_text?: string;
-          ordinal?: number;
-          original_text?: string;
-          start_seconds?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "claims_claim_extraction_id_fkey";
-            columns: ["claim_extraction_id"];
-            isOneToOne: false;
-            referencedRelation: "claim_extractions";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       analysis_jobs: {
         Row: {
           attempt: number;
@@ -423,6 +137,91 @@ export type Database = {
         };
         Relationships: [];
       };
+      claim_extractions: {
+        Row: {
+          created_at: string;
+          extraction_version: string;
+          id: string;
+          instructions_version: string;
+          model: string;
+          provider: string;
+          schema_version: string;
+          transcript_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          extraction_version: string;
+          id?: string;
+          instructions_version: string;
+          model: string;
+          provider: string;
+          schema_version: string;
+          transcript_id: string;
+        };
+        Update: {
+          created_at?: string;
+          extraction_version?: string;
+          id?: string;
+          instructions_version?: string;
+          model?: string;
+          provider?: string;
+          schema_version?: string;
+          transcript_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "claim_extractions_transcript_id_fkey";
+            columns: ["transcript_id"];
+            isOneToOne: false;
+            referencedRelation: "transcripts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      claims: {
+        Row: {
+          claim_extraction_id: string;
+          claim_type: string;
+          created_at: string;
+          end_seconds: number;
+          id: string;
+          normalized_text: string;
+          ordinal: number;
+          original_text: string;
+          start_seconds: number;
+        };
+        Insert: {
+          claim_extraction_id: string;
+          claim_type: string;
+          created_at?: string;
+          end_seconds: number;
+          id?: string;
+          normalized_text: string;
+          ordinal: number;
+          original_text: string;
+          start_seconds: number;
+        };
+        Update: {
+          claim_extraction_id?: string;
+          claim_type?: string;
+          created_at?: string;
+          end_seconds?: number;
+          id?: string;
+          normalized_text?: string;
+          ordinal?: number;
+          original_text?: string;
+          start_seconds?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "claims_claim_extraction_id_fkey";
+            columns: ["claim_extraction_id"];
+            isOneToOne: false;
+            referencedRelation: "claim_extractions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       content_items: {
         Row: {
           created_at: string;
@@ -473,6 +272,53 @@ export type Database = {
           },
         ];
       };
+      evidence_chunks: {
+        Row: {
+          chunk_key: string;
+          content: string;
+          content_sha256: string;
+          created_at: string;
+          id: string;
+          language: string;
+          locator: string;
+          provenance: Json;
+          source_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          chunk_key: string;
+          content: string;
+          content_sha256: string;
+          created_at?: string;
+          id?: string;
+          language: string;
+          locator: string;
+          provenance?: Json;
+          source_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          chunk_key?: string;
+          content?: string;
+          content_sha256?: string;
+          created_at?: string;
+          id?: string;
+          language?: string;
+          locator?: string;
+          provenance?: Json;
+          source_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "evidence_chunks_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           created_at: string;
@@ -491,15 +337,165 @@ export type Database = {
         };
         Relationships: [];
       };
+      sources: {
+        Row: {
+          authors: string[];
+          canonical_url: string;
+          created_at: string;
+          doi: string | null;
+          id: string;
+          journal: string;
+          license_code: string;
+          license_url: string;
+          provenance: Json;
+          published_at: string;
+          publisher: string;
+          source_key: string;
+          source_type: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          authors: string[];
+          canonical_url: string;
+          created_at?: string;
+          doi?: string | null;
+          id?: string;
+          journal: string;
+          license_code: string;
+          license_url: string;
+          provenance?: Json;
+          published_at: string;
+          publisher: string;
+          source_key: string;
+          source_type: string;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          authors?: string[];
+          canonical_url?: string;
+          created_at?: string;
+          doi?: string | null;
+          id?: string;
+          journal?: string;
+          license_code?: string;
+          license_url?: string;
+          provenance?: Json;
+          published_at?: string;
+          publisher?: string;
+          source_key?: string;
+          source_type?: string;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      transcripts: {
+        Row: {
+          content_item_id: string;
+          created_at: string;
+          id: string;
+          language: string | null;
+          model: string;
+          pipeline_version: string;
+          provider: string;
+          segments: Json;
+        };
+        Insert: {
+          content_item_id: string;
+          created_at?: string;
+          id?: string;
+          language?: string | null;
+          model: string;
+          pipeline_version?: string;
+          provider: string;
+          segments: Json;
+        };
+        Update: {
+          content_item_id?: string;
+          created_at?: string;
+          id?: string;
+          language?: string | null;
+          model?: string;
+          pipeline_version?: string;
+          provider?: string;
+          segments?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_content_item_id_fkey";
+            columns: ["content_item_id"];
+            isOneToOne: false;
+            referencedRelation: "content_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      video_screenings: {
+        Row: {
+          classifier_model: string;
+          confidence: number;
+          content_item_id: string;
+          created_at: string;
+          decision: string;
+          id: string;
+          instructions_version: string;
+          provider: string;
+          rationale: string;
+          reason_code: string;
+          sample_duration_seconds: number;
+          sample_model: string;
+          screening_version: string;
+        };
+        Insert: {
+          classifier_model: string;
+          confidence: number;
+          content_item_id: string;
+          created_at?: string;
+          decision: string;
+          id?: string;
+          instructions_version: string;
+          provider: string;
+          rationale: string;
+          reason_code: string;
+          sample_duration_seconds: number;
+          sample_model: string;
+          screening_version: string;
+        };
+        Update: {
+          classifier_model?: string;
+          confidence?: number;
+          content_item_id?: string;
+          created_at?: string;
+          decision?: string;
+          id?: string;
+          instructions_version?: string;
+          provider?: string;
+          rationale?: string;
+          reason_code?: string;
+          sample_duration_seconds?: number;
+          sample_model?: string;
+          screening_version?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "video_screenings_content_item_id_fkey";
+            columns: ["content_item_id"];
+            isOneToOne: false;
+            referencedRelation: "content_items";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      import_evidence_seed: {
-        Args: { p_chunks: Json; p_sources: Json };
-        Returns: { chunk_count: number; source_count: number }[];
-      };
       advance_analysis_job: {
         Args: {
           p_attempt?: number;
@@ -532,27 +528,12 @@ export type Database = {
           isSetofReturn: true;
         };
       };
-      set_analysis_job_stage: {
-        Args: {
-          p_attempt?: number;
-          p_generation: number;
-          p_job_id: string;
-          p_run_id: string;
-          p_stage: string;
-        };
-        Returns: boolean;
-      };
-      save_claim_extraction: {
-        Args: {
-          p_claims: Json;
-          p_extraction_version: string;
-          p_instructions_version: string;
-          p_model: string;
-          p_provider: string;
-          p_schema_version: string;
-          p_transcript_id: string;
-        };
-        Returns: string;
+      import_evidence_seed: {
+        Args: { p_chunks: Json; p_sources: Json };
+        Returns: {
+          chunk_count: number;
+          source_count: number;
+        }[];
       };
       request_analysis_job: {
         Args: { p_content_item_id: string; p_retry_generation?: number };
@@ -578,6 +559,28 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      save_claim_extraction: {
+        Args: {
+          p_claims: Json;
+          p_extraction_version: string;
+          p_instructions_version: string;
+          p_model: string;
+          p_provider: string;
+          p_schema_version: string;
+          p_transcript_id: string;
+        };
+        Returns: string;
+      };
+      set_analysis_job_stage: {
+        Args: {
+          p_attempt?: number;
+          p_generation: number;
+          p_job_id: string;
+          p_run_id: string;
+          p_stage: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: {

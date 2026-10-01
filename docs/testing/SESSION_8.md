@@ -15,16 +15,20 @@ Implemented locally:
   because its CC BY-NC 4.0 license does not permit general commercial reuse.
 - Query repository methods for active sources, DOI lookup, and source passages.
 
-The migration and seed have **not** been applied to Production. A seed command
-attempt returned `fetch failed` before receiving a database response; no import
-was confirmed. The command now requires an explicit target confirmation token.
+The migration `20261001100000_evidence_base_v0.sql` was applied to the linked
+Production project on 2026-10-01. `supabase migration list --linked` confirmed
+that the local and remote versions match. The evidence seed has **not** been
+imported; an earlier importer attempt returned `fetch failed` before receiving
+a database response, so no import was confirmed. The command now requires an
+explicit target confirmation token.
 
 ## Checks
 
 - `pnpm lint`: PASS; two pre-existing `next/no-location-assign` warnings remain
   in `src/components/preview/history-preview.tsx`.
 - `pnpm typecheck`: PASS after regenerating stale Next route types with
-  `node node_modules/next/dist/bin/next typegen`.
+  `node node_modules/next/dist/bin/next typegen` and regenerating public DB
+  types from the deployed Supabase schema.
 - `pnpm test`: PASS — 181 passed, 4 skipped; 27 files passed, 2 environment-
   gated files skipped.
 - Targeted Prettier check on changed TypeScript, JavaScript, JSON, and Markdown:
@@ -44,5 +48,6 @@ build checks were not applicable.
 - The local PGlite test applies the migration and exercises transaction,
   content-hash, null-input, role-grant, and catalog-read behavior; it does not
   verify hosted Supabase permissions or connectivity.
-- Apply the reviewed migration and run `pnpm evidence:seed` only after checking
-  the configured Supabase URL and service-role target.
+- Run `pnpm evidence:seed` only after checking the configured Supabase URL and
+  service-role target. This is a separate data import; the schema migration is
+  already deployed.

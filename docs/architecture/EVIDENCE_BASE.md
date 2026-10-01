@@ -8,6 +8,10 @@ status, reuse license, passage text, section locator, language, and a SHA-256
 digest of the stored text. It does not retrieve passages for claims, create
 embeddings, or produce judgments.
 
+The schema migration was applied to the linked Production project on
+2026-10-01. The curated seed is not imported yet, so the catalog tables are
+deployed but currently unpopulated by this seed.
+
 ## Tables and access
 
 - `sources` has one stable DOI-derived `source_key` per publication. The unique
