@@ -1,8 +1,9 @@
 import { z } from "zod";
 import type { TranscriptionProvider, TranscriptionResult } from "./providers";
+import { MAX_VIDEO_SIZE_BYTES } from "@/server/storage/video-constraints";
 
 export const OPENAI_TRANSCRIPTION_MODEL = "whisper-1";
-export const MAX_OPENAI_TRANSCRIPTION_BYTES = 25_000_000;
+export const MAX_OPENAI_TRANSCRIPTION_BYTES = MAX_VIDEO_SIZE_BYTES;
 
 const transcriptionResponseSchema = z.object({
   language: z.string().min(1).nullable().optional(),

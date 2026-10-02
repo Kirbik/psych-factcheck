@@ -102,7 +102,7 @@ export function VideoUploadForm() {
       }}
     >
       <UploadDropzone
-        description="Форматы: .mp4, .webm и .mov, до 100 МБ. Файл останется доступен только вам."
+        description="Форматы: .mp4, .webm и .mov, до 25 МБ. Файл останется доступен только вам."
         title="Загрузите видео для проверки"
       >
         <label className="button button--secondary" htmlFor="video-upload-file">

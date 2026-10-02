@@ -61,6 +61,8 @@ export const workflowMessages = {
 } as const;
 
 export const workflowErrorMessages: Readonly<Record<string, string>> = {
+  TRANSCRIPTION_FILE_TOO_LARGE:
+    "Видео превышает лимит 25 МБ. Сожмите файл и загрузите его заново.",
   CLAIM_OUTPUT_INVALID:
     "Не удалось проверить утверждения по тексту транскрипта. Повторите запуск.",
   OPENAI_UNAVAILABLE:

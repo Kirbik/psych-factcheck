@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { MAX_VIDEO_SIZE_BYTES } from "./video-constraints";
 
 export const VIDEO_BUCKET = "videos";
-export const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
+export { MAX_VIDEO_SIZE_BYTES } from "./video-constraints";
 
 const fileNameSchema = z
   .string()
@@ -68,7 +69,7 @@ export function validateVideoMetadata(fileName: string, fileSizeBytes: number) {
     fileSizeBytes <= 0 ||
     fileSizeBytes > MAX_VIDEO_SIZE_BYTES
   ) {
-    throw new VideoValidationError("Размер видео не должен превышать 100 МБ.");
+    throw new VideoValidationError("Размер видео не должен превышать 25 МБ.");
   }
 
   return {

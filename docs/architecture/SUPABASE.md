@@ -129,9 +129,11 @@ derived from the validated extension and container signature, not from the
 browser. Storage cleanup is attempted on validation or database failures when
 safe to do so.
 
-The upload application accepts MP4, WebM, and MOV files up to 100 MiB. The
-analysis workflow supports MP4/WebM up to 25 MB; unsupported MOV and larger
-files fail explicitly during workflow validation. After a successful upload,
+The Storage bucket and database schema permit up to 100 MiB, but the upload
+application accepts files only up to 25 MB so an upload cannot pass validation
+and then fail the transcription provider's size check. The analysis workflow
+supports MP4/WebM up to 25 MB; unsupported MOV files fail explicitly during
+workflow validation. After a successful upload,
 the `content_items` row remains `pending` even when the analysis job completes;
 no content lifecycle transition to `ready` or `failed` is currently wired.
 Apply migrations with the reviewed local/hosted workflow above. The topic

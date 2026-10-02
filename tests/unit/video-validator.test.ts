@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_VIDEO_SIZE_BYTES,
   validateVideoBytes,
   validateVideoFile,
   validateVideoMetadata,
@@ -29,9 +30,10 @@ describe("video validator", () => {
   });
 
   it("accepts the configured maximum and rejects a larger declared size", () => {
-    expect(() => validateVideoMetadata("lesson.mp4", 100 * 1024 * 1024)).not.toThrow();
-    expect(() => validateVideoMetadata("lesson.mp4", 100 * 1024 * 1024 + 1)).toThrow(
-      "не должен превышать 100 МБ",
+    expect(MAX_VIDEO_SIZE_BYTES).toBe(25_000_000);
+    expect(() => validateVideoMetadata("lesson.mp4", MAX_VIDEO_SIZE_BYTES)).not.toThrow();
+    expect(() => validateVideoMetadata("lesson.mp4", MAX_VIDEO_SIZE_BYTES + 1)).toThrow(
+      "не должен превышать 25 МБ",
     );
   });
 

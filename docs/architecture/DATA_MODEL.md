@@ -36,7 +36,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 ### `content_items`
 
 - **Purpose:** one uploaded or future provider-sourced media item.
-- **Implemented fields:** `id`, `user_id`, `type`, `status`, `storage_path`, `original_file_name`, `file_size_bytes`, `file_mime_type`, `upload_id`, `created_at`, `updated_at`. `type` is currently the `video` enum; `status` is constrained to `pending`, `ready`, or `failed`; maximum file size is 100 MiB; `(user_id, upload_id)` is unique; storage paths must begin with the owner UUID.
+- **Implemented fields:** `id`, `user_id`, `type`, `status`, `storage_path`, `original_file_name`, `file_size_bytes`, `file_mime_type`, `upload_id`, `created_at`, `updated_at`. `type` is currently the `video` enum; `status` is constrained to `pending`, `ready`, or `failed`; the database and Storage bucket permit up to 100 MiB, while the upload API caps new videos at the transcription provider's 25 MB limit; `(user_id, upload_id)` is unique; storage paths must begin with the owner UUID.
 - **Relations/ownership:** belongs to profile; has transcripts and analysis jobs. User-owned.
 - **Lifecycle:** created after a successful Storage upload. The upload API is idempotent per user/upload ID and attempts storage cleanup if DB creation fails. New records remain `pending`; no pipeline currently advances them to `ready` or `failed`.
 
