@@ -28,7 +28,7 @@ import {
   CLAIM_EXTRACTION_SCHEMA_VERSION,
   CLAIM_EXTRACTION_VERSION,
 } from "@/server/ai/claim-extraction";
-import { CLAIM_EXTRACTION_INSTRUCTIONS_VERSION } from "@/server/ai/prompts/claim-extraction-v1";
+import { CLAIM_EXTRACTION_INSTRUCTIONS_VERSION } from "@/server/ai/prompts/claim-extraction-v2";
 import {
   SCREENING_CLASSIFIER_MODEL,
   SCREENING_INSTRUCTIONS_VERSION,

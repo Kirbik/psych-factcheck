@@ -37,11 +37,16 @@ version; a version bump triggers screening on the next eligible fresh run.
 
 Session 7 adds OpenAI `gpt-4o-mini` structured claim extraction after
 transcription. The versioned instruction at
-`src/server/ai/prompts/claim-extraction-v1.ts` tells the model to extract
-checkable propositions, preserve qualification and causal strength, omit
-non-claims, and treat transcript text as untrusted data. The model returns an
-exact source excerpt and inclusive transcript segment indexes; server code
-validates the excerpt and derives timestamps from the persisted segments.
+`src/server/ai/prompts/claim-extraction-v2.ts` tells the model to consider
+neighboring segments when interpreting meaning and include only checkable
+claims directly relevant to the project's topic scope. It preserves
+qualification and causal strength, omits unrelated statements, and treats
+transcript text as untrusted data. The model returns an exact source excerpt
+and inclusive transcript segment indexes; server code validates the excerpt
+and derives timestamps from the persisted segments. The extraction artifact
+version remains `claim-extraction-v1` so existing reports and idempotent
+records remain readable; new extractions record instructions version
+`claim-extraction-instructions-v3`.
 Responses use the OpenAI Responses API with strict JSON Schema and local Zod
 validation. One repair call is allowed for invalid or transcript-inconsistent
 output. Transcript input is capped at 100,000 characters; larger transcripts

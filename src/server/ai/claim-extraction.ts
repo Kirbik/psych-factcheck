@@ -4,7 +4,7 @@ import {
   type ClaimExtractionResult,
   type TranscriptSegment,
 } from "./providers";
-import { CLAIM_EXTRACTION_INSTRUCTIONS_VERSION } from "./prompts/claim-extraction-v1";
+import { CLAIM_EXTRACTION_INSTRUCTIONS_VERSION } from "./prompts/claim-extraction-v2";
 
 export const CLAIM_EXTRACTION_VERSION = "claim-extraction-v1";
 export const CLAIM_EXTRACTION_SCHEMA_VERSION = "claim-extraction-schema-v1";
