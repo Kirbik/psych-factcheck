@@ -13,20 +13,20 @@ import {
 } from "mediabunny";
 import { z } from "zod";
 
-export const SCREENING_VERSION = "topic-screening-v1";
+export const SCREENING_VERSION = "topic-screening-v2";
 export const SCREENING_SAMPLE_MODEL = "whisper-1";
 export const SCREENING_CLASSIFIER_MODEL = "gpt-4o-mini";
-export const SCREENING_INSTRUCTIONS_VERSION = "topic-screening-instructions-v1";
+export const SCREENING_INSTRUCTIONS_VERSION = "topic-screening-instructions-v2";
 export const SCREENING_SAMPLE_CLIP_SECONDS = 4;
 export const SCREENING_SAMPLE_CLIP_COUNT = 3;
 export const SCREENING_MAX_SAMPLE_BYTES = 2_000_000;
 export const SCREENING_REJECTION_CONFIDENCE = 0.9;
 
 export const screeningReasonCodes = [
-  "no_psychology_content",
+  "no_target_topic_content",
   "incidental_mention",
   "no_checkable_claims",
-  "psychology_claims_present",
+  "target_topics_present",
   "unclear_sample",
   "sample_unavailable",
   "provider_error",
@@ -69,8 +69,7 @@ export type ScreeningAudioSample = {
 };
 
 export function getScreeningSampleRanges(durationSeconds: number) {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0)
-    return [];
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return [];
 
   // Short clips are cheap to screen in full and avoid silently bypassing the
   // topic check for videos that would otherwise go straight to transcription.
@@ -80,7 +79,10 @@ export function getScreeningSampleRanges(durationSeconds: number) {
 
   const clipDuration = SCREENING_SAMPLE_CLIP_SECONDS;
   const sampleCenters = [0.1, 0.5, 0.9].map((fraction) =>
-    Math.min(durationSeconds - clipDuration / 2, Math.max(clipDuration / 2, durationSeconds * fraction)),
+    Math.min(
+      durationSeconds - clipDuration / 2,
+      Math.max(clipDuration / 2, durationSeconds * fraction),
+    ),
   );
 
   return sampleCenters.map((center) => ({
@@ -196,7 +198,10 @@ export async function extractScreeningAudioSample(
       fileName: isMp4 ? "screening-sample.mp4" : "screening-sample.webm",
       contentType: isMp4 ? "audio/mp4" : "audio/webm",
       durationSeconds: Math.min(
-        ranges.reduce((total, range) => total + range.endSeconds - range.startSeconds, 0),
+        ranges.reduce(
+          (total, range) => total + range.endSeconds - range.startSeconds,
+          0,
+        ),
         durationSeconds,
       ),
     };

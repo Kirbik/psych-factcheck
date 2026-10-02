@@ -201,7 +201,7 @@ function claimExtractionProvider() {
 function screening(overrides: Partial<VideoScreening> = {}): VideoScreening {
   return {
     decision: "relevant",
-    reasonCode: "psychology_claims_present",
+    reasonCode: "target_topics_present",
     confidence: 0.95,
     rationale: "Сэмплы содержат содержательное обсуждение психологии.",
     sampleDurationSeconds: 12,
@@ -262,13 +262,13 @@ describe("workflow payload and response contracts", () => {
         job: job({ status: "completed", error_code: "VIDEO_OUT_OF_SCOPE" }),
         screening: {
           decision: "unrelated",
-          reasonCode: "no_psychology_content",
+          reasonCode: "no_target_topic_content",
           message: "Видео не подходит для психологического фактчекинга.",
         },
       }).screening,
     ).toEqual({
       decision: "unrelated",
-      reasonCode: "no_psychology_content",
+      reasonCode: "no_target_topic_content",
       message: "Видео не подходит для психологического фактчекинга.",
     });
   });
@@ -874,7 +874,7 @@ describe("workflow execution", () => {
     const screen = vi.fn<ScreenVideo>().mockResolvedValue(
       screening({
         decision: "unrelated",
-        reasonCode: "no_psychology_content",
+        reasonCode: "no_target_topic_content",
         confidence: 0.97,
       }),
     );

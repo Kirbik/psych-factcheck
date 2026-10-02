@@ -35,6 +35,9 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     await db.exec(await sqlFile("20260927100000_analysis_workflow.sql"));
     await db.exec(await sqlFile("20260930120000_transcription_v1.sql"));
     await db.exec(await sqlFile("20260930140000_video_topic_screening.sql"));
+    await db.exec(
+      await sqlFile("20261002160000_relationship_sexual_health_topics.sql"),
+    );
     await db.exec(`insert into auth.users values ('${owner}'), ('${other}');
       insert into public.content_items(id, user_id, storage_path)
         values ('${contentId}', '${owner}', '${owner}/video.mp4'),
@@ -691,9 +694,9 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
       `insert into public.video_screenings
        (content_item_id, screening_version, provider, sample_model, classifier_model,
         instructions_version, decision, reason_code, confidence, rationale, sample_duration_seconds)
-       values ($1, 'topic-screening-v1', 'openai', 'whisper-1', 'gpt-4o-mini',
-        'topic-screening-instructions-v1', 'uncertain', 'unclear_sample', 0,
-        'Short samples are unclear.', 12)
+       values ($1, 'topic-screening-v2', 'openai', 'whisper-1', 'gpt-4o-mini',
+        'topic-screening-instructions-v2', 'relevant', 'target_topics_present', 0.95,
+        'Relationship topics are present in the sample.', 12)
        on conflict (content_item_id, screening_version) do nothing`,
       [contentId],
     );
@@ -701,15 +704,15 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
       `insert into public.video_screenings
        (content_item_id, screening_version, provider, sample_model, classifier_model,
         instructions_version, decision, reason_code, confidence, rationale, sample_duration_seconds)
-       values ($1, 'topic-screening-v1', 'openai', 'whisper-1', 'gpt-4o-mini',
-        'topic-screening-instructions-v1', 'uncertain', 'unclear_sample', 0,
+       values ($1, 'topic-screening-v2', 'openai', 'whisper-1', 'gpt-4o-mini',
+        'topic-screening-instructions-v2', 'uncertain', 'unclear_sample', 0,
         'Duplicate attempt.', 12)
        on conflict (content_item_id, screening_version) do nothing`,
       [contentId],
     );
     const rows = await db.query<{ count: string }>(
       `select count(*)::text as count from public.video_screenings
-       where content_item_id = $1 and screening_version = 'topic-screening-v1'`,
+       where content_item_id = $1 and screening_version = 'topic-screening-v2'`,
       [contentId],
     );
     expect(rows.rows[0]?.count).toBe("1");

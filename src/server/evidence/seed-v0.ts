@@ -24,6 +24,17 @@ const sourceSchema = z.object({
       value.startsWith("https://creativecommons.org/licenses/"),
     ),
   licenseVerifiedAt: z.iso.date(),
+  topicTags: z
+    .array(
+      z.enum([
+        "romantic_relationships",
+        "couple_communication",
+        "sexual_communication",
+        "sexual_satisfaction",
+        "sexual_wellbeing",
+      ]),
+    )
+    .optional(),
 });
 
 const chunkSchema = z.object({
@@ -310,6 +321,78 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       licenseUrl: ccBy4,
       licenseVerifiedAt: verifiedDate,
     },
+    {
+      sourceKey: "doi:10.1371/journal.pone.0172855",
+      title:
+        "Satisfaction guaranteed? How individual, partner, and relationship factors impact sexual satisfaction within partnerships",
+      authors: ["Julia Velten", "Jürgen Margraf"],
+      journal: "PLOS ONE",
+      publisher: "Public Library of Science",
+      publishedAt: "2017-02-23",
+      doi: "10.1371/journal.pone.0172855",
+      url: "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0172855",
+      sourceType: "journal_article",
+      status: "active",
+      licenseCode: "CC-BY-4.0",
+      licenseUrl: ccBy4,
+      licenseVerifiedAt: "2026-10-02",
+      topicTags: [
+        "romantic_relationships",
+        "sexual_communication",
+        "sexual_satisfaction",
+      ],
+    },
+    {
+      sourceKey: "doi:10.1186/s13643-021-01719-0",
+      title:
+        "Improved couple satisfaction and communication with marriage and relationship programs: are there gender differences?—a systematic review and meta-analysis",
+      authors: [
+        "Zeinab Javadivala",
+        "Hamid Allahverdipour",
+        "Mohammad Asghari Jafarabadi",
+        "Somaye Azimi",
+        "Neda Gilani",
+        "Vijay Kumar Chattu",
+      ],
+      journal: "Systematic Reviews",
+      publisher: "BMC",
+      publishedAt: "2021-06-21",
+      doi: "10.1186/s13643-021-01719-0",
+      url: "https://systematicreviewsjournal.biomedcentral.com/articles/10.1186/s13643-021-01719-0",
+      sourceType: "meta_analysis",
+      status: "active",
+      licenseCode: "CC-BY-4.0",
+      licenseUrl: ccBy4,
+      licenseVerifiedAt: "2026-10-02",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    },
+    {
+      sourceKey: "doi:10.3389/fpsyg.2024.1420148",
+      title:
+        "Positive sexuality, relationship satisfaction, and health: a network analysis",
+      authors: [
+        "Giovanbattista Andreoli",
+        "Chiara Rafanelli",
+        "Paola Gremigni",
+        "Stefan G. Hofmann",
+        "Giulia Casu",
+      ],
+      journal: "Frontiers in Psychology",
+      publisher: "Frontiers Media SA",
+      publishedAt: "2024-06-06",
+      doi: "10.3389/fpsyg.2024.1420148",
+      url: "https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2024.1420148/full",
+      sourceType: "journal_article",
+      status: "active",
+      licenseCode: "CC-BY-4.0",
+      licenseUrl: ccBy4,
+      licenseVerifiedAt: "2026-10-02",
+      topicTags: [
+        "romantic_relationships",
+        "sexual_satisfaction",
+        "sexual_wellbeing",
+      ],
+    },
   ],
   chunks: [
     {
@@ -496,6 +579,38 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       content:
         "In Experiment 3, disrupting narrative coherence by randomizing the order of contextual information eliminated retrieval-enhanced suggestibility. Context processing during the post-event information phase influences whether retrieval enhances or reduces eyewitness suggestibility.",
     },
+    {
+      sourceKey: "doi:10.1371/journal.pone.0172855",
+      chunkKey: "sexual-satisfaction-conclusion",
+      locator: "Abstract > Conclusion",
+      language: "en",
+      content:
+        "Sexual satisfaction within steady partnerships was influenced by different actor-, partner-, and relationship-related factors, which together explained 57% of the outcome variance. Actor and partner sexual function, sexual communication, and actor's life satisfaction were positive predictors. Actor's and partner's sexual distress, actor's sexual desire discrepancy, sociosexual orientation, masturbation, and household income were negative predictors.",
+    },
+    {
+      sourceKey: "doi:10.1186/s13643-021-01719-0",
+      chunkKey: "relationship-programs-evidence-limitations",
+      locator: "Abstract > Conclusion",
+      language: "en",
+      content:
+        "Due to the high effect of the therapy programs on CRS and enhancement program on CRC in the current meta-analysis, the priority of their utilizations in interventions, especially by psychologists and mental health professionals, should be emphasized. Therefore, mental health planning in communities to develop MRP and care for couples' health should be given special attention to men's health. Due to the high heterogeneity of the results and with scanty literature in this specific domain, we are uncertain about their actual effect. However, well-designed RCTs with a larger sample size would be beneficial in closely examining the effect of MRPs on CRS and CRC.",
+    },
+    {
+      sourceKey: "doi:10.3389/fpsyg.2024.1420148",
+      chunkKey: "positive-sexuality-sample",
+      locator: "Abstract > Methods",
+      language: "en",
+      content:
+        "The present study applied network analysis to uncover interconnections between positive sexuality, relationship satisfaction, and health indicators, highlight the most relevant variables and explore potential gender-based differences in a sample of 992 partnered individuals (51% women, aged 18–71 years). Networks were estimated via Gaussian Graphical Models, and network comparison test was used to compare men and women.",
+    },
+    {
+      sourceKey: "doi:10.3389/fpsyg.2024.1420148",
+      chunkKey: "positive-sexuality-results-caveat",
+      locator: "Abstract > Results",
+      language: "en",
+      content:
+        "Results indicated that variables related to positive sexuality were more highly interconnected than the rest of the network. There were small-to-negligible connections between positive sexuality and relationship satisfaction variables, both of which had negligible or no connections with health. The network was globally invariant across gender, though a few connections were gender-specific. The most important variables, regardless of gender, related to pleasurable feelings during sexual intercourse.",
+    },
   ],
 });
 
@@ -521,7 +636,10 @@ export function toImportRows(seed: EvidenceSeed) {
       status: source.status,
       license_code: source.licenseCode,
       license_url: source.licenseUrl,
-      provenance: { license_verified_at: source.licenseVerifiedAt },
+      provenance: {
+        license_verified_at: source.licenseVerifiedAt,
+        ...(source.topicTags ? { topic_tags: source.topicTags } : {}),
+      },
     })),
     chunks: validated.chunks.map((chunk) => ({
       source_key: chunk.sourceKey,

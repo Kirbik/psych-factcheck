@@ -102,7 +102,7 @@ function isClearlyOutOfScope(screening: VideoScreening) {
     screening.decision === "unrelated" &&
     screening.confidence >= SCREENING_REJECTION_CONFIDENCE &&
     [
-      "no_psychology_content",
+      "no_target_topic_content",
       "incidental_mention",
       "no_checkable_claims",
     ].includes(screening.reasonCode)

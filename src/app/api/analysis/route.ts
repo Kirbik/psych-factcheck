@@ -93,7 +93,7 @@ async function handle(request: Request, start: boolean) {
         ) {
           const reasonCode = result.reasonCode;
           if (
-            reasonCode === "no_psychology_content" ||
+            reasonCode === "no_target_topic_content" ||
             reasonCode === "incidental_mention" ||
             reasonCode === "no_checkable_claims"
           ) {

@@ -104,10 +104,15 @@ describe("synthetic eval fixtures", () => {
       readFileSync(fileURLToPath(fixtureUrl), "utf8"),
     );
 
-    expect(screeningFixtureSchema.parse(fixtures)).toHaveLength(3);
+    expect(screeningFixtureSchema.parse(fixtures)).toHaveLength(4);
     expect(
       screeningFixtureSchema.parse(fixtures).map((item) => item.failureMode),
-    ).toEqual(["false_positive", "false_negative_guard", "true_positive"]);
+    ).toEqual([
+      "false_positive",
+      "false_negative_guard",
+      "true_positive",
+      "true_positive",
+    ]);
   });
 
   it("validates synthetic claim extraction cases without claiming model quality", () => {

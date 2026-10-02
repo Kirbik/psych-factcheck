@@ -21,7 +21,16 @@
     "id": "screening-relevant-psychology-claim",
     "sampleText": "В когнитивной психологии проверяют, как рабочая память ограничивает одновременное удержание информации.",
     "expectedDecision": "relevant",
-    "expectedReasonCode": "psychology_claims_present",
+    "expectedReasonCode": "target_topics_present",
+    "expectedDisposition": "continue_transcription",
+    "failureMode": "true_positive",
+    "synthetic": true
+  },
+  {
+    "id": "screening-relevant-relationship-claim",
+    "sampleText": "В исследованиях пар рассматривают, как открытое общение связано с удовлетворённостью отношениями взрослых партнёров.",
+    "expectedDecision": "relevant",
+    "expectedReasonCode": "target_topics_present",
     "expectedDisposition": "continue_transcription",
     "failureMode": "true_positive",
     "synthetic": true

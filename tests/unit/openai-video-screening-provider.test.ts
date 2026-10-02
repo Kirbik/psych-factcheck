@@ -25,7 +25,7 @@ const sample: ScreeningAudioSample = {
 
 const relevant = {
   decision: "relevant",
-  reasonCode: "psychology_claims_present",
+  reasonCode: "target_topics_present",
   confidence: 0.96,
   rationale: "Excerpts contain substantive psychology discussion.",
 };
@@ -89,10 +89,16 @@ describe("video topic screening", () => {
   it("transcribes only the remuxed sample and requests strict structured screening", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(response({ text: "Психология памяти и поведения." }))
+      .mockResolvedValueOnce(
+        response({ text: "Психология памяти и поведения." }),
+      )
       .mockResolvedValueOnce(modelResponse(relevant));
     const extract = sampleExtractor();
-    const provider = createOpenAIVideoScreeningProvider("test-secret", fetcher, extract);
+    const provider = createOpenAIVideoScreeningProvider(
+      "test-secret",
+      fetcher,
+      extract,
+    );
 
     await expect(provider.screen(video)).resolves.toMatchObject({
       ...relevant,
@@ -119,7 +125,9 @@ describe("video topic screening", () => {
     });
 
     const classificationRequest = fetcher.mock.calls[1]?.[1];
-    expect(fetcher.mock.calls[1]?.[0]).toBe("https://api.openai.com/v1/responses");
+    expect(fetcher.mock.calls[1]?.[0]).toBe(
+      "https://api.openai.com/v1/responses",
+    );
     expect(classificationRequest?.headers).toEqual({
       Authorization: "Bearer test-secret",
       "Content-Type": "application/json",
@@ -128,7 +136,10 @@ describe("video topic screening", () => {
       model: string;
       store: boolean;
       input: string;
-      text: { format: { strict: boolean; schema: { additionalProperties: boolean } } };
+      text: {
+        format: { strict: boolean; schema: { additionalProperties: boolean } };
+      };
+      instructions: string;
     };
     expect(body).toMatchObject({
       model: SCREENING_CLASSIFIER_MODEL,
@@ -137,6 +148,8 @@ describe("video topic screening", () => {
       text: { format: { type: "json_schema", strict: true } },
     });
     expect(body.text.format.schema.additionalProperties).toBe(false);
+    expect(body.instructions).toContain("романтические отношения взрослых");
+    expect(body.instructions).toContain("сексуальное здоровье взрослых");
   });
 
   it("returns uncertain for missing sample transcript or invalid structured output", async () => {
@@ -144,22 +157,38 @@ describe("video topic screening", () => {
       .fn<typeof fetch>()
       .mockResolvedValueOnce(response({ text: " " }));
     await expect(
-      createOpenAIVideoScreeningProvider("key", emptyTranscript, sampleExtractor()).screen(video),
-    ).resolves.toMatchObject({ decision: "uncertain", reasonCode: "invalid_model_output" });
+      createOpenAIVideoScreeningProvider(
+        "key",
+        emptyTranscript,
+        sampleExtractor(),
+      ).screen(video),
+    ).resolves.toMatchObject({
+      decision: "uncertain",
+      reasonCode: "invalid_model_output",
+    });
     expect(emptyTranscript).toHaveBeenCalledOnce();
 
     const invalidOutput = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(response({ text: "talk about emotions" }))
-      .mockResolvedValueOnce(modelResponse({
-        decision: "unrelated",
-        reasonCode: "psychology_claims_present",
-        confidence: 0.99,
-        rationale: "Mismatch.",
-      }));
+      .mockResolvedValueOnce(
+        modelResponse({
+          decision: "unrelated",
+          reasonCode: "target_topics_present",
+          confidence: 0.99,
+          rationale: "Mismatch.",
+        }),
+      );
     await expect(
-      createOpenAIVideoScreeningProvider("key", invalidOutput, sampleExtractor()).screen(video),
-    ).resolves.toMatchObject({ decision: "uncertain", reasonCode: "invalid_model_output" });
+      createOpenAIVideoScreeningProvider(
+        "key",
+        invalidOutput,
+        sampleExtractor(),
+      ).screen(video),
+    ).resolves.toMatchObject({
+      decision: "uncertain",
+      reasonCode: "invalid_model_output",
+    });
   });
 
   it("fails open when the sample cannot be extracted", async () => {
@@ -167,15 +196,22 @@ describe("video topic screening", () => {
     const extractor = vi.fn().mockResolvedValue(null);
 
     await expect(
-      createOpenAIVideoScreeningProvider("key", fetcher, extractor).screen(video),
-    ).resolves.toMatchObject({ decision: "uncertain", reasonCode: "sample_unavailable" });
+      createOpenAIVideoScreeningProvider("key", fetcher, extractor).screen(
+        video,
+      ),
+    ).resolves.toMatchObject({
+      decision: "uncertain",
+      reasonCode: "sample_unavailable",
+    });
     expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("does not expose provider response details when screening API fails", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response("private provider detail", { status: 429 }),
-    );
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response("private provider detail", { status: 429 }),
+      );
     const error = createOpenAIVideoScreeningProvider(
       "secret",
       fetcher,
@@ -192,9 +228,15 @@ describe("video topic screening", () => {
   it("does not invoke sample extraction or OpenAI without the server key", async () => {
     const fetcher = vi.fn<typeof fetch>();
     const extractor = sampleExtractor();
-    const screening = createOpenAIVideoScreeningProvider(undefined, fetcher, extractor).screen(video);
+    const screening = createOpenAIVideoScreeningProvider(
+      undefined,
+      fetcher,
+      extractor,
+    ).screen(video);
 
-    await expect(screening).rejects.toMatchObject({ code: "OPENAI_NOT_CONFIGURED" });
+    await expect(screening).rejects.toMatchObject({
+      code: "OPENAI_NOT_CONFIGURED",
+    });
     expect(extractor).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
   });

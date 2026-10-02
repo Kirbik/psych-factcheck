@@ -26,11 +26,14 @@ encoded packet timestamps. If duration still cannot be determined, screening
 fails open and full transcription proceeds.
 
 The `video_screenings` table stores one result per content item and
-`topic-screening-v1`: decision, reason code, confidence, brief rationale,
+screening version: decision, reason code, confidence, brief rationale,
 sample duration, provider/model identifiers, and instruction version. It does
 not store the sample transcript. The service role is the only role with table
-access. Retried generations reuse this row; workflow step replay plus the
-unique key prevents duplicate screening records.
+access. `topic-screening-v2` covers psychology, mental health, human behavior,
+cognitive science, psychotherapy, adult romantic relationships, couple
+communication/conflicts, trust, attachment, adult sexual relationships, and
+adult sexual health. Retried generations reuse a row for the same screening
+version; a version bump triggers screening on the next eligible fresh run.
 
 Session 7 adds OpenAI `gpt-4o-mini` structured claim extraction after
 transcription. The versioned instruction at

@@ -1,6 +1,6 @@
 {
   "datasetVersion": "retrieval-relevance-v2",
-  "description": "Provisional AI-reviewed query-to-passage relevance labels over the Session 8 Evidence Base seed. Labels were checked against the query intent and source passages on 2026-10-01; they still require human/expert review and do not establish scientific ground truth.",
+  "description": "Provisional AI-reviewed query-to-passage relevance labels over the Evidence Base seed. Labels were checked against query intent and passages on 2026-10-01; they still require human/expert review and do not establish scientific ground truth.",
   "cases": [
     {
       "id": "learning-styles-benefits",
@@ -20,6 +20,21 @@
       "id": "growth-mindset-academics",
       "query": "Do growth mindset interventions improve students' academic outcomes?",
       "relevantChunkKeys": ["review-findings"]
+    },
+    {
+      "id": "sexual-satisfaction-factors",
+      "query": "Does sexual communication affect satisfaction in steady romantic partnerships?",
+      "relevantChunkKeys": ["sexual-satisfaction-conclusion"]
+    },
+    {
+      "id": "relationship-programs-evidence",
+      "query": "Do relationship education programs improve couple satisfaction and communication?",
+      "relevantChunkKeys": ["relationship-programs-evidence-limitations"]
+    },
+    {
+      "id": "positive-sexuality-health",
+      "query": "Is positive sexuality strongly associated with relationship satisfaction and health?",
+      "relevantChunkKeys": ["positive-sexuality-results-caveat"]
     }
   ]
 }

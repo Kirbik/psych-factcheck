@@ -32,7 +32,7 @@ export type JobView = z.infer<typeof jobViewSchema>;
 export const screeningOutcomeSchema = z.object({
   decision: z.literal("unrelated"),
   reasonCode: z.enum([
-    "no_psychology_content",
+    "no_target_topic_content",
     "incidental_mention",
     "no_checkable_claims",
   ]),
@@ -74,10 +74,10 @@ export const workflowErrorMessages: Readonly<Record<string, string>> = {
 export const SCREENED_OUT_ERROR_CODE = "VIDEO_OUT_OF_SCOPE";
 
 export const screeningOutcomeMessages = {
-  no_psychology_content:
-    "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено содержательного материала о психологии.",
+  no_target_topic_content:
+    "Видео не подходит для проверки: в проверенных фрагментах не найдено содержательного материала о психологии, отношениях или сексуальном здоровье.",
   incidental_mention:
-    "Видео не подходит для психологического фактчекинга: психология упоминается только вскользь.",
+    "Видео не подходит для проверки: целевые темы упоминаются только вскользь.",
   no_checkable_claims:
-    "Видео не подходит для психологического фактчекинга: в проверенных фрагментах не найдено проверяемых утверждений о психологии.",
+    "Видео не подходит для проверки: в проверенных фрагментах не найдено проверяемых утверждений по целевым темам.",
 } as const;

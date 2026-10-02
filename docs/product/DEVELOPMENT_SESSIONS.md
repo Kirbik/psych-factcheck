@@ -360,6 +360,16 @@ Session 13 until Session 12 is accepted.
 - **Required tests:** Localization provider unit tests, database authorization integration, lint, typecheck, full unit suite, build.
 - **Definition of Done:** Current and previously saved reports render generated text in Russian without changing the underlying judgment.
 
+## Session 23 — Relationship and Sexual Health Topics
+
+**Status:** Deployed to Production on 2026-10-02. Added three open-access CC BY sources and four verbatim passages to the Evidence Base (13 sources, 27 passages total); Production has matching current embeddings. Topic screening v2 now covers adult romantic relationships, couple communication, adult sexual relationships, and adult sexual health. The screening constraint migration and Worker version `2a3fe9e7-be41-4cd7-aef5-ae157129c8d2` are deployed. Expanded semantic retrieval P@5 is 0.300 across six provisional cases and is not an expert-reviewed quality measure.
+
+- **Goal:** Include evidence-backed adult relationships and sexual-health claims in video screening and claim retrieval.
+- **Why:** The original screening scope excluded relevant relationship and sexuality content.
+- **Scope:** Screening topics and prompt/version, backward-compatible reason-code migration, curated source/chunk seed, embeddings, retrieval fixtures, tests, and documentation.
+- **Out of scope:** Diagnosing individuals, legal/medical advice, or making claims about people rather than checking claims.
+- **Definition of Done:** Sources, passages, prompt, and migration are deployed; tests pass; source provenance and limitations remain visible.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

@@ -8,9 +8,9 @@ import {
 } from "@/server/evidence/seed-v0";
 
 describe("Evidence Base v0 seed", () => {
-  it("contains ten traceable sources and twenty-three linked licensed chunks", () => {
-    expect(evidenceSeedV0.sources).toHaveLength(10);
-    expect(evidenceSeedV0.chunks).toHaveLength(23);
+  it("contains thirteen traceable sources and twenty-seven linked licensed chunks", () => {
+    expect(evidenceSeedV0.sources).toHaveLength(13);
+    expect(evidenceSeedV0.chunks).toHaveLength(27);
     expect(
       evidenceSeedV0.sources.find(
         (source) => source.doi === "10.1177/1948550619887702",
@@ -29,6 +29,15 @@ describe("Evidence Base v0 seed", () => {
         ),
       ),
     ).toBe(true);
+    expect(
+      evidenceSeedV0.sources.find(
+        (source) => source.doi === "10.1186/s13643-021-01719-0",
+      ),
+    ).toMatchObject({
+      sourceType: "meta_analysis",
+      licenseCode: "CC-BY-4.0",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    });
     expect(
       evidenceSeedV0.chunks.every((chunk) =>
         evidenceSeedV0.sources.some(

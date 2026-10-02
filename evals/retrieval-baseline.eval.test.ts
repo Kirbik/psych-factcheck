@@ -59,7 +59,7 @@ function precisionAtK(
 describe("retrieval relevance dataset v1", () => {
   it("records a reproducible lexical precision@5 reference over curated evidence chunks", () => {
     expect(dataset.datasetVersion).toBe("retrieval-relevance-v2");
-    expect(dataset.cases).toHaveLength(3);
+    expect(dataset.cases).toHaveLength(6);
     const seedChunkKeys = new Set(
       evidenceSeedV0.chunks.map((chunk) => chunk.chunkKey),
     );
@@ -82,8 +82,8 @@ describe("retrieval relevance dataset v1", () => {
     console.info(
       `retrieval-relevance-v2 lexical baseline: P@5=${aggregate.toFixed(3)} (${scores.map((score) => score.toFixed(3)).join(", ")})`,
     );
-    expect(scores).toEqual([0.4, 0.6, 0.2]);
-    expect(aggregate).toBeCloseTo(0.4, 3);
+    expect(scores).toEqual([0.4, 0.6, 0.2, 0.2, 0.2, 0.2]);
+    expect(aggregate).toBeCloseTo(0.3, 3);
     expect(aggregate).toBeGreaterThan(0);
   });
 });

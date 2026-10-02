@@ -8,11 +8,14 @@ status, reuse license, passage text, section locator, language, and a SHA-256
 digest of the stored text. The Session 8 catalog itself does not retrieve
 passages for claims or produce judgments.
 
-The schema migration and curated seed were applied to the linked Production
-project on 2026-10-01. A remote readback confirmed 10 sources, 23 chunks, and
-no chunks with missing source rows.
+The schema migration and initial curated seed were applied to the linked
+Production project on 2026-10-01. Session 23 added three open-access sources
+and four verbatim passages covering adult relationships, couple
+communication, sexual satisfaction, and sexual wellbeing. Production now has
+13 sources, 27 chunks, and 27 current evidence vectors, with no missing source
+links.
 Session 9's versioned embedding schema and pgvector search migration were
-deployed to Production on 2026-10-01. Production has 23 evidence chunk vectors;
+deployed to Production on 2026-10-01. Production has 27 evidence chunk vectors;
 the claim-vector table is available but is not populated by the current seed
 workflow.
 
@@ -36,8 +39,8 @@ reset to active by an old seed.
 
 ## Curated seed and licenses
 
-`src/server/evidence/seed-v0.ts` is the reviewed manifest for ten publications
-and 23 short passages. Runtime Zod validation rejects duplicate identifiers,
+`src/server/evidence/seed-v0.ts` is the reviewed manifest for thirteen
+publications and 27 short passages. Runtime Zod validation rejects duplicate identifiers,
 unknown source references, DOI/key mismatches, invalid URLs, and unapproved
 license identifiers. The importer computes a SHA-256 digest from the exact
 passage text before sending it to PostgreSQL.
@@ -70,9 +73,10 @@ Session 9 added `evidence_embeddings` and `claim_embeddings`, keyed by the sourc
 row and embedding version, with model, dimension, and source-content digest.
 The search RPC returns current active-source candidates with chunk and source
 provenance and supports language, source type, and publication-date filters.
-Topic metadata is not present in Evidence Base v0. Original passages and source
-provenance remain canonical. Reranking, Evidence Packages, and verdicts remain
-future work.
+The expanded seed stores relationship and adult sexual-health tags in source
+provenance. They are descriptive only and are not a retrieval filter. Original
+passages and source provenance remain canonical. Reranking, Evidence Packages,
+and verdicts remain future work.
 
 The explicit `pnpm evidence:embed` command reuses vectors whose source hashes
 are current, embeds changed passages, and measures retrieval P@5 against the
@@ -81,8 +85,8 @@ the exact
 `EVIDENCE_EMBEDDING_PROJECT_REF`, and `EVIDENCE_EMBEDDING_CONFIRM=EMBED_EVIDENCE_V1`.
 The command may perform privileged database writes and external embedding API
 calls; inspect the configured Supabase target before running it. Production
-retrieval on dataset v2 scored P@5 0.400 across three cases; this is not a
-human-reviewed quality benchmark.
+retrieval on the expanded dataset v2 scored P@5 0.300 across six cases; this is
+not a human-reviewed quality benchmark.
 
 ## Next stage
 

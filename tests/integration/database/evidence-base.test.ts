@@ -44,11 +44,16 @@ describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
     );
   }
 
-  it("imports ten sources and twenty-three chunks idempotently with traceable foreign keys", async () => {
+  it("imports the curated seed idempotently with traceable foreign keys", async () => {
     const first = await importSeed();
-    expect(first.rows).toEqual([{ source_count: 10, chunk_count: 23 }]);
+    expect(first.rows).toEqual([
+      {
+        source_count: evidenceSeedV0.sources.length,
+        chunk_count: evidenceSeedV0.chunks.length,
+      },
+    ]);
     const second = await importSeed();
-    expect(second.rows).toEqual([{ source_count: 10, chunk_count: 23 }]);
+    expect(second.rows).toEqual(first.rows);
 
     const counts = await db.query<{
       sources: number;
@@ -62,8 +67,8 @@ describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
           left join public.sources s on s.id = c.source_id where s.id is null) as missing_sources
     `);
     expect(counts.rows[0]).toEqual({
-      sources: 10,
-      chunks: 23,
+      sources: evidenceSeedV0.sources.length,
+      chunks: evidenceSeedV0.chunks.length,
       missing_sources: 0,
     });
   });
@@ -104,7 +109,7 @@ describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
     const count = await db.query<{ chunks: number }>(
       "select count(*)::integer as chunks from public.evidence_chunks",
     );
-    expect(count.rows[0]!.chunks).toBe(23);
+    expect(count.rows[0]!.chunks).toBe(evidenceSeedV0.chunks.length);
   });
 
   it("preserves a curator-set retracted status across a repeat seed import", async () => {
@@ -126,10 +131,10 @@ describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
     try {
       expect(
         (await db.query("select id from public.sources")).rows,
-      ).toHaveLength(10);
+      ).toHaveLength(evidenceSeedV0.sources.length);
       expect(
         (await db.query("select id from public.evidence_chunks")).rows,
-      ).toHaveLength(23);
+      ).toHaveLength(evidenceSeedV0.chunks.length);
       await expect(
         db.query("insert into public.sources(source_key) values ('bad')"),
       ).rejects.toThrow(/permission denied/);

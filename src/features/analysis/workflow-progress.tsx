@@ -256,7 +256,7 @@ export function WorkflowProgress({
           ? job.status === "completed" &&
             job.error_code === SCREENED_OUT_ERROR_CODE
             ? (screening?.message ??
-              "Видео не подходит для психологического фактчекинга. Полная транскрибация не выполнялась.")
+              "Видео не подходит для проверки психологии, отношений или сексуального здоровья. Полная транскрибация не выполнялась.")
             : job.status === "running" && job.stage === "screen_video"
               ? "Проверяем тему по коротким фрагментам видео."
               : job.status === "running" && job.stage === "transcribe_video"
