@@ -43,6 +43,15 @@ const persistedClaimSchema = z
   })
   .strict();
 
+export function workflowDatabaseFailure(operation: string, code?: string) {
+  const safeCode = code && /^[a-z0-9_-]{1,32}$/i.test(code) ? code : null;
+  return new Error(
+    safeCode
+      ? `${operation} failed (Supabase error code ${safeCode})`
+      : `${operation} failed (Supabase error code unavailable)`,
+  );
+}
+
 export interface PersistedClaim {
   readonly id: string;
   readonly claim: ExtractedClaim;
@@ -59,7 +68,7 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("user_id", userId)
         .eq("pipeline_version", PIPELINE_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Job read failed");
+      if (error) throw workflowDatabaseFailure("Job read", error.code);
       return data;
     },
     async request(contentId: string, retryGeneration?: number) {
@@ -67,7 +76,9 @@ export function workflowRepository(client: WorkflowClient) {
         p_content_item_id: contentId,
         p_retry_generation: retryGeneration,
       });
-      if (error || !data) throw new Error("Job request failed");
+      if (error) throw workflowDatabaseFailure("Job request", error.code);
+      if (!data)
+        throw new Error("Job request failed (Supabase returned no row)");
       return data;
     },
     async get(payload: JobPayload) {
@@ -78,7 +89,7 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("generation", payload.generation)
         .eq("pipeline_version", PIPELINE_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Job read failed");
+      if (error) throw workflowDatabaseFailure("Job read", error.code);
       return data;
     },
     async advance(
@@ -96,7 +107,7 @@ export function workflowRepository(client: WorkflowClient) {
         p_attempt: attempt,
         p_error_code: errorCode,
       });
-      if (error) throw new Error("Job transition failed");
+      if (error) throw workflowDatabaseFailure("Job transition", error.code);
       return data?.[0] ?? null;
     },
     async setStage(
@@ -112,7 +123,7 @@ export function workflowRepository(client: WorkflowClient) {
         p_stage: stage,
         p_attempt: attempt,
       });
-      if (error) throw new Error("Job stage update failed");
+      if (error) throw workflowDatabaseFailure("Job stage update", error.code);
       return data === true;
     },
     async hasTranscript(contentItemId: string) {
@@ -122,7 +133,7 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("content_item_id", contentItemId)
         .eq("pipeline_version", TRANSCRIPTION_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Transcript read failed");
+      if (error) throw workflowDatabaseFailure("Transcript read", error.code);
       return Boolean(data);
     },
     async saveTranscript(
@@ -145,7 +156,7 @@ export function workflowRepository(client: WorkflowClient) {
           ignoreDuplicates: true,
         },
       );
-      if (error) throw new Error("Transcript write failed");
+      if (error) throw workflowDatabaseFailure("Transcript write", error.code);
     },
     async getTranscript(
       contentItemId: string,
@@ -156,7 +167,7 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("content_item_id", contentItemId)
         .eq("pipeline_version", TRANSCRIPTION_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Transcript read failed");
+      if (error) throw workflowDatabaseFailure("Transcript read", error.code);
       if (!data) return null;
       const segments = transcriptSegmentsSchema.safeParse(data.segments);
       if (!segments.success) throw new Error("Transcript record invalid");
@@ -172,7 +183,8 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("transcript_id", transcriptId)
         .eq("extraction_version", CLAIM_EXTRACTION_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Claim extraction read failed");
+      if (error)
+        throw workflowDatabaseFailure("Claim extraction read", error.code);
       return Boolean(data);
     },
     async saveClaimExtraction(
@@ -194,7 +206,12 @@ export function workflowRepository(client: WorkflowClient) {
           claimType: claim.claimType,
         })),
       });
-      if (error || !data) throw new Error("Claim extraction write failed");
+      if (error)
+        throw workflowDatabaseFailure("Claim extraction write", error.code);
+      if (!data)
+        throw new Error(
+          "Claim extraction write failed (Supabase returned no row)",
+        );
     },
     async getClaimExtractionId(transcriptId: string) {
       const { data, error } = await client
@@ -203,7 +220,8 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("transcript_id", transcriptId)
         .eq("extraction_version", CLAIM_EXTRACTION_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Claim extraction read failed");
+      if (error)
+        throw workflowDatabaseFailure("Claim extraction read", error.code);
       return data?.id ?? null;
     },
     async listClaims(extractionId: string): Promise<readonly PersistedClaim[]> {
@@ -214,7 +232,7 @@ export function workflowRepository(client: WorkflowClient) {
         )
         .eq("claim_extraction_id", extractionId)
         .order("ordinal", { ascending: true });
-      if (error) throw new Error("Claims read failed");
+      if (error) throw workflowDatabaseFailure("Claims read", error.code);
       const parsed = z.array(persistedClaimSchema).safeParse(data);
       if (!parsed.success) throw new Error("Claim records invalid");
       return parsed.data.map((claim) => ({
@@ -236,7 +254,8 @@ export function workflowRepository(client: WorkflowClient) {
         .in("claim_id", [...claimIds])
         .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
         .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
-      if (error) throw new Error("Evidence package read failed");
+      if (error)
+        throw workflowDatabaseFailure("Evidence package read", error.code);
       return new Set(data.map(({ claim_id }) => claim_id));
     },
     async saveEvidencePackages(
@@ -260,7 +279,8 @@ export function workflowRepository(client: WorkflowClient) {
         p_reranking_version: EVIDENCE_RERANKING_VERSION,
         p_packages: payload as unknown as Json,
       });
-      if (error) throw new Error("Evidence packages write failed");
+      if (error)
+        throw workflowDatabaseFailure("Evidence packages write", error.code);
     },
     async listEvidencePackages(claimIds: readonly string[]) {
       if (claimIds.length === 0) return [];
@@ -270,7 +290,8 @@ export function workflowRepository(client: WorkflowClient) {
         .in("claim_id", [...claimIds])
         .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
         .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
-      if (error) throw new Error("Evidence package read failed");
+      if (error)
+        throw workflowDatabaseFailure("Evidence package read", error.code);
       return data.map(({ id, claim_id, payload }) => {
         const evidencePackage = validateEvidencePackage(payload);
         return {
@@ -299,7 +320,7 @@ export function workflowRepository(client: WorkflowClient) {
           pairs.map(({ evidencePackageId }) => evidencePackageId),
         )
         .eq("judgment_version", FACT_CHECK_JUDGMENT_VERSION);
-      if (error) throw new Error("Fact-check read failed");
+      if (error) throw workflowDatabaseFailure("Fact-check read", error.code);
       const requestedPairs = new Set(
         pairs.map(({ claimId, evidencePackageId }) =>
           JSON.stringify([claimId, evidencePackageId]),
@@ -321,7 +342,8 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("content_item_id", contentItemId)
         .eq("screening_version", SCREENING_VERSION)
         .maybeSingle();
-      if (error) throw new Error("Video screening read failed");
+      if (error)
+        throw workflowDatabaseFailure("Video screening read", error.code);
       if (!data) return null;
       const result = videoScreeningSchema.safeParse({
         decision: data.decision,
@@ -360,7 +382,8 @@ export function workflowRepository(client: WorkflowClient) {
           ignoreDuplicates: true,
         },
       );
-      if (error) throw new Error("Video screening write failed");
+      if (error)
+        throw workflowDatabaseFailure("Video screening write", error.code);
       const saved = await this.getScreening(contentItemId);
       if (!saved) throw new Error("Video screening write missing");
       return saved;
@@ -372,7 +395,7 @@ export function workflowRepository(client: WorkflowClient) {
         .eq("id", job.content_item_id)
         .eq("user_id", job.user_id)
         .maybeSingle();
-      if (error) throw new Error("Content read failed");
+      if (error) throw workflowDatabaseFailure("Content read", error.code);
       return data;
     },
     async active() {
@@ -383,7 +406,7 @@ export function workflowRepository(client: WorkflowClient) {
         .in("status", ["queued", "running"])
         .order("updated_at", { ascending: true })
         .limit(100);
-      if (error) throw new Error("Active jobs read failed");
+      if (error) throw workflowDatabaseFailure("Active jobs read", error.code);
       return data;
     },
   };

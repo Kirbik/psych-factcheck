@@ -21,6 +21,7 @@ import type {
   AnalysisJob,
   WorkflowRepository,
 } from "@/server/workflows/repository";
+import { workflowDatabaseFailure } from "@/server/workflows/repository";
 import type { ClaimExtractionProvider } from "@/server/ai/providers";
 import {
   CLAIM_EXTRACTION_MODEL,
@@ -43,6 +44,17 @@ const userId = "11111111-1111-4111-8111-111111111111";
 const contentId = "22222222-2222-4222-8222-222222222222";
 const jobId = "33333333-3333-4333-8333-333333333333";
 const uploadId = "44444444-4444-4444-8444-444444444444";
+
+describe("workflow database errors", () => {
+  it("includes only a sanitized Supabase error code", () => {
+    expect(workflowDatabaseFailure("Fact-check read", "PGRST116").message).toBe(
+      "Fact-check read failed (Supabase error code PGRST116)",
+    );
+    expect(
+      workflowDatabaseFailure("Job read", "secret query details").message,
+    ).toBe("Job read failed (Supabase error code unavailable)");
+  });
+});
 const payload = { jobId, generation: 1 };
 const runId = "run_workflow_1";
 const extractionId = "66666666-6666-4666-8666-666666666666";

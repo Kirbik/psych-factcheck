@@ -363,8 +363,8 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
             "prepare claims for judgment",
             {
               retries: {
-                limit: 2,
-                delay: "1 second",
+                limit: 4,
+                delay: "5 seconds",
                 backoff: "exponential",
               },
               timeout: "4 minutes",
