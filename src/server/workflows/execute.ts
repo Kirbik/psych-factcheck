@@ -294,62 +294,72 @@ export async function executeJudgmentStage(
   repository: WorkflowRepository,
   judgeClaim: (input: {
     readonly claimId: string;
-    readonly claim: import("@/server/ai/providers").ExtractedClaim;
     readonly evidencePackageId: string;
   }) => Promise<string>,
+  prepareJudgment: <T>(operation: () => Promise<T>) => Promise<T> = (
+    operation,
+  ) => operation(),
 ) {
-  const job = await repository.get(payload);
-  if (!job || job.run_id !== runId || job.status !== "running")
-    return { outcome: "obsolete" } as const;
-  const transcript = await repository.getTranscript(job.content_item_id);
-  if (!transcript) throw new PermanentWorkflowError("TRANSCRIPT_MISSING");
-  const extractionId = await repository.getClaimExtractionId(transcript.id);
-  if (!extractionId)
-    throw new PermanentWorkflowError("CLAIM_EXTRACTION_MISSING");
-  if (!(await repository.setStage(payload, runId, "judge_claims", attempt)))
-    return { outcome: "obsolete" } as const;
+  const preparation = await prepareJudgment(async () => {
+    const job = await repository.get(payload);
+    if (!job || job.run_id !== runId || job.status !== "running")
+      return { outcome: "obsolete" } as const;
+    const transcript = await repository.getTranscript(job.content_item_id);
+    if (!transcript) throw new PermanentWorkflowError("TRANSCRIPT_MISSING");
+    const extractionId = await repository.getClaimExtractionId(transcript.id);
+    if (!extractionId)
+      throw new PermanentWorkflowError("CLAIM_EXTRACTION_MISSING");
+    if (!(await repository.setStage(payload, runId, "judge_claims", attempt)))
+      return { outcome: "obsolete" } as const;
 
-  const claims = await repository.listClaims(extractionId);
-  let packages: Awaited<ReturnType<typeof repository.listEvidencePackages>>;
-  try {
-    packages = await repository.listEvidencePackages(
-      claims.map(({ id }) => id),
+    const claims = await repository.listClaims(extractionId);
+    let packages: Awaited<ReturnType<typeof repository.listEvidencePackages>>;
+    try {
+      packages = await repository.listEvidencePackages(
+        claims.map(({ id }) => id),
+      );
+    } catch (error) {
+      if (error instanceof FactCheckJudgmentError)
+        throw new PermanentWorkflowError("EVIDENCE_PACKAGE_INVALID");
+      throw error;
+    }
+    const packageByClaim = new Map(
+      packages.map(({ claimId, evidencePackageId, packageClaim }) => [
+        claimId,
+        { evidencePackageId, packageClaim },
+      ]),
     );
-  } catch (error) {
-    if (error instanceof FactCheckJudgmentError)
-      throw new PermanentWorkflowError("EVIDENCE_PACKAGE_INVALID");
-    throw error;
-  }
-  const packageByClaim = new Map(
-    packages.map(({ claimId, evidencePackageId, packageClaim }) => [
-      claimId,
-      { evidencePackageId, packageClaim },
-    ]),
-  );
-  const targets = claims.map(({ id, claim }) => {
-    const packageRecord = packageByClaim.get(id);
-    if (!packageRecord)
-      throw new PermanentWorkflowError("EVIDENCE_PACKAGE_MISSING");
-    if (!sameExtractedClaim(claim, packageRecord.packageClaim))
-      throw new PermanentWorkflowError("EVIDENCE_PACKAGE_CLAIM_MISMATCH");
+    const targets = claims.map(({ id, claim }) => {
+      const packageRecord = packageByClaim.get(id);
+      if (!packageRecord)
+        throw new PermanentWorkflowError("EVIDENCE_PACKAGE_MISSING");
+      if (!sameExtractedClaim(claim, packageRecord.packageClaim))
+        throw new PermanentWorkflowError("EVIDENCE_PACKAGE_CLAIM_MISMATCH");
+      return {
+        claimId: id,
+        evidencePackageId: packageRecord.evidencePackageId,
+      };
+    });
+    const completedPairs = await repository.existingFactCheckPairs(targets);
+    const completed = new Set(
+      completedPairs.map(({ claimId, evidencePackageId }) =>
+        JSON.stringify([claimId, evidencePackageId]),
+      ),
+    );
+
     return {
-      claimId: id,
-      claim,
-      evidencePackageId: packageRecord.evidencePackageId,
+      outcome: "ready_for_judgment" as const,
+      targets: targets.filter(
+        ({ claimId, evidencePackageId }) =>
+          !completed.has(JSON.stringify([claimId, evidencePackageId])),
+      ),
     };
   });
-  const completedPairs = await repository.existingFactCheckPairs(targets);
-  const completed = new Set(
-    completedPairs.map(({ claimId, evidencePackageId }) =>
-      JSON.stringify([claimId, evidencePackageId]),
-    ),
-  );
 
-  for (const target of targets) {
-    if (
-      completed.has(JSON.stringify([target.claimId, target.evidencePackageId]))
-    )
-      continue;
+  if (preparation.outcome === "obsolete")
+    return { outcome: "obsolete" } as const;
+
+  for (const target of preparation.targets) {
     await judgeClaim(target);
   }
 

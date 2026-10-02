@@ -449,10 +449,23 @@ describe("workflow execution", () => {
       },
     ]);
     const judgeClaim = vi.fn().mockResolvedValue("fact-check-id");
+    let preparationCalls = 0;
+    const prepareJudgment = async <T>(operation: () => Promise<T>) => {
+      preparationCalls += 1;
+      return operation();
+    };
 
     await expect(
-      executeJudgmentStage(payload, runId, 3, repo, judgeClaim),
+      executeJudgmentStage(
+        payload,
+        runId,
+        3,
+        repo,
+        judgeClaim,
+        prepareJudgment,
+      ),
     ).resolves.toEqual({ outcome: "fact_checks_ready" });
+    expect(preparationCalls).toBe(1);
     expect(repo.setStage).toHaveBeenCalledExactlyOnceWith(
       payload,
       runId,
@@ -461,13 +474,6 @@ describe("workflow execution", () => {
     );
     expect(judgeClaim).toHaveBeenCalledExactlyOnceWith({
       claimId,
-      claim: {
-        original: "Claim",
-        normalized: "Claim",
-        startSeconds: 0,
-        endSeconds: 1,
-        claimType: "historical",
-      },
       evidencePackageId,
     });
     expect(repo.advance).toHaveBeenLastCalledWith(
@@ -600,39 +606,18 @@ describe("workflow execution", () => {
       [
         {
           claimId,
-          claim: {
-            original: "First claim",
-            normalized: "First claim",
-            startSeconds: 0,
-            endSeconds: 1,
-            claimType: "historical",
-          },
           evidencePackageId,
         },
       ],
       [
         {
           claimId: secondClaimId,
-          claim: {
-            original: "Second claim",
-            normalized: "Second claim",
-            startSeconds: 1,
-            endSeconds: 2,
-            claimType: "historical",
-          },
           evidencePackageId: secondEvidencePackageId,
         },
       ],
       [
         {
           claimId: secondClaimId,
-          claim: {
-            original: "Second claim",
-            normalized: "Second claim",
-            startSeconds: 1,
-            endSeconds: 2,
-            claimType: "historical",
-          },
           evidencePackageId: secondEvidencePackageId,
         },
       ],

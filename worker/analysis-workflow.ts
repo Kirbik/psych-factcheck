@@ -70,6 +70,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
       judgmentProvider,
     );
     let attempt = 1;
+    let activeStage = "screen_video";
     let failureCode: string | undefined;
 
     const inspectVideo = async (path: string) => {
@@ -160,6 +161,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
         return screening;
 
       if (screening.outcome === "ready_for_transcription") {
+        activeStage = "transcribe_video";
         const transcription = await step.do(
           "transcribe screened video",
           {
@@ -211,6 +213,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
           return transcription;
       }
 
+      activeStage = "extract_claims";
       const claimExtraction = await step.do(
         "extract claims from transcript",
         {
@@ -254,6 +257,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
       if (claimExtraction.outcome !== "ready_for_evidence_packages")
         return claimExtraction;
 
+      activeStage = "build_evidence";
       const evidence = await step.do(
         "retrieve and package claim evidence",
         {
@@ -308,6 +312,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
       );
       if (evidence.outcome !== "ready_for_fact_checks") return evidence;
 
+      activeStage = "judge_claims";
       return await executeJudgmentStage(
         payload,
         event.instanceId,
@@ -353,18 +358,85 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               }
             },
           ),
+        (operation) =>
+          step.do(
+            "prepare claims for judgment",
+            {
+              retries: {
+                limit: 2,
+                delay: "1 second",
+                backoff: "exponential",
+              },
+              timeout: "4 minutes",
+            },
+            operation,
+          ),
       );
     } catch (error) {
-      await repository.advance(
-        payload,
-        event.instanceId,
-        "failed",
-        attempt,
+      const errorCode =
         failureCode ??
-          (error instanceof NonRetryableError
-            ? error.message
-            : "WORKFLOW_FAILED"),
-      );
+        (error instanceof NonRetryableError ||
+        error instanceof PermanentWorkflowError
+          ? error.message
+          : "WORKFLOW_FAILED");
+      const errorSummary = {
+        jobId: payload.jobId,
+        generation: payload.generation,
+        stage: activeStage,
+        attempt,
+        errorCode,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorMessage:
+          error instanceof Error
+            ? error.message.slice(0, 160)
+            : "Non-Error thrown",
+      };
+
+      try {
+        await step.do(
+          "persist failed analysis job",
+          {
+            retries: {
+              limit: 2,
+              delay: "1 second",
+              backoff: "exponential",
+            },
+            timeout: "1 minute",
+          },
+          async () => {
+            const updated = await repository.advance(
+              payload,
+              event.instanceId,
+              "failed",
+              attempt,
+              errorCode,
+            );
+            if (updated) return;
+
+            const current = await repository.get(payload);
+            if (
+              current?.run_id !== event.instanceId ||
+              current.status !== "failed"
+            ) {
+              throw new Error("Failure state transition was rejected");
+            }
+          },
+        );
+      } catch (persistenceError) {
+        console.error("[analysis] Failed to persist workflow failure", {
+          ...errorSummary,
+          persistenceErrorName:
+            persistenceError instanceof Error
+              ? persistenceError.name
+              : "UnknownError",
+          persistenceErrorMessage:
+            persistenceError instanceof Error
+              ? persistenceError.message.slice(0, 160)
+              : "Non-Error thrown",
+        });
+      }
+
+      console.error("[analysis] Workflow failed", errorSummary);
       throw error;
     }
   }
