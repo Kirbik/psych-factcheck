@@ -40,6 +40,8 @@ const reportResult: ReportLoadResult = {
         status: "contradicted",
         confidence: 0.81,
         explanation: "Эффект зависит от дозы и индивидуальных особенностей.",
+        modelCommentary:
+          "Абсолютная формулировка требует осторожного прочтения.",
         sources: [sharedSource],
       },
       {
@@ -53,9 +55,17 @@ const reportResult: ReportLoadResult = {
         status: "supported",
         confidence: 0.71,
         explanation: "Данные подтверждают кратковременный эффект.",
+        modelCommentary:
+          "В этом утверждении важно не переносить кратковременный эффект на все ситуации.",
         sources: [sharedSource],
       },
     ],
+    narrative: {
+      overallConclusion:
+        "В ролике есть как подтвержденные, так и противоречащие данным утверждения.",
+      subjectiveOpinion:
+        "Моё субъективное впечатление: формулировки ролика местами звучат категоричнее, чем позволяют данные.",
+    },
   },
 };
 
@@ -85,6 +95,13 @@ describe("ReportPreview", () => {
     expect(
       screen.getByText("Проверка завершена 1 октября 2026, 20:11"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Общий вывод" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/местами звучат категоричнее/)).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("tab", { name: /Кофеин всегда усиливает тревожность/ }),
+    );
     expect(screen.getByText("00:34–00:42")).toBeInTheDocument();
     expect(
       screen.getByText("Кофе всегда усиливает тревожность."),
@@ -96,25 +113,32 @@ describe("ReportPreview", () => {
       screen.getByText("Эффект зависит от дозы и индивидуальных особенностей."),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("tab", { name: "Общий вывод" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Абсолютная формулировка требует осторожного прочтения/),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("link", { name: "Открыть источник" }),
     ).toHaveAttribute("href", "https://example.org/review");
   });
 
   it("switches claim details with the keyboard accessible tab list", () => {
     render(<ReportPreview result={reportResult} />);
-    const firstTab = screen.getByRole("tab", {
-      name: /Кофеин всегда усиливает тревожность/,
-    });
-
-    fireEvent.keyDown(firstTab, { key: "ArrowDown" });
+    const overallTab = screen.getByRole("tab", { name: "Общий вывод" });
+    expect(overallTab).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(overallTab, { key: "ArrowDown" });
 
     expect(
-      screen.getByRole("tab", { name: /Кофеин улучшает внимание/ }),
+      screen.getByRole("tab", { name: /Кофеин всегда усиливает тревожность/ }),
     ).toHaveAttribute("aria-selected", "true");
     expect(
-      screen.getByText("Кофеин может улучшить внимание."),
+      screen.getByText("Кофе всегда усиливает тревожность."),
     ).toBeInTheDocument();
-    expect(screen.getByText("00:58–01:04")).toBeInTheDocument();
+    expect(screen.getByText("00:34–00:42")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Абсолютная формулировка требует осторожного прочтения/),
+    ).toBeInTheDocument();
   });
 
   it("does not show demo report content while processing or when no claims were extracted", () => {
@@ -138,13 +162,13 @@ describe("ReportPreview", () => {
       <ReportPreview
         result={{
           kind: "ready",
-          report: { ...reportResult.report, claims: [] },
+          report: { ...reportResult.report, claims: [], narrative: null },
         }}
       />,
     );
     expect(
       screen.getByText(
-        "Проверка завершена. Проверяемых утверждений не найдено.",
+        "Проверяемых утверждений не найдено, поэтому доказательный вывод по ролику сделать нельзя.",
       ),
     ).toBeInTheDocument();
   });

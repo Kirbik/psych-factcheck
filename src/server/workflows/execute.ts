@@ -303,6 +303,12 @@ export async function executeJudgmentStage(
   prepareJudgment: <T>(operation: () => Promise<T>) => Promise<T> = (
     operation,
   ) => operation(),
+  createReportNarrative?: (
+    targets: readonly {
+      readonly claimId: string;
+      readonly evidencePackageId: string;
+    }[],
+  ) => Promise<void>,
 ) {
   const preparation = await prepareJudgment(async () => {
     const job = await repository.get(payload);
@@ -353,6 +359,7 @@ export async function executeJudgmentStage(
 
     return {
       outcome: "ready_for_judgment" as const,
+      allTargets: targets,
       targets: targets.filter(
         ({ claimId, evidencePackageId }) =>
           !completed.has(JSON.stringify([claimId, evidencePackageId])),
@@ -366,6 +373,9 @@ export async function executeJudgmentStage(
   for (const target of preparation.targets) {
     await judgeClaim(target);
   }
+
+  if (createReportNarrative)
+    await createReportNarrative(preparation.allTargets);
 
   const finished = await repository.advance(
     payload,

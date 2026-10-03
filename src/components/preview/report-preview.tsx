@@ -182,29 +182,36 @@ function ReportReady({
 }: {
   report: Extract<ReportLoadResult, { kind: "ready" }>["report"];
 }) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const counts = statusOrder.map((status) => ({
     status,
     count: report.claims.filter((claim) => claim.status === status).length,
   }));
-  const activeClaim = report.claims[activeIndex];
+  const activeClaim = activeIndex >= 0 ? report.claims[activeIndex] : undefined;
   const sourceCount = getSourceCount(report.claims);
 
   function handleTabKeyDown(
     event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
+    tabIndex: number,
   ) {
+    const tabCount = report.claims.length + 1;
     let nextIndex: number | null = null;
     if (event.key === "ArrowDown" || event.key === "ArrowRight")
-      nextIndex = (index + 1) % report.claims.length;
+      nextIndex = (tabIndex + 1) % tabCount;
     if (event.key === "ArrowUp" || event.key === "ArrowLeft")
-      nextIndex = (index - 1 + report.claims.length) % report.claims.length;
+      nextIndex = (tabIndex - 1 + tabCount) % tabCount;
     if (event.key === "Home") nextIndex = 0;
-    if (event.key === "End") nextIndex = report.claims.length - 1;
+    if (event.key === "End") nextIndex = tabCount - 1;
     if (nextIndex === null) return;
     event.preventDefault();
-    setActiveIndex(nextIndex);
-    document.getElementById(`report-claim-tab-${nextIndex}`)?.focus();
+    setActiveIndex(nextIndex - 1);
+    document
+      .getElementById(
+        nextIndex === 0
+          ? "report-overall-tab"
+          : `report-claim-tab-${nextIndex - 1}`,
+      )
+      ?.focus();
   }
 
   return (
@@ -274,66 +281,84 @@ function ReportReady({
           ))}
         </div>
 
-        {activeClaim ? (
-          <div className={reportStyles.reportLayout}>
-            <aside
-              className={reportStyles.claimList}
-              aria-label="Список утверждений"
+        <div className={reportStyles.reportLayout}>
+          <aside
+            className={reportStyles.claimList}
+            aria-label="Общий вывод и утверждения"
+          >
+            <h2>Утверждения</h2>
+            <div
+              role="tablist"
+              aria-label="Общий вывод и утверждения"
+              aria-orientation="vertical"
             >
-              <h2>Утверждения</h2>
-              <div
-                role="tablist"
-                aria-label="Утверждения"
-                aria-orientation="vertical"
+              <button
+                aria-controls="report-claim-panel"
+                aria-selected={activeIndex === -1}
+                className={
+                  activeIndex === -1
+                    ? reportStyles.claimTabActive
+                    : reportStyles.claimTab
+                }
+                id="report-overall-tab"
+                onClick={() => setActiveIndex(-1)}
+                onKeyDown={(event) => handleTabKeyDown(event, 0)}
+                role="tab"
+                tabIndex={activeIndex === -1 ? 0 : -1}
+                type="button"
               >
-                {report.claims.map((claim, index) => (
-                  <button
-                    aria-controls="report-claim-panel"
-                    aria-selected={index === activeIndex}
-                    className={
-                      index === activeIndex
-                        ? reportStyles.claimTabActive
-                        : reportStyles.claimTab
-                    }
-                    id={`report-claim-tab-${index}`}
-                    key={claim.id}
-                    onClick={() => setActiveIndex(index)}
-                    onKeyDown={(event) => handleTabKeyDown(event, index)}
-                    role="tab"
-                    tabIndex={index === activeIndex ? 0 : -1}
-                    type="button"
-                  >
-                    <span className={reportStyles.claimNumber}>
-                      {index + 1}.
+                <span className={reportStyles.claimNumber} aria-hidden="true" />
+                <span className={reportStyles.claimSummary}>Общий вывод</span>
+              </button>
+              {report.claims.map((claim, index) => (
+                <button
+                  aria-controls="report-claim-panel"
+                  aria-selected={index === activeIndex}
+                  className={
+                    index === activeIndex
+                      ? reportStyles.claimTabActive
+                      : reportStyles.claimTab
+                  }
+                  id={`report-claim-tab-${index}`}
+                  key={claim.id}
+                  onClick={() => setActiveIndex(index)}
+                  onKeyDown={(event) => handleTabKeyDown(event, index + 1)}
+                  role="tab"
+                  tabIndex={index === activeIndex ? 0 : -1}
+                  type="button"
+                >
+                  <span className={reportStyles.claimNumber}>{index + 1}.</span>
+                  <span className={reportStyles.claimSummary}>
+                    <span>{claim.title}</span>
+                    <span
+                      className={`${reportStyles.status} ${reportStyles[`status-${claim.status}`]}`}
+                    >
+                      {statusLabels[claim.status]}
                     </span>
-                    <span className={reportStyles.claimSummary}>
-                      <span>{claim.title}</span>
-                      <span
-                        className={`${reportStyles.status} ${reportStyles[`status-${claim.status}`]}`}
-                      >
-                        {statusLabels[claim.status]}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </aside>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </aside>
 
-            <article
-              aria-labelledby={`report-claim-tab-${activeIndex}`}
-              className={reportStyles.claimPanel}
-              id="report-claim-panel"
-              role="tabpanel"
-              tabIndex={0}
-            >
+          <article
+            aria-labelledby={
+              activeIndex === -1
+                ? "report-overall-tab"
+                : `report-claim-tab-${activeIndex}`
+            }
+            className={reportStyles.claimPanel}
+            id="report-claim-panel"
+            role="tabpanel"
+            tabIndex={0}
+          >
+            {activeClaim ? (
               <ClaimDetail claim={activeClaim} />
-            </article>
-          </div>
-        ) : (
-          <p className={reportStyles.noClaims}>
-            Проверка завершена. Проверяемых утверждений не найдено.
-          </p>
-        )}
+            ) : (
+              <OverallConclusion report={report} />
+            )}
+          </article>
+        </div>
       </section>
     </main>
   );
@@ -374,6 +399,11 @@ function ClaimDetail({ claim }: { claim: ReportClaim }) {
           </p>
           <h3>Почему сделан такой вывод</h3>
           <p className={reportStyles.explanation}>{claim.explanation}</p>
+          <h3>Субъективный комментарий модели</h3>
+          <p className={reportStyles.explanation}>
+            {claim.modelCommentary ??
+              "Комментарий модели для этой версии анализа не сохранён."}
+          </p>
         </section>
       </div>
       <section
@@ -408,6 +438,36 @@ function ClaimDetail({ claim }: { claim: ReportClaim }) {
         ) : (
           <p className={reportStyles.muted}>Цитируемые источники не указаны.</p>
         )}
+      </section>
+    </>
+  );
+}
+
+function OverallConclusion({
+  report,
+}: {
+  report: Extract<ReportLoadResult, { kind: "ready" }>["report"];
+}) {
+  return (
+    <>
+      <div className={reportStyles.claimHeading}>
+        <h2>Общий вывод</h2>
+      </div>
+      <section className={reportStyles.detailBlock}>
+        <h3>Вывод по видео на основе проверенных утверждений</h3>
+        <p className={reportStyles.explanation}>
+          {report.narrative?.overallConclusion ??
+            (report.claims.length === 0
+              ? "Проверяемых утверждений не найдено, поэтому доказательный вывод по ролику сделать нельзя."
+              : "Общий вывод не был сохранён для этой версии анализа.")}
+        </p>
+      </section>
+      <section className={reportStyles.detailBlock}>
+        <h3>Субъективное мнение модели</h3>
+        <p className={reportStyles.explanation}>
+          {report.narrative?.subjectiveOpinion ??
+            "Субъективное мнение модели для этой версии анализа не сохранено; оно не является научным доказательством."}
+        </p>
       </section>
     </>
   );

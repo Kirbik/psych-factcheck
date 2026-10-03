@@ -80,6 +80,63 @@ export type Database = {
           },
         ];
       };
+      analysis_report_narratives: {
+        Row: {
+          content_item_id: string;
+          created_at: string;
+          generation: number;
+          id: string;
+          job_id: string;
+          model: string;
+          narrative_version: string;
+          payload: Json;
+          prompt_version: string;
+          provider: string;
+          schema_version: string;
+        };
+        Insert: {
+          content_item_id: string;
+          created_at?: string;
+          generation: number;
+          id?: string;
+          job_id: string;
+          model: string;
+          narrative_version: string;
+          payload: Json;
+          prompt_version: string;
+          provider: string;
+          schema_version: string;
+        };
+        Update: {
+          content_item_id?: string;
+          created_at?: string;
+          generation?: number;
+          id?: string;
+          job_id?: string;
+          model?: string;
+          narrative_version?: string;
+          payload?: Json;
+          prompt_version?: string;
+          provider?: string;
+          schema_version?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "analysis_report_narratives_content_item_id_fkey";
+            columns: ["content_item_id"];
+            isOneToOne: false;
+            referencedRelation: "content_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "analysis_report_narratives_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: false;
+            referencedRelation: "analysis_jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       auth_access_tokens: {
         Row: {
           created_at: string;
@@ -904,6 +961,20 @@ export type Database = {
           p_run_id: string;
           p_schema_version: string;
           p_claim_id: string;
+        };
+        Returns: string;
+      };
+      save_analysis_report_narrative_for_run: {
+        Args: {
+          p_generation: number;
+          p_job_id: string;
+          p_model: string;
+          p_narrative_version: string;
+          p_payload: Json;
+          p_prompt_version: string;
+          p_provider: string;
+          p_run_id: string;
+          p_schema_version: string;
         };
         Returns: string;
       };

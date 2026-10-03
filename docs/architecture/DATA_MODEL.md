@@ -1,6 +1,6 @@
 # Data Model
 
-This document distinguishes the implemented repository schema from deployed Production state and planned domains. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, Session 11's `fact_checks` and `fact_check_evidence`, three token-auth tables, and a private video bucket. Session 9 retrieval, Session 10 evidence-package, Session 11 fact-check, Session 23 expanded-screening, and Session 24 Russian bibliography migrations are deployed to Production. Production contains 21 sources, 33 evidence chunks, and 33 current evidence vectors as of 2026-10-03; claim embeddings are supported by schema but are not currently populated. Billing entities remain future schema.
+This document distinguishes the implemented repository schema from deployed Production state and planned domains. IDs are UUIDs, timestamps are UTC, and user-owned rows use RLS plus server-side ownership checks. The repository migrations implement `profiles`, `content_items`, `analysis_jobs`, `video_screenings`, `transcripts`, `claim_extractions`, `claims`, the shared `sources` and `evidence_chunks` catalog, versioned `evidence_embeddings` and `claim_embeddings`, `evidence_packages` and `evidence_package_items`, Session 11's `fact_checks` and `fact_check_evidence`, Session 25's `analysis_report_narratives`, three token-auth tables, and a private video bucket. Session 9 retrieval, Session 10 evidence-package, Session 11 fact-check, Session 23 expanded-screening, and Session 24 Russian bibliography migrations are deployed to Production. Session 25 report-narrative migration is implemented locally and has not been deployed. Production contains 21 sources, 33 evidence chunks, and 33 current evidence vectors as of 2026-10-03; claim embeddings are supported by schema but are not currently populated. Billing entities remain future schema.
 
 ## Identity and content
 
@@ -132,6 +132,14 @@ provider, provider version, PMCID, license URL, and storage limit provenance.
 - **Relations/ownership:** many-to-many join; ownership derives from fact check while evidence is shared.
 - **Lifecycle:** citations are frozen with the fact check. The persistence path rejects chunk IDs absent from the linked Evidence Package.
 
+### `analysis_report_narratives` — Session 25, migration pending deployment
+
+- **Purpose:** store the separate model commentary for each claim, the overall video conclusion, and explicitly subjective model opinion after all fact checks are persisted.
+- **Fields:** `job_id`, `content_item_id`, `generation`, `provider`, `model`, `narrative_version`, `prompt_version`, `schema_version`, `payload`, `created_at`.
+- **Integrity:** unique per job generation and schema version; the service-only save RPC checks the active `judge_claims` run and verifies each commentary's claim/fact-check relationship. The artifact contains generated text, not copies of article passages.
+- **Access:** RLS permits owner reads; clients cannot write. Workflow persistence uses the run-fenced security-definer RPC.
+- **Compatibility:** older completed analyses without this artifact remain readable and display that commentary is unavailable.
+
 ## Orchestration
 
 ### `analysis_jobs`
@@ -139,7 +147,7 @@ provider, provider version, PMCID, license URL, and storage limit provenance.
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence`; Session 12 adds `judge_claims` and completes after fact checks are persisted. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`. Report artifacts are not yet produced, and content remains pending. See [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence`; Session 12 adds `judge_claims`; Session 25 stores a fenced report-narrative artifact before completion. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 
@@ -187,3 +195,11 @@ provider, provider version, PMCID, license URL, and storage limit provenance.
 ## Future integrity baseline
 
 Use foreign keys, check constraints for enums/ranges, unique idempotency keys, and indexes based on measured queries. Vector indexes belong on version-compatible embeddings. Do not put large video bytes or raw secrets in PostgreSQL. Deletion policy must distinguish user content, shared scientific sources, and legally required billing audit data.
+
+### `analysis_report_narratives` — Session 25, migration pending deployment
+
+- **Purpose:** store the separate model commentary for each claim, the overall video conclusion, and explicitly subjective model opinion after all fact checks are persisted.
+- **Fields:** `job_id`, `content_item_id`, `generation`, `provider`, `model`, `narrative_version`, `prompt_version`, `schema_version`, `payload`, `created_at`.
+- **Integrity:** unique per job generation and schema version; the service-only save RPC checks the active `judge_claims` run and verifies each commentary's claim/fact-check relationship. The artifact contains generated text, not copies of article passages.
+- **Access:** RLS permits owner reads; clients cannot write. Workflow persistence uses the run-fenced security-definer RPC.
+- **Compatibility:** older completed analyses without this artifact remain readable and display that commentary is unavailable.

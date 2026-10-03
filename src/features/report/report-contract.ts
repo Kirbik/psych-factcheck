@@ -23,13 +23,20 @@ export type ReportClaim = {
   readonly status: ReportClaimStatus;
   readonly confidence: number;
   readonly explanation: string;
+  readonly modelCommentary: string | null;
   readonly sources: readonly ReportSource[];
+};
+
+export type ReportNarrative = {
+  readonly overallConclusion: string;
+  readonly subjectiveOpinion: string;
 };
 
 export type ReportData = {
   readonly contentItemId: string;
   readonly fileName: string;
   readonly checkedAt: string;
+  readonly narrative: ReportNarrative | null;
   readonly claims: readonly ReportClaim[];
 };
 

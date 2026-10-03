@@ -47,6 +47,11 @@ import {
 } from "@/server/ai/openai-judgment-provider";
 import { createFactCheckService } from "@/server/ai/fact-check-service";
 import { factCheckRepository } from "@/server/ai/fact-check-repository";
+import {
+  createOpenAIReportNarrativeProvider,
+  ReportNarrativeError,
+} from "@/server/ai/report-narrative";
+import { createReportNarrativeService } from "@/server/ai/report-narrative-service";
 import { createWorkerClient } from "./client";
 
 export class AnalysisWorkflow extends WorkflowEntrypoint<
@@ -70,6 +75,10 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const factCheckService = createFactCheckService(
       factCheckRepository(client),
       judgmentProvider,
+    );
+    const reportNarrativeService = createReportNarrativeService(
+      client,
+      createOpenAIReportNarrativeProvider(apiKey),
     );
     let attempt = 1;
     let activeStage = "screen_video";
@@ -364,6 +373,43 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
             },
             operation,
           ),
+        async (targets) => {
+          await step.do(
+            "create and save report narrative",
+            {
+              retries: {
+                limit: 2,
+                delay: "1 second",
+                backoff: "exponential",
+              },
+              timeout: "4 minutes",
+            },
+            async (context) => {
+              attempt = context.attempt;
+              const active = await repository.setStage(
+                payload,
+                event.instanceId,
+                "judge_claims",
+                context.attempt,
+              );
+              if (!active) throw new NonRetryableError("RUN_OBSOLETE");
+              try {
+                await reportNarrativeService.generateAndSave({
+                  targets,
+                  jobId: payload.jobId,
+                  generation: payload.generation,
+                  runId: event.instanceId,
+                });
+              } catch (error) {
+                if (error instanceof ReportNarrativeError) {
+                  failureCode = error.code;
+                  if (!error.retryable) throw new NonRetryableError(error.code);
+                }
+                throw error;
+              }
+            },
+          );
+        },
       );
     } catch (error) {
       const errorCode =

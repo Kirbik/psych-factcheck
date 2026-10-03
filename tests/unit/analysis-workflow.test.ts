@@ -540,6 +540,14 @@ describe("workflow execution", () => {
       preparationCalls += 1;
       return operation();
     };
+    const createNarrative = vi.fn(async () => {
+      expect(repo.advance).not.toHaveBeenCalledWith(
+        payload,
+        runId,
+        "completed",
+        3,
+      );
+    });
 
     await expect(
       executeJudgmentStage(
@@ -549,6 +557,7 @@ describe("workflow execution", () => {
         repo,
         judgeClaim,
         prepareJudgment,
+        createNarrative,
       ),
     ).resolves.toEqual({ outcome: "fact_checks_ready" });
     expect(preparationCalls).toBe(1);
@@ -562,6 +571,9 @@ describe("workflow execution", () => {
       claimId,
       evidencePackageId,
     });
+    expect(createNarrative).toHaveBeenCalledExactlyOnceWith([
+      { claimId, evidencePackageId },
+    ]);
     expect(repo.advance).toHaveBeenLastCalledWith(
       payload,
       runId,

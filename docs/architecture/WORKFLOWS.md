@@ -165,8 +165,11 @@ Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queu
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
 `screen_video`, `transcribe_video`, `extract_claims`, `build_evidence`,
 `judge_claims`, or `complete`. In-scope jobs complete after fact checks and
-citations are saved. The `/report` page then assembles the view from those
-persisted rows; it does not run as a Workflow step.
+citations are saved and a fenced `judge_claims` step persists the versioned
+report narrative. Retries reuse the unique narrative artifact for the current
+job generation and schema version. `/report` reads saved judgments and
+narrative; it does not call a model on page load. Older completed jobs without
+a narrative remain readable and show an explicit unavailable note.
 `generation` counts explicit restarts;
 `attempt` records Workflow step retries. Technical errors returned to the
 browser are fixed messages, never raw provider errors. The step retries

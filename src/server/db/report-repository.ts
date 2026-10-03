@@ -18,6 +18,10 @@ import {
 import { CLAIM_EXTRACTION_VERSION } from "@/server/ai/claim-extraction";
 import { EVIDENCE_RERANKING_VERSION } from "@/server/evidence/reranking";
 import { EVIDENCE_RETRIEVAL_VERSION } from "@/server/evidence/search";
+import {
+  REPORT_NARRATIVE_SCHEMA_VERSION,
+  persistedReportNarrativeSchema,
+} from "@/server/ai/report-narrative";
 import { verdicts, type Verdict } from "@/types/fact-check";
 import type {
   ReportClaim,
@@ -76,7 +80,7 @@ export function reportRepository(client: ReportClient) {
       const common = { contentItemId, fileName };
       const { data: job, error: jobError } = await client
         .from("analysis_jobs")
-        .select("status, stage, completed_at, error_code")
+        .select("id, generation, status, stage, completed_at, error_code")
         .eq("content_item_id", contentItemId)
         .eq("user_id", userId)
         .eq("pipeline_version", PIPELINE_VERSION)
@@ -96,6 +100,27 @@ export function reportRepository(client: ReportClient) {
         !job.completed_at
       )
         return { kind: "failed", ...common };
+
+      const { data: narrativeRow, error: narrativeError } = await client
+        .from("analysis_report_narratives")
+        .select("payload")
+        .eq("job_id", job.id)
+        .eq("generation", job.generation)
+        .eq("schema_version", REPORT_NARRATIVE_SCHEMA_VERSION)
+        .maybeSingle();
+      if (narrativeError) return { kind: "unavailable", ...common };
+      const narrativeParsed = narrativeRow
+        ? persistedReportNarrativeSchema.safeParse(narrativeRow.payload)
+        : null;
+      if (narrativeParsed && !narrativeParsed.success)
+        return { kind: "unavailable", ...common };
+      const narrative = narrativeParsed?.success
+        ? {
+            overallConclusion: narrativeParsed.data.overallConclusion,
+            subjectiveOpinion: narrativeParsed.data.subjectiveOpinion,
+          }
+        : null;
+      const modelCommentaryByClaim = new Map<string, string>();
 
       const { data: transcript, error: transcriptError } = await client
         .from("transcripts")
@@ -124,9 +149,19 @@ export function reportRepository(client: ReportClient) {
         .order("ordinal", { ascending: true });
       if (claimsError || !claims) return { kind: "unavailable", ...common };
       if (claims.length === 0) {
+        if (
+          narrativeParsed?.success &&
+          narrativeParsed.data.claims.length !== 0
+        )
+          return { kind: "unavailable", ...common };
         return {
           kind: "ready",
-          report: { ...common, checkedAt: job.completed_at, claims: [] },
+          report: {
+            ...common,
+            checkedAt: job.completed_at,
+            narrative,
+            claims: [],
+          },
         };
       }
 
@@ -167,6 +202,21 @@ export function reportRepository(client: ReportClient) {
       }
       if (claims.some(({ id }) => !checkByClaim.has(id)))
         return { kind: "unavailable", ...common };
+
+      if (narrativeParsed?.success) {
+        if (narrativeParsed.data.claims.length !== claims.length)
+          return { kind: "unavailable", ...common };
+        for (const item of narrativeParsed.data.claims) {
+          const check = checkByClaim.get(item.claimId);
+          if (
+            !check ||
+            check.id !== item.factCheckId ||
+            modelCommentaryByClaim.has(item.claimId)
+          )
+            return { kind: "unavailable", ...common };
+          modelCommentaryByClaim.set(item.claimId, item.commentary);
+        }
+      }
 
       const checkIds = factChecks.map(({ id }) => id);
       const { data: citations, error: citationsError } = await client
@@ -345,6 +395,7 @@ export function reportRepository(client: ReportClient) {
           status: toReportStatus(verdict.data),
           confidence: confidence.data,
           explanation: localized.explanation,
+          modelCommentary: modelCommentaryByClaim.get(claim.id) ?? null,
           sources: [...citedSourceIds].flatMap((id) => {
             const source = sourceById.get(id);
             return source ? [source] : [];
@@ -357,6 +408,7 @@ export function reportRepository(client: ReportClient) {
         report: {
           ...common,
           checkedAt: job.completed_at,
+          narrative,
           claims: reportClaims,
         },
       };

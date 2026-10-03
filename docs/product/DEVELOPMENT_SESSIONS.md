@@ -382,6 +382,17 @@ Session 13 until Session 12 is accepted.
 - **Out of scope:** Ingesting book text without authorized files or treating theoretical/history books as current empirical evidence.
 - **Definition of Done:** Migration, records, excerpts, and embeddings are present in Production; source/license attribution and literature limitations remain documented.
 
+## Session 25 — Claim Commentary and Overall Conclusion
+
+**Status:** Implemented locally; migration `20261003120000_report_narratives.sql` and Worker changes are not deployed. The existing report tab pattern now includes “Общий вывод”, plus a separately labeled subjective comment for each claim and a video-level subjective opinion. Workflow creates this versioned narrative from validated Evidence Packages and saved judgments before completing the job; run fencing, unique artifact persistence, owner-readable RLS, and compatibility with older reports are included. The subjective text is not a verdict or evidence. Model quality remains unconfirmed without expert-reviewed golden cases.
+
+- **Goal:** Add a clear model commentary beside each claim and a separate overall conclusion for a video.
+- **Why:** Users need a more interpretable synthesis while seeing which parts are evidence-based and which are subjective.
+- **Scope:** Versioned narrative provider/schema, fenced workflow persistence, owner-readable narrative artifact, report repository and existing tab UI, tests, and docs.
+- **Out of scope:** Changing transcript/claim extraction, fact-check verdicts, report history, billing, or production deployment.
+- **Required checks:** lint, typecheck, unit/integration tests, report E2E, AI evals, and build.
+- **Quality limit:** Tests validate contracts and persistence, not semantic accuracy or model quality.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

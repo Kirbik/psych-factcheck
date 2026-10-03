@@ -59,6 +59,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
       await sqlFile("20261002130000_fenced_fact_check_persistence.sql"),
     );
     await db.exec(await sqlFile("20261002150000_report_localizations_ru.sql"));
+    await db.exec(await sqlFile("20261003120000_report_narratives.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -532,6 +533,45 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     expect((await saveFactCheck()).rows[0]?.id).toBe(
       savedFactCheck.rows[0]?.id,
     );
+    const currentFactCheck = await db.query<{ id: string }>(
+      `select public.save_fact_check_for_analysis_run(
+        $1, 1, 'judgment_run', $2, $3, 'fact-check-judgment-v4',
+        'openai', 'gpt-4o-mini', 'instructions-v4', 'schema-v4', $4::jsonb
+      ) as id`,
+      [
+        analysisJob.rows[0]?.id,
+        claim.rows[0]?.id,
+        evidencePackageRow.rows[0]?.id,
+        JSON.stringify(factCheckInput),
+      ],
+    );
+    const narrativePayload = JSON.stringify({
+      claims: [
+        {
+          claimId: claim.rows[0]?.id,
+          factCheckId: currentFactCheck.rows[0]?.id,
+          commentary: "Отдельный комментарий к результату.",
+        },
+      ],
+      overallConclusion: "Общий вывод по сохраненному evidence package.",
+      subjectiveOpinion: "Субъективная оценка формулировки ролика.",
+    });
+    const saveNarrative = (runId = "judgment_run") =>
+      db.query<{ id: string }>(
+        `select public.save_analysis_report_narrative_for_run(
+          $1, 1, $2, 'openai', 'gpt-4o-mini', 'report-narrative-v1',
+          'report-narrative-instructions-v1', 'report-narrative-schema-v1', $3::jsonb
+        ) as id`,
+        [analysisJob.rows[0]?.id, runId, narrativePayload],
+      );
+    const savedNarrative = await saveNarrative();
+    expect(savedNarrative.rows[0]?.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect((await saveNarrative()).rows[0]?.id).toBe(
+      savedNarrative.rows[0]?.id,
+    );
+    await expect(saveNarrative("obsolete_run")).rejects.toThrow(
+      /Analysis run is no longer current/,
+    );
     const localizedPayload = JSON.stringify([
       {
         fact_check_id: savedFactCheck.rows[0]?.id,
@@ -630,11 +670,20 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
       citations: await db.query(
         "select evidence_chunk_id from public.fact_check_evidence",
       ),
+      narratives: await db.query(
+        "select payload from public.analysis_report_narratives",
+      ),
     }));
     expect(ownerPackages.packages.rows).toHaveLength(1);
     expect(ownerPackages.items.rows).toHaveLength(1);
-    expect(ownerPackages.judgments.rows).toHaveLength(1);
-    expect(ownerPackages.citations.rows).toHaveLength(1);
+    expect(ownerPackages.judgments.rows).toHaveLength(2);
+    expect(ownerPackages.citations.rows).toHaveLength(2);
+    expect(ownerPackages.narratives.rows).toHaveLength(1);
+    expect(
+      await asUser(other, async () =>
+        db.query("select id from public.analysis_report_narratives"),
+      ),
+    ).toMatchObject({ rows: [] });
     expect(
       await db.query<{
         serviceInsert: boolean;
