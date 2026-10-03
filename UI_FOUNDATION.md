@@ -35,6 +35,8 @@
 --warning-soft: #faeede;
 --danger: #b4551f;
 --danger-soft: #fbe5df;
+--disputed: #991b1b;
+--disputed-soft: #fee2e2;
 ```
 
 Основной фон приложения: тёплый светлый фон с мягкими radial gradients, заданный в `.preview`. Не добавлять новые цвета и не заменять палитру на холодную blue/gray-схему.
@@ -65,7 +67,7 @@ Header содержит бренд и ссылки «Проверки» / «Пр
 Каждый статус передаётся текстом и цветом:
 
 - Contradicted / «Расходится с данными»: `--danger` / `--danger-soft`.
-- Disputed / «Спорное утверждение»: `--warning` / `--warning-soft`.
+- Disputed / «Спорное утверждение»: `--disputed` / `--disputed-soft` (Preline soft badge: red-800 / red-100; красный по запросу пользователя). Тот же `--disputed` используется в диаграмме и легенде.
 - Not found / «Данные не найдены»: тёплый бледно-жёлтый фон `#F6EFCF`, текст `#806C27`.
 - Supported / «Данные подтверждены»: `--accent` / `--accent-soft`.
 - Processing / «Выполняется»: warning text, animated indicator; reduced-motion отключает animation.

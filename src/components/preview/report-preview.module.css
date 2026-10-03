@@ -3,6 +3,8 @@
   --danger-soft: #fbe5df;
   --warning: #96670f;
   --warning-soft: #faeede;
+  --disputed: #991b1b;
+  --disputed-soft: #fee2e2;
 }
 
 .content {
@@ -80,7 +82,7 @@
 }
 .segment-disputed,
 .dot.segment-disputed {
-  background: var(--warning);
+  background: var(--disputed);
 }
 .segment-not-found,
 .dot.segment-not-found {
@@ -191,8 +193,8 @@
   color: var(--danger);
 }
 .status-disputed {
-  background: var(--warning-soft);
-  color: var(--warning);
+  background: var(--disputed-soft);
+  color: var(--disputed);
 }
 .status-not-found {
   background: #f6efcf;
