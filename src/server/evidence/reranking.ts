@@ -5,6 +5,7 @@ import type {
   EvidencePackage,
   EvidenceItem,
   ExtractedClaim,
+  PublicationReference,
 } from "../ai/providers.ts";
 import type { EvidenceCandidate, EvidenceSearchResult } from "./search.ts";
 
@@ -89,7 +90,10 @@ export const deterministicEvidenceReranker: EvidenceReranker = {
       .map((candidate) => {
         const retrievalScore = candidate.similarity;
         const normalizedSimilarity = (retrievalScore + 1) / 2;
-        const directTermCoverage = lexicalCoverage(claimTerms, candidate.content);
+        const directTermCoverage = lexicalCoverage(
+          claimTerms,
+          candidate.content,
+        );
         return {
           chunkId: candidate.chunkId,
           relevanceScore:
@@ -133,18 +137,22 @@ function toEvidenceItem(
     source: candidate.source,
     retrievalScore,
     relevanceScore,
+    ...(candidate.retrievalScoreKind
+      ? { retrievalScoreKind: candidate.retrievalScoreKind }
+      : {}),
+    ...(candidate.attribution ? { attribution: candidate.attribution } : {}),
   };
 }
 
 export async function buildEvidencePackage(
   claim: ExtractedClaim,
-  retrieval: EvidenceSearchResult,
+  retrieval: EvidenceSearchResult & {
+    readonly references?: readonly PublicationReference[];
+    readonly externalSearchVersion?: string;
+  },
   reranker: EvidenceReranker = deterministicEvidenceReranker,
 ): Promise<EvidencePackage> {
-  if (
-    claim.normalized.trim().length === 0 ||
-    claim.normalized.length > 1_200
-  )
+  if (claim.normalized.trim().length === 0 || claim.normalized.length > 1_200)
     throw new EvidenceRerankingError("EVIDENCE_RERANKING_CLAIM_INVALID");
 
   let ranked: readonly RerankedEvidenceCandidate[];
@@ -225,6 +233,7 @@ export async function buildEvidencePackage(
     rerankingVersion: EVIDENCE_RERANKING_VERSION,
     coverage,
     warnings,
+    ...(retrieval.references ? { references: retrieval.references } : {}),
     trace: {
       retrieval: {
         provider: retrieval.provider,
@@ -236,6 +245,9 @@ export async function buildEvidencePackage(
       selectedChunkIds: selected.map((item) => item.chunkId),
       maximumEvidence: MAX_EVIDENCE_PACKAGE_SIZE,
       maximumChunksPerSource: MAX_CHUNKS_PER_SOURCE,
+      ...(retrieval.externalSearchVersion
+        ? { externalSearchVersion: retrieval.externalSearchVersion }
+        : {}),
     },
   };
 }

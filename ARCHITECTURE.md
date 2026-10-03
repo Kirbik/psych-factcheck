@@ -35,8 +35,11 @@ flowchart TD
   SCREEN -->|relevant or uncertain| TRANS[OpenAI timestamped transcription]
   SCREEN -->|clearly unrelated| STOP[Completed as out of scope]
   TRANS --> CLAIMS[OpenAI claim extraction and persistence]
-  CLAIMS --> RAG[Evidence retrieval and reranking]
+  CLAIMS --> RAG[Optional local evidence retrieval]
+  CLAIMS --> SEARCH[Europe PMC and Crossref publication search]
   RAG --> PACKAGE[Persisted Evidence Package]
+  SEARCH --> RIGHTS[Item-level OA and license gate]
+  RIGHTS --> PACKAGE
   PACKAGE --> JUDGE[Evidence-bound judgment]
   JUDGE --> REPORT[Owner-scoped report view from persisted results]
 ```
@@ -55,10 +58,13 @@ External services sit behind these contracts:
 - `LLMProvider`: evidence-bound judgment contract and OpenAI adapter, connected to the Session 12 Worker workflow
 - `TranscriptionProvider`: timestamped transcription (OpenAI `whisper-1` adapter implemented for Session 6)
 - `EmbeddingProvider`: text vectors
+- `EvidenceSearchProvider`: replaceable publication discovery boundary, implemented by Europe PMC and Crossref adapters
 - `ContentProvider`: future external content acquisition
 - `BillingProvider`: future checkout and subscription operations
 
 Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. The OpenAI transcription, topic-screening, claim-extraction, and embedding adapters are server-only; the first three and evidence retrieval are used by the Cloudflare Worker workflow. Claim extraction uses `gpt-4o-mini` structured output, validates each source excerpt against the transcript, and stores the model, prompt, and schema versions with an idempotent extraction record. Content and billing adapters are not implemented. Topic screening demuxes at most three four-second ranges from the compressed audio track with Mediabunny, then calls OpenAI transcription and structured text classification. When audio-track duration is absent from container metadata, Mediabunny computes it from encoded packet timestamps. Unsupported samples, low-confidence decisions, and screening errors fail open to full transcription. The screening instruction/model versions and bounded decision metadata are persisted without the sample transcript.
+
+Publication discovery supplements the Evidence Base. Europe PMC is the only full-text retrieval path and uses its Open Access subset. A passage enters evidence only when that publication's license is verified as CC BY 4.0. At most one excerpt of 1,000 characters is retained. Crossref contributes bibliographic metadata, DOI, and license links only; abstracts are not used. Metadata-only results remain references and cannot be cited. This extension is not Production-deployed or live-verified; API coverage is incomplete and expert-reviewed model-quality cases are still absent.
 
 ## Supabase boundary
 

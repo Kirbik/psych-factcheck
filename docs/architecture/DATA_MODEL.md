@@ -70,6 +70,20 @@ This document distinguishes the implemented repository schema from deployed Prod
 
 ## Evidence and fact checks
 
+The Session 12 live-search extension uses the existing source, chunk, package,
+and fact-check citation records; it does not add or drop tables. Crossref and
+metadata-only publication records are snapshotted in the package JSON as
+non-citable references. Only a license-verified Europe PMC CC BY 4.0 excerpt
+is inserted into the existing shared catalog. The excerpt row carries the API
+provider, provider version, PMCID, license URL, and storage limit provenance.
+
+The Session 12 live-search extension uses the existing source, chunk, package,
+and fact-check citation records; it does not add or drop tables. Crossref and
+metadata-only publication records are snapshotted in the package JSON as
+non-citable references. Only a license-verified Europe PMC CC BY 4.0 excerpt
+is inserted into the existing shared catalog. The excerpt row carries the API
+provider, provider version, PMCID, license URL, and storage limit provenance.
+
 ### `sources`
 
 - **Purpose:** canonical metadata for a real publication or authoritative resource.
@@ -89,7 +103,7 @@ This document distinguishes the implemented repository schema from deployed Prod
 - **Purpose:** immutable, versioned result of retrieving and reranking evidence for one extracted claim.
 - **Implemented fields:** `id`, `claim_id`, retrieval/reranking versions, coverage (`none`, `limited`, or `multi_source`), warnings, trace, full package payload, and `created_at`.
 - **Relations/ownership:** belongs to one claim; owner access follows claim → extraction → transcript → content. Authenticated users can select only their own packages. Writes are service-role-only through `save_evidence_packages`.
-- **Lifecycle:** unique by `(claim_id, retrieval_version, reranking_version)`. Retries reuse an existing package. The saved payload retains claim wording, evidence/source snapshots, scores, filters, and trace for audit.
+- **Lifecycle:** unique by `(claim_id, retrieval_version, reranking_version)`. Retries reuse an existing package. The saved payload retains claim wording, evidence/source snapshots, scores, filters, provider/search/prompt/schema versions, and trace for audit. Session 12 also stores bounded bibliographic references in the JSON payload; metadata-only references are labeled and excluded from evidence/citations. A licensed Europe PMC excerpt is stored in the existing source/chunk catalog and linked through the existing package-item table. Stable DOI/PMCID source keys and chunk keys make retries idempotent. No full article is persisted.
 
 ### `evidence_package_items`
 
@@ -102,14 +116,14 @@ This document distinguishes the implemented repository schema from deployed Prod
 
 - Session 9 deploys versioned 1536-dimensional vectors keyed to `evidence_chunks.id` and provides a `claim_embeddings` table. The current workflow embeds claim text in batches as retrieval queries but does not persist those query vectors. Stored chunk vectors include model/version and source-text digest; the query RPC uses cosine similarity and supports language, source type, and publication-date filters while excluding non-active sources.
 - Evidence Package persistence links each claim's retrieval/reranking result to a frozen set of evidence chunk IDs. Session 11's judgment persistence and Session 12's run-fenced Worker integration are deployed to Production. A fresh authenticated Production analysis completed the combined path at `stage = complete` in generation 2.
-- Embedding model/version and retrieval traces must be recorded without replacing source text or provenance.
+- Embedding model/version and retrieval traces must be recorded without replacing source text or provenance. Europe PMC excerpt provenance records PMCID, OA access type, CC BY 4.0 URL, provider version, and excerpt limit; only confirmed CC BY 4.0 text is persisted. Crossref records and any record with unknown or incompatible reuse terms remain package metadata, not evidence. The extension adds no relational tables and leaves legacy evidence/package/citation tables compatible.
 
 ### `fact_checks` — Session 11, migration deployed
 
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
 - **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, verdict, confidence, explanation, limitations, and creation time.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
-- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. The wrapper and Worker integration were deployed on 2026-10-01.
+- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. Judgment now uses schema v2 and instructions v3 to ignore reference metadata. The live-search extension is not Production-deployed or verified.
 
 ### `fact_check_evidence` — Session 11, migration deployed
 

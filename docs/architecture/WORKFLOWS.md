@@ -81,6 +81,19 @@ Migration `20261001140000_evidence_packages_v1.sql` and Worker version
 completed jobs were not requeued; a new upload is needed to verify this stage
 in a live analysis.
 
+The Session 12 literature-search extension runs Europe PMC and Crossref after
+claim extraction alongside local vector search. Local RAG is optional:
+embedding or local search failures are retained as warnings and do not block
+the external providers. Crossref metadata and Europe PMC records without
+confirmed reuse rights are package references only. Only a Europe PMC OA
+subset result whose publication-specific XML confirms CC BY 4.0 can contribute
+a stored passage; at most one 1,000-character excerpt with PMCID, source URL,
+and license provenance is retained. Stable DOI/PMCID source keys and package
+version keys keep retries idempotent. No full article is stored. Provider
+timeouts, rate limits, malformed responses, and empty results fail toward
+insufficient evidence. The extension is implemented locally but has not been
+deployed or live-verified in Production.
+
 Session 12 connects the Session 11 evidence-bound judgment service after
 Evidence Package persistence. The Worker validates each current package,
 judges its claim with `gpt-4o-mini`, and saves the immutable fact check and

@@ -59,7 +59,29 @@ export interface EvidenceItem {
     readonly canonicalUrl: string;
   };
   readonly retrievalScore: number;
+  readonly retrievalScoreKind?: "cosine_similarity" | "provider_search_order";
   readonly relevanceScore: number;
+  readonly attribution?: {
+    readonly dataProvider: "europe-pmc";
+    readonly providerVersion: string;
+    readonly externalId: string;
+    readonly availability: "open_access_full_text";
+    readonly licenseCode: "CC-BY-4.0";
+    readonly licenseUrl: string;
+  };
+}
+
+export interface PublicationReference {
+  readonly id: string;
+  readonly title: string;
+  readonly authors: readonly string[];
+  readonly year: string | null;
+  readonly doi: string | null;
+  readonly url: string;
+  readonly dataProvider: "europe-pmc" | "crossref";
+  readonly providerVersion: string;
+  readonly availability: "open_access_full_text" | "metadata_only";
+  readonly licenseUrl: string | null;
 }
 
 export interface EvidencePackage {
@@ -69,6 +91,7 @@ export interface EvidencePackage {
   readonly rerankingVersion: string;
   readonly coverage: "none" | "limited" | "multi_source";
   readonly warnings: readonly string[];
+  readonly references?: readonly PublicationReference[];
   readonly trace: {
     readonly retrieval: {
       readonly provider: string;
@@ -94,6 +117,7 @@ export interface EvidencePackage {
     readonly selectedChunkIds: readonly string[];
     readonly maximumEvidence: number;
     readonly maximumChunksPerSource: number;
+    readonly externalSearchVersion?: string;
   };
 }
 

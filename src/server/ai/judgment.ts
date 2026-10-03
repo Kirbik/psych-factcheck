@@ -6,10 +6,16 @@ import {
 } from "./providers";
 import { verdicts } from "../../types/fact-check";
 
-export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
-export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
+export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
+export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
+export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
+export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
+  FACT_CHECK_JUDGMENT_VERSION,
+  PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
+  LEGACY_FACT_CHECK_JUDGMENT_VERSION,
+] as const;
 export const FACT_CHECK_JUDGMENT_SCHEMA_VERSION =
-  "fact-check-judgment-schema-v1";
+  "fact-check-judgment-schema-v2";
 export const FACT_CHECK_JUDGMENT_MODEL = "gpt-4o-mini";
 export const MAX_JUDGMENT_EVIDENCE_ITEMS = 5;
 export const MAX_JUDGMENT_LIMITATIONS = 8;
@@ -52,7 +58,21 @@ const evidenceItemSchema = z
       })
       .strict(),
     retrievalScore: z.number().finite().min(-1).max(1),
+    retrievalScoreKind: z
+      .enum(["cosine_similarity", "provider_search_order"])
+      .optional(),
     relevanceScore: z.number().finite().min(0).max(1),
+    attribution: z
+      .object({
+        dataProvider: z.literal("europe-pmc"),
+        providerVersion: z.string().min(1).max(100),
+        externalId: z.string().min(1).max(40),
+        availability: z.literal("open_access_full_text"),
+        licenseCode: z.literal("CC-BY-4.0"),
+        licenseUrl: z.url(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -64,6 +84,28 @@ export const evidencePackageSchema = z
     rerankingVersion: z.string().min(1).max(100),
     coverage: z.enum(["none", "limited", "multi_source"]),
     warnings: z.array(z.string().min(1).max(200)).max(20),
+    references: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(255),
+            title: z.string().min(1).max(1_000),
+            authors: z.array(z.string().min(1).max(300)).max(100),
+            year: z
+              .string()
+              .regex(/^\d{4}$/)
+              .nullable(),
+            doi: z.string().max(255).nullable(),
+            url: z.url(),
+            dataProvider: z.enum(["europe-pmc", "crossref"]),
+            providerVersion: z.string().min(1).max(100),
+            availability: z.enum(["open_access_full_text", "metadata_only"]),
+            licenseUrl: z.url().nullable(),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
     trace: z
       .object({
         retrieval: z
@@ -87,11 +129,26 @@ export const evidencePackageSchema = z
         selectedChunkIds: z.array(z.uuid()).max(MAX_JUDGMENT_EVIDENCE_ITEMS),
         maximumEvidence: z.literal(MAX_JUDGMENT_EVIDENCE_ITEMS),
         maximumChunksPerSource: z.number().int().min(1).max(5),
+        externalSearchVersion: z.string().min(1).max(100).optional(),
       })
       .strict(),
   })
   .strict()
   .superRefine((evidencePackage, context) => {
+    for (const [index, item] of evidencePackage.evidence.entries()) {
+      if (
+        item.attribution &&
+        item.attribution.licenseUrl !==
+          "https://creativecommons.org/licenses/by/4.0/"
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["evidence", index, "attribution", "licenseUrl"],
+          message:
+            "Full-text evidence license does not match its approved code",
+        });
+      }
+    }
     const itemIds = evidencePackage.evidence.map((item) => item.chunkId);
     if (new Set(itemIds).size !== itemIds.length) {
       context.addIssue({ code: "custom", message: "Duplicate evidence chunk" });

@@ -432,6 +432,80 @@ describe("workflow execution", () => {
     expect(repo.saveEvidencePackages).not.toHaveBeenCalled();
   });
 
+  it("runs a ready claim through package persistence to saved judgment on mocks", async () => {
+    const repo = repository();
+    markWorkflowJobRunning(repo);
+    const claim = {
+      original: "Stress impairs memory.",
+      normalized: "Stress impairs memory.",
+      startSeconds: 0,
+      endSeconds: 1,
+      claimType: "causal_mechanistic" as const,
+    };
+    repo.listClaims.mockResolvedValue([{ id: claimId, claim }]);
+    const candidate = {
+      chunkId: "88888888-8888-4888-8888-888888888888",
+      sourceId: "99999999-9999-4999-8999-999999999999",
+      chunkKey: "memory-result",
+      content: "Stress impaired memory performance in the reported study.",
+      language: "en",
+      locator: "Results",
+      source: {
+        key: "doi:10.0000/memory",
+        title: "Stress and memory",
+        authors: ["A. Author"],
+        journal: "Example Journal",
+        publishedAt: "2024-01-01",
+        type: "journal_article" as const,
+        canonicalUrl: "https://example.org/study",
+      },
+      similarity: 0.8,
+    };
+    await executeEvidencePackageStage(payload, runId, 2, repo, async () => [
+      {
+        retrievalVersion: "evidence-retrieval-v2",
+        provider: "openai",
+        model: "text-embedding-3-small",
+        embeddingVersion: "embedding-v1",
+        filters: {
+          sourceStatus: "active",
+          language: null,
+          sourceTypes: null,
+          publishedAfter: null,
+          publishedBefore: null,
+          limit: 10,
+        },
+        candidates: [candidate],
+        warnings: [],
+        references: [],
+        externalSearchVersion: "external-evidence-v1",
+      },
+    ]);
+    expect(repo.saveEvidencePackages).toHaveBeenCalledWith(extractionId, [
+      expect.objectContaining({
+        claimId,
+        package: expect.objectContaining({ references: [] }),
+      }),
+    ]);
+
+    repo.listEvidencePackages.mockResolvedValue([
+      { claimId, evidencePackageId, packageClaim: claim },
+    ]);
+    const factChecks: string[] = [];
+    const judgeAndSave = vi.fn(async () => {
+      factChecks.push("saved-fact-check-id");
+      return "saved-fact-check-id";
+    });
+    await expect(
+      executeJudgmentStage(payload, runId, 3, repo, judgeAndSave),
+    ).resolves.toEqual({ outcome: "fact_checks_ready" });
+    expect(judgeAndSave).toHaveBeenCalledExactlyOnceWith({
+      claimId,
+      evidencePackageId,
+    });
+    expect(factChecks).toEqual(["saved-fact-check-id"]);
+  });
+
   it("persists one judgment per current package before completing the job", async () => {
     const repo = repository();
     markWorkflowJobRunning(repo);

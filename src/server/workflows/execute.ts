@@ -11,6 +11,7 @@ import type {
 } from "@/server/ai/providers";
 import { buildEvidencePackage } from "@/server/evidence/reranking";
 import type { EvidenceSearchResult } from "@/server/evidence/search";
+import type { PublicationReference } from "@/server/ai/providers";
 import { MAX_OPENAI_TRANSCRIPTION_BYTES } from "@/server/ai/openai-transcription-provider";
 import { FactCheckJudgmentError } from "@/server/ai/judgment";
 import {
@@ -240,9 +241,12 @@ export async function executeEvidencePackageStage(
   runId: string,
   attempt: number,
   repository: WorkflowRepository,
-  retrieveEvidence: (
-    normalizedClaims: readonly string[],
-  ) => Promise<readonly EvidenceSearchResult[]>,
+  retrieveEvidence: (normalizedClaims: readonly string[]) => Promise<
+    readonly (EvidenceSearchResult & {
+      readonly references?: readonly PublicationReference[];
+      readonly externalSearchVersion?: string;
+    })[]
+  >,
 ) {
   const job = await repository.advance(payload, runId, "running", attempt);
   if (!job) return { outcome: "obsolete" } as const;

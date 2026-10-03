@@ -142,6 +142,64 @@ describe("evidence-bound fact-check judgment", () => {
     ).toBe("INSUFFICIENT_EVIDENCE");
   });
 
+  it("keeps metadata-only publications outside the evidence basis", () => {
+    const packageWithReferences = {
+      ...evidencePackage([]),
+      references: [
+        {
+          id: "10.1234/metadata",
+          title: "Metadata-only paper",
+          authors: ["Example Author"],
+          year: "2024",
+          doi: "10.1234/metadata",
+          url: "https://doi.org/10.1234%2Fmetadata",
+          dataProvider: "crossref",
+          providerVersion: "crossref-v1",
+          availability: "metadata_only",
+          licenseUrl: null,
+        },
+      ],
+    };
+    expect(
+      validateEvidenceBoundJudgment(packageWithReferences, {
+        verdict: "INSUFFICIENT_EVIDENCE",
+        confidence: 0.9,
+        explanation: "Only publication metadata was found.",
+        limitations: ["No licensed evidence text was available."],
+        citations: [],
+      }).evidencePackage.references,
+    ).toHaveLength(1);
+    expect(() =>
+      validateEvidenceBoundJudgment(packageWithReferences, {
+        ...validJudgment,
+        citations: [],
+      }),
+    ).toThrowError("FACT_CHECK_EVIDENCE_REQUIRED");
+  });
+
+  it("rejects a full-text citation with unknown or non-approved attribution", () => {
+    const pkg = evidencePackage();
+    const invalidAttribution = {
+      ...pkg,
+      evidence: [
+        {
+          ...pkg.evidence[0],
+          attribution: {
+            dataProvider: "europe-pmc",
+            providerVersion: "europe-pmc-v1",
+            externalId: "PMC12345",
+            availability: "open_access_full_text",
+            licenseCode: "UNKNOWN",
+            licenseUrl: "https://example.org/license",
+          },
+        },
+      ],
+    };
+    expect(() =>
+      validateEvidenceBoundJudgment(invalidAttribution, validJudgment),
+    ).toThrowError("FACT_CHECK_EVIDENCE_PACKAGE_INVALID");
+  });
+
   it("rejects package text outside the bounded evidence contract", () => {
     expect(() =>
       validateEvidenceBoundJudgment(

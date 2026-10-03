@@ -9,7 +9,7 @@ import {
 } from "@/features/analysis/job-contract";
 import {
   FACT_CHECK_JUDGMENT_VERSION,
-  PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
+  SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS,
 } from "@/server/ai/judgment";
 import {
   ReportLocalizationError,
@@ -152,10 +152,7 @@ export function reportRepository(client: ReportClient) {
         )
         .in("claim_id", claimIds)
         .in("evidence_package_id", packageIds)
-        .in("judgment_version", [
-          PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
-          FACT_CHECK_JUDGMENT_VERSION,
-        ]);
+        .in("judgment_version", [...SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS]);
       if (factChecksError || !factChecks)
         return { kind: "unavailable", ...common };
       const checkByClaim = new Map<string, (typeof factChecks)[number]>();

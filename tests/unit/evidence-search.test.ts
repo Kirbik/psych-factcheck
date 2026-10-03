@@ -76,7 +76,7 @@ describe("evidence search", () => {
       }),
     );
     expect(found).toMatchObject({
-      retrievalVersion: "evidence-retrieval-v1",
+      retrievalVersion: "evidence-retrieval-v2",
       filters: { sourceStatus: "active", language: "en", limit: 5 },
       candidates: [
         {
@@ -115,12 +115,10 @@ describe("evidence search", () => {
       searchEvidence(client, wrongDimension, "claim"),
     ).rejects.toMatchObject({ code: "EMBEDDING_DIMENSION_MISMATCH" });
 
-    const badRpc = vi
-      .fn()
-      .mockResolvedValue({
-        data: [{ ...result(), source_id: "bad" }],
-        error: null,
-      });
+    const badRpc = vi.fn().mockResolvedValue({
+      data: [{ ...result(), source_id: "bad" }],
+      error: null,
+    });
     const badClient = { rpc: badRpc } as unknown as SupabaseClient<Database>;
     await expect(
       searchEvidence(badClient, provider(), "claim"),
@@ -144,7 +142,10 @@ describe("evidence search", () => {
     const client = { rpc } as unknown as SupabaseClient<Database>;
     const embeddings = provider({ embed: vi.fn(async () => [vector, vector]) });
 
-    const found = await searchEvidenceBatch(client, embeddings, ["claim one", "claim two"]);
+    const found = await searchEvidenceBatch(client, embeddings, [
+      "claim one",
+      "claim two",
+    ]);
 
     expect(embeddings.embed).toHaveBeenCalledExactlyOnceWith([
       "claim one",

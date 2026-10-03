@@ -15,7 +15,7 @@ import type { Database } from "../../types/database.ts";
 
 export type EvidenceClient = SupabaseClient<Database>;
 
-export const EVIDENCE_RETRIEVAL_VERSION = "evidence-retrieval-v1";
+export const EVIDENCE_RETRIEVAL_VERSION = "evidence-retrieval-v2";
 
 const sourceTypes = [
   "journal_article",
@@ -94,6 +94,15 @@ export interface EvidenceCandidate {
     readonly canonicalUrl: string;
   };
   readonly similarity: number;
+  readonly retrievalScoreKind?: "cosine_similarity" | "provider_search_order";
+  readonly attribution?: {
+    readonly dataProvider: "europe-pmc";
+    readonly providerVersion: string;
+    readonly externalId: string;
+    readonly availability: "open_access_full_text";
+    readonly licenseCode: "CC-BY-4.0";
+    readonly licenseUrl: string;
+  };
 }
 
 export class EvidenceSearchError extends Error {
@@ -180,8 +189,7 @@ function validateSearchInput(
     claimTexts.length === 0 ||
     claimTexts.length > 100 ||
     claimTexts.some(
-      (claimText) =>
-        claimText.trim().length === 0 || claimText.length > 1_200,
+      (claimText) => claimText.trim().length === 0 || claimText.length > 1_200,
     )
   ) {
     throw new EvidenceSearchError("EVIDENCE_SEARCH_INPUT_INVALID");
@@ -224,7 +232,13 @@ export async function searchEvidenceBatch(
   const results = [];
   for (const [index, claimText] of claimTexts.entries()) {
     results.push(
-      await searchWithVector(client, provider, claimText, vectors[index], filters),
+      await searchWithVector(
+        client,
+        provider,
+        claimText,
+        vectors[index],
+        filters,
+      ),
     );
   }
   return results;

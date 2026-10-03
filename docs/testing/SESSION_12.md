@@ -71,3 +71,31 @@ report artifact remains future work.
   claim. Current synthetic evals verify contracts, not semantic correctness.
 - Confidence is an uncalibrated model output. Citation membership is checked,
   but semantic support between each passage and explanation is not evaluated.
+
+## Literature search extension (2026-10-03)
+
+The workflow now has an EvidenceSearchProvider abstraction with Europe PMC and
+Crossref adapters. Public search supplements local retrieval, which is not
+required. Europe PMC OA full text is used only after confirming the
+publication-specific CC BY 4.0 license; at most one 1,000-character excerpt
+and its attribution are retained. Crossref metadata and publications whose
+rights are unknown are references only and cannot support judgments. Provider,
+retrieval, judgment prompt, and judgment schema versions are recorded. Stable
+source/chunk keys and package uniqueness preserve retry idempotency. Existing
+generation/run fencing and relational tables remain unchanged.
+
+This implementation is not deployed or live-tested against Production APIs.
+Europe PMC/Crossref coverage is incomplete. Synthetic contract tests do not
+establish model quality; expert-reviewed golden cases are still missing.
+
+The 2026-10-03 repository checks for this extension passed lint, typecheck,
+unit/integration tests (243 passed, 5 skipped), evals (7 passed), build, and
+Playwright E2E (11 passed, 6 skipped). E2E was rerun with network access after
+the sandboxed dev server stalled while fetching existing Google Fonts. No live
+scientific API requests or Production workflow were performed.
+
+The 2026-10-03 repository checks for this extension passed lint, typecheck,
+unit/integration tests (243 passed, 5 skipped), evals (7 passed), build, and
+Playwright E2E (11 passed, 6 skipped). E2E was rerun with network access after
+the sandboxed dev server stalled while fetching existing Google Fonts. No live
+scientific API requests or Production workflow were performed.

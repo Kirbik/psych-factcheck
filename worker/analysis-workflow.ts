@@ -31,12 +31,13 @@ import {
   createOpenAIClaimExtractionProvider,
   ClaimExtractionProviderError,
 } from "@/server/ai/openai-claim-extraction-provider";
-import {
-  createOpenAIEmbeddingProvider,
-  EmbeddingProviderError,
-} from "@/server/ai/openai-embedding-provider";
-import { EvidenceSearchError } from "@/server/evidence/search";
+import { createOpenAIEmbeddingProvider } from "@/server/ai/openai-embedding-provider";
 import { searchEvidenceBatch } from "@/server/evidence/search";
+import { createEvidenceSearchProvider } from "@/server/evidence/search-provider";
+import {
+  searchExternalPublications,
+  searchEvidenceWithProviders,
+} from "@/server/evidence/external-publications";
 import { EvidenceRerankingError } from "@/server/evidence/reranking";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
@@ -64,6 +65,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
     const embeddingProvider = createOpenAIEmbeddingProvider(apiKey);
+    const evidenceSearchProvider = createEvidenceSearchProvider();
     const judgmentProvider = createOpenAIJudgmentProvider(apiKey);
     const factCheckService = createFactCheckService(
       factCheckRepository(client),
@@ -277,27 +279,18 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               context.attempt,
               repository,
               (claims) =>
-                searchEvidenceBatch(client, embeddingProvider, claims),
+                searchEvidenceWithProviders(
+                  claims,
+                  () => searchEvidenceBatch(client, embeddingProvider, claims),
+                  () =>
+                    searchExternalPublications(
+                      client,
+                      evidenceSearchProvider,
+                      claims,
+                    ),
+                ),
             );
           } catch (error) {
-            if (error instanceof EmbeddingProviderError) {
-              failureCode = error.code;
-              if (!error.retryable) throw new NonRetryableError(error.code);
-              throw error;
-            }
-            if (error instanceof EvidenceSearchError) {
-              failureCode = error.code;
-              if (
-                error.code === "EVIDENCE_SEARCH_INPUT_INVALID" ||
-                error.code === "EMBEDDING_MODEL_VERSION_UNSUPPORTED" ||
-                error.code === "EMBEDDING_DIMENSION_MISMATCH" ||
-                error.code === "EMBEDDING_RESPONSE_INVALID" ||
-                error.code === "EVIDENCE_SEARCH_RESPONSE_INVALID"
-              ) {
-                throw new NonRetryableError(error.code);
-              }
-              throw error;
-            }
             if (error instanceof EvidenceRerankingError) {
               failureCode = error.code;
               throw new NonRetryableError(error.code);

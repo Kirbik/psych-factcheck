@@ -12,10 +12,7 @@ import type {
   HistoryLoadResult,
 } from "@/features/history/history-contract";
 import { CLAIM_EXTRACTION_VERSION } from "@/server/ai/claim-extraction";
-import {
-  FACT_CHECK_JUDGMENT_VERSION,
-  PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
-} from "@/server/ai/judgment";
+import { SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS } from "@/server/ai/judgment";
 
 type HistoryClient = SupabaseClient<Database>;
 
@@ -80,10 +77,7 @@ export function historyRepository(client: HistoryClient) {
             .from("fact_checks")
             .select("claim_id")
             .in("claim_id", claimIds)
-            .in("judgment_version", [
-              PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
-              FACT_CHECK_JUDGMENT_VERSION,
-            ])
+            .in("judgment_version", [...SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS])
         : { data: [], error: null };
       if (factChecksError || !factChecks) return { kind: "unavailable" };
 
