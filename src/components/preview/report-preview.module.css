@@ -5,8 +5,9 @@
   --warning-soft: #faeede;
   --contradicted: #991b1b;
   --contradicted-soft: #fee2e2;
-  --disputed: #9a3412;
-  --disputed-soft: #ffedd5;
+  --disputed: #f97316;
+  --disputed-ink: #b45309;
+  --disputed-soft: #fff7ed;
   max-width: 1184px;
 }
 .headingRow {
@@ -114,7 +115,7 @@
 }
 .legend .legend-disputed,
 .legend .legend-disputed b {
-  color: var(--disputed);
+  color: var(--disputed-ink);
 }
 .dot {
   border-radius: 50%;
@@ -201,7 +202,7 @@
 }
 .status-disputed {
   background: var(--disputed-soft);
-  color: var(--disputed);
+  color: var(--disputed-ink);
 }
 .status-not-found {
   background: #f6efcf;

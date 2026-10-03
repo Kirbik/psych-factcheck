@@ -28,13 +28,15 @@ const statuses = [
     id: "contradicted",
     label: "Расходится с данными",
     color: "rgb(153, 27, 27)",
+    indicator: "rgb(153, 27, 27)",
     background: "rgb(254, 226, 226)",
   },
   {
     id: "disputed",
     label: "Спорное утверждение",
-    color: "rgb(154, 52, 18)",
-    background: "rgb(255, 237, 213)",
+    color: "rgb(180, 83, 9)",
+    indicator: "rgb(249, 115, 22)",
+    background: "rgb(255, 247, 237)",
   },
 ];
 
@@ -77,14 +79,14 @@ for (const width of [1280, 390]) {
       path: testInfo.outputPath("report-status-colors.png"),
       fullPage: true,
     });
-    for (const { id, color, background } of statuses) {
+    for (const { id, color, indicator, background } of statuses) {
       const row = page.locator(`[data-legend="${id}"]`);
       await expect(row).toHaveCSS("color", color);
       await expect(row.locator("b")).toHaveCSS("color", color);
-      await expect(row.locator("i")).toHaveCSS("background-color", color);
+      await expect(row.locator("i")).toHaveCSS("background-color", indicator);
       await expect(page.locator(`[data-segment="${id}"]`)).toHaveCSS(
         "background-color",
-        color,
+        indicator,
       );
       const badge = page.locator(`[data-badge="${id}"]`);
       await expect(badge).toHaveCSS("color", color);
