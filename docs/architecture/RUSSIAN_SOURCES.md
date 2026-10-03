@@ -22,14 +22,15 @@ analyses. Treat results as exploratory and population-specific; do not infer
 causation or generalize to all couples. The article includes broader causal
 claims in its discussion that are not imported as evidence chunks.
 
-## Russian journal works stored as metadata only
+## Russian journal works with permission-backed passages
 
-These catalog records improve bibliographic coverage but cannot be retrieved as
-evidence until compatible text reuse rights are established. PsyJournals
-identifies the first two articles as CC BY-NC 4.0. The app's text index is for a
-commercial service, so those article passages are not copied into it. The
-third article's page does not state a reusable license, so only its citation
-metadata is retained.
+The project owner reported on 2026-10-03 that legal counsel confirmed reuse
+permission. The seed records this as a user attestation, separate from each
+publication's license, for excerpt storage, embeddings, and LLM retrieval.
+PsyJournals identifies the first two articles as CC BY-NC 4.0; their license
+codes remain unchanged. One attributable passage from each is indexed. The
+third article has no reusable license stated on its record; one passage from
+the publisher-hosted PDF is indexed under the same permission attestation.
 
 - Емельянова Т.П., Шмидт Д.А. (2021). “Социальные представления о брачном
   партнере: поколенческий подход.” _Социальная психология и общество_, 12(1),
@@ -42,8 +43,10 @@ metadata is retained.
 - Трошихина Е.Г. (2024). “Супружеские пары: значение психологического
   благополучия и субъективного одиночества для чувств любви.” _Вестник
   Санкт-Петербургского университета. Психология_, 14(1), 113–127.
-  [DOI and abstract](https://doi.org/10.21638/spbu16.2024.107). The abstract
-  reports 387 married couples; no article text is stored.
+  [DOI and article](https://doi.org/10.21638/spbu16.2024.107) ·
+  [publisher-hosted PDF](https://psyjournals.ru/journals/vspu_psychology/archive/2024_n1/vspu_psychology_2024_n1_Troshikhina.pdf).
+  The study sampled 387 married couples; the indexed passage retains that
+  sample context alongside the abstract's high-level findings.
 
 ## Books stored as metadata only
 
@@ -72,16 +75,18 @@ In particular, the 1988 sexology textbook is historically important but dated.
 
 ## Retrieval and rights rules
 
-- The seed stores verbatim passages only for sources marked CC BY 3.0/4.0, with
-  a locator and canonical attribution.
-- CC BY-NC and all-rights-reserved records may contain metadata only. The seed
-  validator rejects chunks attached to these records.
+- Reusable CC BY and permission-backed passages store the source's actual
+  license, locator, canonical attribution, and permission provenance where
+  applicable.
+- The four expert books remain metadata-only: no authorized book text files
+  were available locally to extract passages from. They do not yet increase
+  semantic retrieval coverage.
 - A metadata-only source has no embedding and cannot support an AI verdict.
-- This update adds one Russian-language, reusable article and two passages; the
-  other seven added records expand the catalog, not retrieval coverage.
-- The new migration and records are local until the migration and explicit
-  seed command are applied to the intended Supabase project. Embeddings for the
-  two new passages also require the explicit embedding import command.
+- Three Russian articles now add one passage each. The books expand the
+  bibliography, not retrieval coverage.
+- Migration `20261003100000_russian_bibliography_sources.sql`, the expanded
+  seed, and all 33 current embeddings were applied and verified in linked
+  Production on 2026-10-03.
 
 ## Primary records consulted
 

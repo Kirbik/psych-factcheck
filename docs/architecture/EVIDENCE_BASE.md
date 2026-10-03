@@ -11,13 +11,14 @@ passages for claims or produce judgments.
 The schema migration and initial curated seed were applied to the linked
 Production project on 2026-10-01. Session 23 added three open-access sources
 and four verbatim passages covering adult relationships, couple
-communication, sexual satisfaction, and sexual wellbeing. Production currently
-has 13 sources, 27 chunks, and 27 current evidence vectors, with no missing
-source links. The local curated manifest is being expanded with Russian
-research and expert books; its additions are not in Production until the
-reviewed migration and explicit seed import are applied.
-Session 9's versioned embedding schema and pgvector search migration were
-deployed to Production on 2026-10-01. Production has 27 evidence chunk vectors;
+communication, sexual satisfaction, and sexual wellbeing. On 2026-10-03 the
+Russian bibliography migration and expanded seed were applied to Production.
+It now has 21 sources, 33 chunks, and 33 current evidence vectors, with no
+missing source links. Three Russian articles have one permission-backed passage
+each; the four expert books remain metadata-only pending provision of their
+authorized text files. Session 9's versioned embedding schema and pgvector
+search migration were deployed to Production on 2026-10-01. Production has 33
+evidence chunk vectors;
 the claim-vector table is available but is not populated by the current seed
 workflow.
 
@@ -42,31 +43,36 @@ reset to active by an old seed.
 ## Curated seed and licenses
 
 `src/server/evidence/seed-v0.ts` is the reviewed manifest. It now contains 21
-publication/book records and 29 short passages. Four expert books, two
-CC BY-NC Russian journal articles, and a Russian university journal article
-whose reuse license is not stated are metadata-only. The importer may store
-passages only for CC BY 3.0/4.0 sources. Runtime Zod validation rejects
+publication/book records and 33 short passages. Four expert books remain
+metadata-only. Three Russian articles have short passages under a separately
+recorded user attestation that legal permission was confirmed; their original
+license codes remain unchanged, including one all-rights-reserved record.
+Permission provenance records the confirmation date and permitted excerpt
+storage, embedding, and LLM retrieval uses. Runtime Zod validation rejects
 duplicate identifiers, unknown source references, DOI/ISBN key mismatches,
-invalid URLs, and passages whose source license does not permit reuse. The
-importer computes a SHA-256 digest from the exact passage text before sending
-it to PostgreSQL.
+invalid URLs, and passages without a reusable license or recorded permission.
+The importer computes a SHA-256 digest from the exact passage text before
+sending it to PostgreSQL.
 
 Migration `20261003100000_russian_bibliography_sources.sql` adds book,
 textbook, and monograph records plus an all-rights-reserved metadata-only
-license state. ISBN is stored in source provenance. These books and
-noncommercial articles are bibliography/context records only: because no
-passages are indexed for them, they do not increase semantic retrieval
-coverage. See [Russian sources review](RUSSIAN_SOURCES.md) for bibliographic
-verification, source selection notes, and limitations.
+license state. ISBN is stored in source provenance. The four books remain
+bibliography/context records only because no authorized book files were
+available in the repository. Migration, source rows, passages, and embeddings
+were verified in Production on 2026-10-03. See
+[Russian sources review](RUSSIAN_SOURCES.md)
+for bibliographic verification, source selection notes, and limitations.
 
-The seed includes one metadata-only SAGE record under CC BY-NC 4.0 and article
-metadata plus short passages from CC BY 4.0 records. No text passage is stored
-for the noncommercial-only publication. Each record stores its license URL and
-the date it was checked; every displayed citation must still attribute the
-authors, article, and canonical source URL. Stored passages are verbatim and
-are not model-generated summaries. The SQL import also verifies each passage's
-SHA-256 digest against its UTF-8 text. Re-check license/status metadata before
-adding or refreshing a source.
+The seed includes permission-backed passages from one SAGE article, three
+Russian articles, and CC BY 4.0 records. Permission-backed passages retain
+each source's actual license and
+record a distinct permission attestation. Each record stores its license URL
+and the date it was checked;
+every displayed citation must still attribute the authors, article, and
+canonical source URL. Stored passages are verbatim and are not model-generated
+summaries. The SQL import also verifies each passage's SHA-256 digest against
+its UTF-8 text. Re-check license/status metadata before adding or refreshing a
+source.
 
 Import is explicit and never runs during application startup:
 

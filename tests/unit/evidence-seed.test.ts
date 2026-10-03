@@ -10,7 +10,7 @@ import {
 describe("Evidence Base v0 seed", () => {
   it("contains traceable sources and licensed evidence chunks", () => {
     expect(evidenceSeedV0.sources).toHaveLength(21);
-    expect(evidenceSeedV0.chunks).toHaveLength(29);
+    expect(evidenceSeedV0.chunks).toHaveLength(33);
     expect(
       evidenceSeedV0.sources.find(
         (source) => source.doi === "10.1177/1948550619887702",
@@ -25,7 +25,8 @@ describe("Evidence Base v0 seed", () => {
           (source) =>
             source.sourceKey === chunk.sourceKey &&
             (source.licenseCode === "CC-BY-4.0" ||
-              source.licenseCode === "CC-BY-3.0"),
+              source.licenseCode === "CC-BY-3.0" ||
+              source.rightsPermission !== undefined),
         ),
       ),
     ).toBe(true);
@@ -65,7 +66,7 @@ describe("Evidence Base v0 seed", () => {
     expect(evidenceSeedSchema.safeParse(copyrightedChunk).success).toBe(false);
   });
 
-  it("keeps books and noncommercial sources metadata-only", () => {
+  it("keeps books metadata-only and records permission for restricted passages", () => {
     const rows = toImportRows(evidenceSeedV0);
     const books = rows.sources.filter((source) =>
       source.source_key.startsWith("isbn:"),
@@ -77,10 +78,46 @@ describe("Evidence Base v0 seed", () => {
         books.some((source) => source.source_key === chunk.source_key),
       ),
     ).toBe(false);
+    const noncommercial = rows.sources.filter(
+      (source) => source.license_code === "CC-BY-NC-4.0",
+    );
+    expect(noncommercial).toHaveLength(3);
     expect(
-      rows.sources.filter((source) => source.license_code === "CC-BY-NC-4.0")
-        .length,
-    ).toBe(3);
+      noncommercial.filter((source) =>
+        Object.hasOwn(source.provenance, "rights_permission"),
+      ),
+    ).toHaveLength(3);
+    expect(
+      rows.chunks.some(
+        (chunk) => chunk.source_key === "doi:10.17759/sps.2021120109",
+      ),
+    ).toBe(true);
+    expect(
+      rows.chunks.some(
+        (chunk) => chunk.source_key === "doi:10.17759/sps.2017080104",
+      ),
+    ).toBe(true);
+    expect(
+      rows.chunks.some(
+        (chunk) => chunk.source_key === "doi:10.1177/1948550619887702",
+      ),
+    ).toBe(true);
+    expect(
+      rows.chunks.some(
+        (chunk) => chunk.source_key === "doi:10.21638/spbu16.2024.107",
+      ),
+    ).toBe(true);
+    expect(
+      rows.sources.find(
+        (source) => source.source_key === "doi:10.21638/spbu16.2024.107",
+      ),
+    ).toMatchObject({
+      license_code: "ALL-RIGHTS-RESERVED",
+      provenance: {
+        chunks_permitted: true,
+        rights_status: "permission_confirmed",
+      },
+    });
   });
 
   it("exports repeatable records with content hashes", () => {

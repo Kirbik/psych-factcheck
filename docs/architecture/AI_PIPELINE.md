@@ -8,6 +8,14 @@ reason-code versions are recorded independently from prior screening results.
 
 The Cloudflare Workflow screens a bounded audio sample, transcribes relevant or uncertain videos with OpenAI `whisper-1`, then extracts, normalizes, and classifies claims with OpenAI `gpt-4o-mini`. Sessions 6A–7 are deployed in Production. A Production job completed through claim extraction on 2026-09-30 after earlier source-validation failures and fixes. Screening now falls back to packet-derived duration when MP4 metadata omits it; a fresh upload is still needed to verify that case end to end. Session 8's source/chunk schema and reviewed, idempotent seed were deployed to Production with 10 sources and 23 evidence chunks; Session 23 expanded this to 13 sources and 27 passages, with 27 current vectors. Session 9's versioned 1536-dimensional embedding schema and provenance-preserving pgvector search RPC are also deployed. Production has 27 evidence chunk embeddings; live semantic retrieval on the expanded six-case provisional dataset scored P@5 0.300. Session 10's deterministic reranker, Evidence Package persistence, and fenced `build_evidence` Workflow stage are connected and deployed. A fresh authenticated Production analysis completed the full workflow at `stage = complete` on 2026-10-01 (job `2fb0f3e6-deea-4e46-a206-9c330ef9b32f`, generation 2). Claim text is embedded in batches as a retrieval query; the separate `claim_embeddings` table is not populated by this workflow. Session 11 provides a versioned OpenAI judgment provider, strict taxonomy/confidence/output validation, citation membership checks, and fact-check persistence/RLS. Its migration was applied to Production on 2026-10-02. Session 12's fenced `judge_claims` stage, package/claim identity check, and Worker integration are deployed to Production. Expert-reviewed verdict/citation golden cases do not exist, so judgment quality is not established. Session 13 adds /report, which reads persisted judgments and citations; a separate stored report artifact remains unimplemented. The retrieval baseline is small and not human/expert-reviewed, so it is not a quality sign-off. `pnpm evals` runs synthetic contract checks and offline retrieval references; it does not assess live judgment quality.
 
+Session 24 applied the Russian bibliography migration and expanded evidence seed
+to Production on 2026-10-03. The current catalog contains 21 sources, 33
+passages, and 33 current vectors. Three permission-backed Russian article
+passages and one permission-backed SAGE article passage were added; expert
+books remain metadata-only until authorized text files are provided. Retrieval
+P@5 remained 0.300 across the six provisional cases; this is not an
+expert-reviewed quality measure.
+
 ## Contract
 
 ```text

@@ -6,6 +6,10 @@ Supabase is used by the application, rather than being only a planned integratio
 
 Session 5 migrations atomically queue a job with uploaded content. Session 6's transcript schema and the Session 6A–7 screening/claim-extraction migrations are deployed in Production. Live transcription was verified on 2026-09-30, and a Production job completed through claim extraction. The Session 8 Evidence Base migration and seed were applied to the linked Production project on 2026-10-01; Session 23 expanded the catalog to 13 sources and 27 evidence chunks; all 27 current chunk embeddings are present. Session 9's embedding/retrieval schema, Session 10's Evidence Package migration, and Session 11–12 fact-check schema and fenced workflow migrations are deployed. Authenticated reads are owner-filtered by RLS and writes are restricted to service-role RPCs. Worker version `2a3fe9e7-be41-4cd7-aef5-ae157129c8d2` is deployed. A fresh authenticated Production analysis completed through fact-check persistence at `stage = complete` in generation 2. A fresh upload is still needed to verify the packet-duration fallback for the previously affected MP4. See [Workflows](WORKFLOWS.md), [Authentication](AUTH.md), and [Evidence Base](EVIDENCE_BASE.md).
 
+On 2026-10-03, migration `20261003100000_russian_bibliography_sources.sql`
+and the expanded evidence seed were applied to the linked Production project.
+Readback verified 21 sources, 33 evidence chunks, and 33 current embeddings.
+
 ## Dependencies
 
 - `@supabase/supabase-js` creates typed browser and server API clients.

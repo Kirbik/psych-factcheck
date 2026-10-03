@@ -38,6 +38,18 @@ const sourceSchema = z.object({
     .refine((value) => value.startsWith("https://"))
     .nullable(),
   licenseVerifiedAt: z.iso.date(),
+  rightsPermission: z
+    .object({
+      basis: z.literal("user_attested_legal_permission"),
+      confirmedAt: z.iso.date(),
+      uses: z
+        .array(
+          z.enum(["store_excerpts", "create_embeddings", "retrieve_for_llm"]),
+        )
+        .length(3)
+        .refine((uses) => new Set(uses).size === uses.length),
+    })
+    .optional(),
   topicTags: z
     .array(
       z.enum([
@@ -144,13 +156,14 @@ export const evidenceSeedSchema = z
       if (
         source &&
         source.licenseCode !== "CC-BY-4.0" &&
-        source.licenseCode !== "CC-BY-3.0"
+        source.licenseCode !== "CC-BY-3.0" &&
+        !source.rightsPermission
       ) {
         context.addIssue({
           code: "custom",
           path: ["chunks", index, "sourceKey"],
           message:
-            "Evidence text can only be stored for reusable CC BY sources",
+            "Evidence text requires a reusable CC BY license or recorded legal permission",
         });
       }
       const key = `${chunk.sourceKey}\u0000${chunk.chunkKey}`;
@@ -307,6 +320,11 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       licenseCode: "CC-BY-NC-4.0",
       licenseUrl: "https://creativecommons.org/licenses/by-nc/4.0/",
       licenseVerifiedAt: verifiedDate,
+      rightsPermission: {
+        basis: "user_attested_legal_permission",
+        confirmedAt: "2026-10-03",
+        uses: ["store_excerpts", "create_embeddings", "retrieve_for_llm"],
+      },
     },
     {
       sourceKey: "doi:10.1007/s00426-017-0862-x",
@@ -480,6 +498,11 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       licenseCode: "CC-BY-NC-4.0",
       licenseUrl: "https://creativecommons.org/licenses/by-nc/4.0/",
       licenseVerifiedAt: "2026-10-03",
+      rightsPermission: {
+        basis: "user_attested_legal_permission",
+        confirmedAt: "2026-10-03",
+        uses: ["store_excerpts", "create_embeddings", "retrieve_for_llm"],
+      },
       topicTags: ["romantic_relationships"],
     },
     {
@@ -498,6 +521,11 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       licenseCode: "CC-BY-NC-4.0",
       licenseUrl: "https://creativecommons.org/licenses/by-nc/4.0/",
       licenseVerifiedAt: "2026-10-03",
+      rightsPermission: {
+        basis: "user_attested_legal_permission",
+        confirmedAt: "2026-10-03",
+        uses: ["store_excerpts", "create_embeddings", "retrieve_for_llm"],
+      },
       topicTags: ["romantic_relationships", "couple_communication"],
     },
     {
@@ -509,12 +537,17 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       publisher: "Санкт-Петербургский государственный университет",
       publishedAt: "2024-05-22",
       doi: "10.21638/spbu16.2024.107",
-      url: "https://doi.org/10.21638/spbu16.2024.107",
+      url: "https://psyjournals.ru/journals/vspu_psychology/archive/2024_n1/Troshikhina",
       sourceType: "journal_article",
       status: "active",
       licenseCode: allRightsReserved,
       licenseUrl: null,
       licenseVerifiedAt: "2026-10-03",
+      rightsPermission: {
+        basis: "user_attested_legal_permission",
+        confirmedAt: "2026-10-03",
+        uses: ["store_excerpts", "create_embeddings", "retrieve_for_llm"],
+      },
       topicTags: ["romantic_relationships"],
     },
     {
@@ -816,6 +849,38 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       content:
         "У молодых людей и девушек наблюдается взаимосвязь представлений о сплоченности и согласии в отношениях с показателями межличностного эмоционального интеллекта такими как способность управлять эмоциями других людей и способность понимать эмоции других людей.",
     },
+    {
+      sourceKey: "doi:10.17759/sps.2021120109",
+      chunkKey: "millennials-relationship-concept",
+      locator: "Результаты > Интерпретация социальных представлений",
+      language: "ru",
+      content:
+        "Таким образом, подтверждается вывод, сделанный на основании предыдущих этапов исследования, о том, что миллениалы в силу свойственных их возрасту и образу жизни особенностей склонны рассматривать романтические отношения как самостоятельную ценность, а не шаг для создания семьи и продолжения рода.",
+    },
+    {
+      sourceKey: "doi:10.17759/sps.2017080104",
+      chunkKey: "relationship-satisfaction-correlation-limit",
+      locator: "Заключение > Ограничения исследования",
+      language: "ru",
+      content:
+        "Ограничения данного исследования связаны, в первую очередь, с использовавшимся корреляционным дизайном, не позволяющим с уверенностью делать выводы о причинно-следственных отношениях.",
+    },
+    {
+      sourceKey: "doi:10.1177/1948550619887702",
+      chunkKey: "ego-depletion-multilab-result",
+      locator: "Abstract > Results",
+      language: "en",
+      content:
+        "Data from 12 labs across the globe (N = 1,775) revealed a small and significant ego depletion effect, d = 0.10. After excluding participants who might have responded randomly during the outcome task, the effect size increased to d = 0.16.",
+    },
+    {
+      sourceKey: "doi:10.21638/spbu16.2024.107",
+      chunkKey: "married-couples-sample-and-findings",
+      locator: "Аннотация > Результаты",
+      language: "ru",
+      content:
+        "Выборку составили 387 супружеских пар со стажем брака от полугода до 50 лет. Результаты: респонденты в целом имеют высокий уровень чувств любви, удовлетворенности отношениями и психологического благополучия, причем сходный у обоих супругов.",
+    },
   ],
 });
 
@@ -846,7 +911,15 @@ export function toImportRows(seed: EvidenceSeed) {
         ...(source.isbn ? { isbn: source.isbn } : {}),
         ...(source.isbn ? { publication_date_precision: "year" } : {}),
         ...(source.licenseCode === "ALL-RIGHTS-RESERVED"
-          ? { chunks_permitted: false, rights_status: "all_rights_reserved" }
+          ? {
+              chunks_permitted: source.rightsPermission !== undefined,
+              rights_status: source.rightsPermission
+                ? "permission_confirmed"
+                : "all_rights_reserved",
+            }
+          : {}),
+        ...(source.rightsPermission
+          ? { rights_permission: source.rightsPermission }
           : {}),
         ...(source.topicTags ? { topic_tags: source.topicTags } : {}),
       },

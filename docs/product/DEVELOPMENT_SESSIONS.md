@@ -370,6 +370,16 @@ Session 13 until Session 12 is accepted.
 - **Out of scope:** Diagnosing individuals, legal/medical advice, or making claims about people rather than checking claims.
 - **Definition of Done:** Sources, passages, prompt, and migration are deployed; tests pass; source provenance and limitations remain visible.
 
+## Session 24 — Russian Psychology Evidence Import
+
+**Status:** Deployed to linked Production on 2026-10-03. Migration `20261003100000_russian_bibliography_sources.sql` is applied. The idempotent evidence seed now has 21 sources and 33 passages, including one permission-backed excerpt each from three Russian research articles and one SAGE article. Production readback confirmed 21 sources, 33 evidence chunks, and 33 current embeddings. The four expert books remain metadata-only pending authorized text files. Retrieval P@5 remains 0.300 across six provisional cases; this is not an expert-reviewed quality measure.
+
+- **Goal:** Increase Russian-language evidence coverage for relationships and psychology using verified research records and authorized text.
+- **Why:** The previous curated seed contained too little Russian-language relationship research.
+- **Scope:** Record the user-attested legal permission separately from each source's license, add attributable excerpts available from publisher-hosted full texts, migrate/import the catalog, generate embeddings, and update source documentation.
+- **Out of scope:** Ingesting book text without authorized files or treating theoretical/history books as current empirical evidence.
+- **Definition of Done:** Migration, records, excerpts, and embeddings are present in Production; source/license attribution and literature limitations remain documented.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.
