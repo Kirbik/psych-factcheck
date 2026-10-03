@@ -3,8 +3,10 @@
   --danger-soft: #fbe5df;
   --warning: #96670f;
   --warning-soft: #faeede;
-  --disputed: #991b1b;
-  --disputed-soft: #fee2e2;
+  --contradicted: #991b1b;
+  --contradicted-soft: #fee2e2;
+  --disputed: #9a3412;
+  --disputed-soft: #ffedd5;
 }
 
 .content {
@@ -78,7 +80,7 @@
 }
 .segment-contradicted,
 .dot.segment-contradicted {
-  background: var(--danger);
+  background: var(--contradicted);
 }
 .segment-disputed,
 .dot.segment-disputed {
@@ -108,6 +110,14 @@
 .legend b {
   color: var(--ink2);
   font-weight: 600;
+}
+.legend .legend-contradicted,
+.legend .legend-contradicted b {
+  color: var(--contradicted);
+}
+.legend .legend-disputed,
+.legend .legend-disputed b {
+  color: var(--disputed);
 }
 .dot {
   border-radius: 50%;
@@ -189,8 +199,8 @@
   max-width: 100%;
 }
 .status-contradicted {
-  background: var(--danger-soft);
-  color: var(--danger);
+  background: var(--contradicted-soft);
+  color: var(--contradicted);
 }
 .status-disputed {
   background: var(--disputed-soft);

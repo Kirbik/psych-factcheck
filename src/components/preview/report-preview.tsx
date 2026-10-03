@@ -271,7 +271,7 @@ function ReportReady({
         </div>
         <div className={reportStyles.legend} aria-label="Статусы утверждений">
           {counts.map(({ status, count }) => (
-            <span key={status}>
+            <span className={reportStyles[`legend-${status}`]} key={status}>
               <i
                 className={`${reportStyles.dot} ${reportStyles[`segment-${status}`]}`}
                 aria-hidden="true"
