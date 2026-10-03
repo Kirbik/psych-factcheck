@@ -27,16 +27,16 @@ const statuses = [
   {
     id: "contradicted",
     label: "Расходится с данными",
-    color: "rgb(153, 27, 27)",
-    indicator: "rgb(153, 27, 27)",
-    background: "rgb(254, 226, 226)",
+    color: "rgb(180, 85, 31)",
+    indicator: "rgb(180, 85, 31)",
+    background: "rgb(251, 229, 223)",
   },
   {
     id: "disputed",
     label: "Спорное утверждение",
-    color: "rgb(180, 83, 9)",
-    indicator: "rgb(249, 115, 22)",
-    background: "rgb(255, 247, 237)",
+    color: "rgb(150, 103, 15)",
+    indicator: "rgb(150, 103, 15)",
+    background: "rgb(250, 238, 222)",
   },
 ];
 

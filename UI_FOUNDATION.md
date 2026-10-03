@@ -35,11 +35,6 @@
 --warning-soft: #faeede;
 --danger: #b4551f;
 --danger-soft: #fbe5df;
---contradicted: #991b1b;
---contradicted-soft: #fee2e2;
---disputed: #f97316;
---disputed-ink: #b45309;
---disputed-soft: #fff7ed;
 ```
 
 Основной фон приложения: тёплый светлый фон с мягкими radial gradients, заданный в `.preview`. Не добавлять новые цвета и не заменять палитру на холодную blue/gray-схему.
@@ -69,8 +64,8 @@ Header содержит бренд и ссылки «Проверки» / «Пр
 
 Каждый статус передаётся текстом и цветом:
 
-- Contradicted / «Расходится с данными»: `--contradicted` / `--contradicted-soft` (Preline soft badge: red-800 / red-100).
-- Disputed / «Спорное утверждение»: яркий `--disputed` (orange-500) для диаграммы и точек; `--disputed-ink` (amber-700) для текста плашки, подписи и числа легенды; `--disputed-soft` (orange-50) для фона плашки. Контраст текста на фоне плашки — 4.73:1.
+- Contradicted / «Расходится с данными»: исходный приглушённый терракотовый `--danger` / `--danger-soft`.
+- Disputed / «Спорное утверждение»: исходный охристый `--warning` / `--warning-soft`.
 - Цвета статусов применяются также к подписям и числам легенды, в том числе при нулевом количестве утверждений.
 - Not found / «Данные не найдены»: тёплый бледно-жёлтый фон `#F6EFCF`, текст `#806C27`.
 - Supported / «Данные подтверждены»: `--accent` / `--accent-soft`.
