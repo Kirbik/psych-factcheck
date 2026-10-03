@@ -6,16 +6,18 @@ import {
 } from "./providers";
 import { verdicts } from "../../types/fact-check";
 
-export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
-export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
-export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
+export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
+export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
+export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
+export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
 export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
   FACT_CHECK_JUDGMENT_VERSION,
   PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
   LEGACY_FACT_CHECK_JUDGMENT_VERSION,
+  OLDEST_FACT_CHECK_JUDGMENT_VERSION,
 ] as const;
 export const FACT_CHECK_JUDGMENT_SCHEMA_VERSION =
-  "fact-check-judgment-schema-v2";
+  "fact-check-judgment-schema-v3";
 export const FACT_CHECK_JUDGMENT_MODEL = "gpt-4o-mini";
 export const MAX_JUDGMENT_EVIDENCE_ITEMS = 5;
 export const MAX_JUDGMENT_LIMITATIONS = 8;

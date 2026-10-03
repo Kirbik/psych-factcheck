@@ -72,6 +72,25 @@ report artifact remains future work.
 - Confidence is an uncalibrated model output. Citation membership is checked,
   but semantic support between each passage and explanation is not evaluated.
 
+## Production follow-up (2026-10-03)
+
+Cloudflare Workflow instance `analysis-5c272e23-5f76-4f54-bbb9-488f299233e7-1`
+completed `retrieve and package claim evidence` successfully (3.4 seconds), then
+failed all five judgment-preparation attempts with
+`Job read failed (Supabase error code unavailable)`. Its failure-state write
+also failed with `Job transition failed (Supabase error code unavailable)`.
+Generation 2 reached its judgment step and failed with
+`FACT_CHECK_CITATION_OUTSIDE_PACKAGE`; the model output cited a chunk ID outside
+the package, correctly rejected by server validation. Supabase PostgREST Logs
+reported no data, and Worker Observability is disabled, so the generation 1
+transport failure has no lower-level diagnostic yet.
+
+The local judgment schema now enumerates only the current package's chunk IDs
+and permits zero citations for an empty package. This is a versioned local fix;
+it has not been deployed or live-verified. Re-run the failed generation after
+deployment. Model quality remains unverified without expert-reviewed golden
+cases.
+
 ## Literature search extension (2026-10-03)
 
 The workflow now has an EvidenceSearchProvider abstraction with Europe PMC and

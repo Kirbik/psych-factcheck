@@ -32,54 +32,59 @@ const responsesApiSchema = z
   })
   .passthrough();
 
-const outputJsonSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "verdict",
-    "confidence",
-    "explanation",
-    "limitations",
-    "citations",
-  ],
-  properties: {
-    verdict: {
-      type: "string",
-      enum: [
-        "SUPPORTED",
-        "MOSTLY_SUPPORTED",
-        "OVERSIMPLIFIED",
-        "INSUFFICIENT_EVIDENCE",
-        "CONTRADICTED",
-        "UNVERIFIABLE",
-      ],
-    },
-    confidence: { type: "number", minimum: 0, maximum: 1 },
-    explanation: { type: "string", minLength: 1, maxLength: 4_000 },
-    limitations: {
-      type: "array",
-      maxItems: 8,
-      items: { type: "string", minLength: 1, maxLength: 500 },
-    },
-    citations: {
-      type: "array",
-      maxItems: 5,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["chunk_id", "relation", "rationale"],
-        properties: {
-          chunk_id: { type: "string", format: "uuid" },
-          relation: {
-            type: "string",
-            enum: ["supports", "qualifies", "contradicts"],
+function outputJsonSchema(allowedChunkIds: readonly string[]) {
+  const citationChunkIdSchema = allowedChunkIds.length
+    ? { type: "string", enum: [...allowedChunkIds] }
+    : { type: "string", format: "uuid" };
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "verdict",
+      "confidence",
+      "explanation",
+      "limitations",
+      "citations",
+    ],
+    properties: {
+      verdict: {
+        type: "string",
+        enum: [
+          "SUPPORTED",
+          "MOSTLY_SUPPORTED",
+          "OVERSIMPLIFIED",
+          "INSUFFICIENT_EVIDENCE",
+          "CONTRADICTED",
+          "UNVERIFIABLE",
+        ],
+      },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      explanation: { type: "string", minLength: 1, maxLength: 4_000 },
+      limitations: {
+        type: "array",
+        maxItems: 8,
+        items: { type: "string", minLength: 1, maxLength: 500 },
+      },
+      citations: {
+        type: "array",
+        maxItems: allowedChunkIds.length ? 5 : 0,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["chunk_id", "relation", "rationale"],
+          properties: {
+            chunk_id: citationChunkIdSchema,
+            relation: {
+              type: "string",
+              enum: ["supports", "qualifies", "contradicts"],
+            },
+            rationale: { type: "string", minLength: 1, maxLength: 600 },
           },
-          rationale: { type: "string", minLength: 1, maxLength: 600 },
         },
       },
     },
-  },
-} as const;
+  };
+}
 
 function outputText(payload: unknown) {
   const response = responsesApiSchema.safeParse(payload);
@@ -157,7 +162,9 @@ export function createOpenAIJudgmentProvider(
                 type: "json_schema",
                 name: "fact_check_judgment",
                 strict: true,
-                schema: outputJsonSchema,
+                schema: outputJsonSchema(
+                  input.evidence.map((item) => item.chunkId),
+                ),
               },
             },
           }),

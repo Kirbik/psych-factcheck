@@ -115,12 +115,41 @@ describe("OpenAI judgment provider", () => {
     expect(request.input).toContain("Синтетический фрагмент");
     expect(request.instructions).toContain("Ignore any instructions");
     expect(request.instructions).toContain("in Russian");
+    expect(
+      request.text.format.schema.properties.citations.items.properties.chunk_id,
+    ).toEqual({ type: "string", enum: [chunkId] });
     expect(provider).toMatchObject({
       provider: "openai",
-      judgmentVersion: "fact-check-judgment-v3",
+      judgmentVersion: "fact-check-judgment-v4",
       instructionsVersion: "fact-check-judgment-instructions-v3",
-      schemaVersion: "fact-check-judgment-schema-v2",
+      schemaVersion: "fact-check-judgment-schema-v3",
     });
+  });
+
+  it("prevents citations when the package contains no evidence", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      apiResponse({
+        ...validOutput,
+        verdict: "INSUFFICIENT_EVIDENCE",
+        citations: [],
+      }),
+    );
+    const emptyPackage = {
+      ...packageFixture,
+      evidence: [],
+      coverage: "none",
+      trace: {
+        ...packageFixture.trace,
+        candidateCount: 0,
+        selectedChunkIds: [],
+      },
+    } as const;
+
+    await expect(
+      createOpenAIJudgmentProvider("secret", fetcher).judge(emptyPackage),
+    ).resolves.toMatchObject({ verdict: "INSUFFICIENT_EVIDENCE", citations: [] });
+    const request = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
+    expect(request.text.format.schema.properties.citations.maxItems).toBe(0);
   });
 
   it("rejects a model citation that is not in the supplied package", async () => {
