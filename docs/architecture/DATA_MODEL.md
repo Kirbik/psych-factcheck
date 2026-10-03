@@ -132,13 +132,14 @@ provider, provider version, PMCID, license URL, and storage limit provenance.
 - **Relations/ownership:** many-to-many join; ownership derives from fact check while evidence is shared.
 - **Lifecycle:** citations are frozen with the fact check. The persistence path rejects chunk IDs absent from the linked Evidence Package.
 
-### `analysis_report_narratives` — Session 25, migration pending deployment
+### `analysis_report_narratives` — Session 25, migration deployed 2026-10-03
 
 - **Purpose:** store the separate model commentary for each claim, the overall video conclusion, and explicitly subjective model opinion after all fact checks are persisted.
 - **Fields:** `job_id`, `content_item_id`, `generation`, `provider`, `model`, `narrative_version`, `prompt_version`, `schema_version`, `payload`, `created_at`.
 - **Integrity:** unique per job generation and schema version; the service-only save RPC checks the active `judge_claims` run and verifies each commentary's claim/fact-check relationship. The artifact contains generated text, not copies of article passages.
 - **Access:** RLS permits owner reads; clients cannot write. Workflow persistence uses the run-fenced security-definer RPC.
 - **Compatibility:** older completed analyses without this artifact remain readable and display that commentary is unavailable.
+- **Historical opinion context:** optional `payload.historicalReferences` records the selected catalogue ID, related claim ID, catalogue version, author, book, publication year, consulted edition, locator, primary URL and editorial paraphrase. It is explanatory historical context, outside scientific evidence and citation tables. Persisted payload schema v1 accepts older artifacts without this field; no new migration is required.
 
 ## Orchestration
 

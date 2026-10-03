@@ -160,6 +160,7 @@ export function createReportNarrativeService(
         }),
         overallConclusion: narrative.overallConclusion,
         subjectiveOpinion: narrative.subjectiveOpinion,
+        historicalReferences: narrative.historicalReferences ?? [],
       };
       const { data, error } = await client.rpc(
         "save_analysis_report_narrative_for_run",
