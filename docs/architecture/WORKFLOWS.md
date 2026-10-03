@@ -111,12 +111,16 @@ The judgment response schema constrains `chunk_id` to the current package's
 evidence members, and the server validates membership again before persistence.
 On 2026-10-03, Production generation 2 for job
 `5c272e23-5f76-4f54-bbb9-488f299233e7` reached judgment but failed with
-`FACT_CHECK_CITATION_OUTSIDE_PACKAGE`. A local schema-versioned fix now passes
-package member IDs as the allowed citation enum; it is not deployed or
-Production-verified. Generation 1 of that job completed evidence packaging but
-then failed to read/update the job in Supabase during judgment preparation and
-failure persistence. Worker Observability is disabled, and the Supabase
-PostgREST log collection returned no data, so the underlying Supabase transport
+`FACT_CHECK_CITATION_OUTSIDE_PACKAGE`. The judgment schema now enumerates only
+the current package's chunk IDs and permits zero citations for an empty package.
+This fix and the publication-search extension were deployed in Worker version
+`9b3415bf-5f13-4795-ad0c-c5debe5605df`. The production root served the
+authenticated entry page after deployment. No new authenticated analysis or
+live Europe PMC/Crossref query has been run since deployment; the earlier
+generation 2 failure predates this fix. Generation 1 completed evidence
+packaging but then failed to read/update the job in Supabase during judgment
+preparation and failure persistence. Worker Observability is disabled, and the
+Supabase PostgREST log collection returned no data, so the underlying Supabase
 failure is not yet diagnosed.
 
 The Session 12 migrations and Worker were deployed to Production on 2026-10-01.

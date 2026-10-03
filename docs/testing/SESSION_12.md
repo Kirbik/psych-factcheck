@@ -85,11 +85,14 @@ the package, correctly rejected by server validation. Supabase PostgREST Logs
 reported no data, and Worker Observability is disabled, so the generation 1
 transport failure has no lower-level diagnostic yet.
 
-The local judgment schema now enumerates only the current package's chunk IDs
-and permits zero citations for an empty package. This is a versioned local fix;
-it has not been deployed or live-verified. Re-run the failed generation after
-deployment. Model quality remains unverified without expert-reviewed golden
-cases.
+The judgment schema now enumerates only the current package's chunk IDs and
+permits zero citations for an empty package. The fix and publication-search
+extension were deployed on 2026-10-03 in Worker version
+`9b3415bf-5f13-4795-ad0c-c5debe5605df`. The production root served the
+authenticated entry page after deployment. The failed generation 2 predates
+the fix; no new authenticated analysis or live scientific-provider query has
+been run since deployment. Model quality remains unverified without
+expert-reviewed golden cases.
 
 ## Literature search extension (2026-10-03)
 
@@ -103,15 +106,17 @@ retrieval, judgment prompt, and judgment schema versions are recorded. Stable
 source/chunk keys and package uniqueness preserve retry idempotency. Existing
 generation/run fencing and relational tables remain unchanged.
 
-This implementation is not deployed or live-tested against Production APIs.
-Europe PMC/Crossref coverage is incomplete. Synthetic contract tests do not
-establish model quality; expert-reviewed golden cases are still missing.
+This implementation is deployed but not live-tested against Europe PMC or
+Crossref. Europe PMC/Crossref coverage is incomplete. Synthetic contract tests
+do not establish model quality; expert-reviewed golden cases are still
+missing.
 
 The 2026-10-03 repository checks for this extension passed lint, typecheck,
 unit/integration tests (243 passed, 5 skipped), evals (7 passed), build, and
 Playwright E2E (11 passed, 6 skipped). E2E was rerun with network access after
 the sandboxed dev server stalled while fetching existing Google Fonts. No live
-scientific API requests or Production workflow were performed.
+scientific API request or authenticated post-deployment Production workflow was
+performed.
 
 The 2026-10-03 repository checks for this extension passed lint, typecheck,
 unit/integration tests (243 passed, 5 skipped), evals (7 passed), build, and
