@@ -50,6 +50,8 @@ pnpm test:db
 
 ## Level 4 — E2E tests
 
+`report-status-colors.spec.ts` compiles the real report and shell CSS Modules with Vite and checks computed colors in Chrome at desktop and mobile widths, including zero-count legend labels, counts, dots, chart segments, and badges. It reproduces the missing-color bug caused by defining report variables on a global `.preview` selector while the rendered shell class is scoped. This is an isolated style regression fixture, not an authenticated Production report check.
+
 Playwright uses the stable Google Chrome channel. Install Chrome locally; CI may install the matching Playwright browser. The current suite covers public token-auth UI states and prototype routes. Supabase-backed signup and protected-route coverage needs the public URL/key plus the server service-role key. Existing-user login/logout/upload additionally need `E2E_SUPABASE_TOKEN` for a dedicated confirmed test user. Missing credentials cause explicit skips.
 
 The current E2E suite mocks persisted analysis progress and retry behavior; authenticated live upload still requires the dedicated Supabase test environment. The root-level prototype screens are not substitutes for hosted integration coverage.

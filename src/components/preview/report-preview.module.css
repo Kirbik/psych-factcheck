@@ -1,4 +1,4 @@
-:global(.preview) {
+.content {
   --danger: #b4551f;
   --danger-soft: #fbe5df;
   --warning: #96670f;
@@ -7,9 +7,6 @@
   --contradicted-soft: #fee2e2;
   --disputed: #9a3412;
   --disputed-soft: #ffedd5;
-}
-
-.content {
   max-width: 1184px;
 }
 .headingRow {
