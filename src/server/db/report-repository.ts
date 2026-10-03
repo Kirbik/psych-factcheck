@@ -36,7 +36,10 @@ type ReportClient = SupabaseClient<Database>;
 const verdictSchema = z.enum(verdicts);
 const confidenceSchema = z.number().finite().min(0).max(1);
 
-function toReportStatus(verdict: Verdict): ReportClaimStatus {
+function toReportStatus(
+  verdict: Verdict,
+  hasResolvedCitations: boolean,
+): ReportClaimStatus {
   switch (verdict) {
     case "CONTRADICTED":
       return "contradicted";
@@ -46,6 +49,9 @@ function toReportStatus(verdict: Verdict): ReportClaimStatus {
     case "OVERSIMPLIFIED":
       return "disputed";
     case "INSUFFICIENT_EVIDENCE":
+      // Evidence was considered but did not settle the claim. Bibliographic
+      // metadata, uncited candidates and subjective opinions do not qualify.
+      return hasResolvedCitations ? "disputed" : "not-found";
     case "UNVERIFIABLE":
       return "not-found";
   }
@@ -392,7 +398,7 @@ export function reportRepository(client: ReportClient) {
           startSeconds: claim.start_seconds,
           endSeconds: claim.end_seconds,
           verdict: verdict.data,
-          status: toReportStatus(verdict.data),
+          status: toReportStatus(verdict.data, citedSourceIds.size > 0),
           confidence: confidence.data,
           explanation: localized.explanation,
           modelCommentary: modelCommentaryByClaim.get(claim.id) ?? null,

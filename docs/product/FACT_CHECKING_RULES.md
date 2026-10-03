@@ -49,6 +49,10 @@ Retrieved snippets are candidates, not proof. Reranking must retain source ident
 
 Only these primary verdicts are permitted. Judgment must be reproducible from the supplied Evidence Package; unsupported evidence may not be used to justify a verdict.
 
+## Report badge grouping
+
+The report groups scientific verdicts into four display categories. `CONTRADICTED` displays as “Расходится с данными”; `SUPPORTED` as “Данные подтверждены”; `MOSTLY_SUPPORTED` and `OVERSIMPLIFIED` as “Спорное утверждение”. `INSUFFICIENT_EVIDENCE` also displays as “Спорное утверждение” when that exact saved judgment has citations resolved to existing passages and sources: evidence was considered but did not settle the claim. Without such citations it displays as “Данные не найдены”. `UNVERIFIABLE` keeps the latter badge and must be interpreted through its explanation. Metadata-only references, uncited passages, historical examples, and subjective opinion cannot broaden a badge. The saved verdict and scientific thresholds are unchanged; missing evidence never yields contradiction.
+
 ## Confidence
 
 Confidence is currently an uncalibrated model output. It is not a probability that the speaker is lying, not clinical certainty, and not a substitute for limitations. Do not interpret it as a calibrated measure until calibration rules and thresholds have been versioned and evaluated.
