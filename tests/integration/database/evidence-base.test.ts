@@ -12,6 +12,13 @@ const migration = readFile(
   ),
   "utf8",
 );
+const russianSourcesMigration = readFile(
+  new URL(
+    "../../../supabase/migrations/20261003100000_russian_bibliography_sources.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const rows = toImportRows(evidenceSeedV0);
 
 describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
@@ -31,6 +38,7 @@ describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
       grant usage on schema auth to authenticated, service_role;
     `);
     await db.exec(await migration);
+    await db.exec(await russianSourcesMigration);
   }, 30_000);
 
   afterAll(async () => {
@@ -87,6 +95,21 @@ describe("Evidence Base v0 SQL (isolated PostgreSQL)", () => {
       [rows.sources[0]!.source_key],
     );
     expect(source.rows[0]!.title).toBe(rows.sources[0]!.title);
+  });
+
+  it("imports metadata-only book records without creating retrievable chunks", async () => {
+    const book = rows.sources.find((source) =>
+      source.source_key.startsWith("isbn:"),
+    );
+    expect(book).toBeDefined();
+    const result = await importSeed([book!], []);
+    expect(result.rows).toEqual([{ source_count: 1, chunk_count: 0 }]);
+    const chunks = await db.query<{ count: number }>(
+      `select count(*)::integer as count from public.evidence_chunks c
+       join public.sources s on s.id = c.source_id where s.source_key = $1`,
+      [book!.source_key],
+    );
+    expect(chunks.rows[0]!.count).toBe(0);
   });
 
   it("rejects null payloads and incorrect content hashes", async () => {

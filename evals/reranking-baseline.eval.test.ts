@@ -54,7 +54,9 @@ function precisionAtK(
   k: number,
 ) {
   const expected = new Set(relevant);
-  return ranked.slice(0, k).filter((chunkKey) => expected.has(chunkKey)).length / k;
+  return (
+    ranked.slice(0, k).filter((chunkKey) => expected.has(chunkKey)).length / k
+  );
 }
 
 const sources = new Map(
@@ -64,6 +66,15 @@ const candidates: readonly EvidenceCandidate[] = evidenceSeedV0.chunks.map(
   (chunk) => {
     const source = sources.get(chunk.sourceKey);
     if (!source) throw new Error(`Missing seed source: ${chunk.sourceKey}`);
+    if (
+      source.sourceType === "book" ||
+      source.sourceType === "textbook" ||
+      source.sourceType === "monograph"
+    ) {
+      throw new Error(
+        `Metadata-only source has evidence chunk: ${chunk.sourceKey}`,
+      );
+    }
     return {
       chunkId: `${chunk.sourceKey}:${chunk.chunkKey}`,
       sourceId: chunk.sourceKey,
@@ -141,7 +152,11 @@ describe("evidence package relevance baseline", () => {
       );
 
       expect(evidencePackage.evidence).toHaveLength(5);
-      expect(evidencePackage.evidence.every((item) => item.source.canonicalUrl.startsWith("https://"))).toBe(true);
+      expect(
+        evidencePackage.evidence.every((item) =>
+          item.source.canonicalUrl.startsWith("https://"),
+        ),
+      ).toBe(true);
       expect(packageScore).toBeGreaterThanOrEqual(baselineScore);
       baselineScores.push(baselineScore);
       packageScores.push(packageScore);

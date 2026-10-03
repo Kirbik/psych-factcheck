@@ -8,9 +8,9 @@ import {
 } from "@/server/evidence/seed-v0";
 
 describe("Evidence Base v0 seed", () => {
-  it("contains thirteen traceable sources and twenty-seven linked licensed chunks", () => {
-    expect(evidenceSeedV0.sources).toHaveLength(13);
-    expect(evidenceSeedV0.chunks).toHaveLength(27);
+  it("contains traceable sources and licensed evidence chunks", () => {
+    expect(evidenceSeedV0.sources).toHaveLength(21);
+    expect(evidenceSeedV0.chunks).toHaveLength(29);
     expect(
       evidenceSeedV0.sources.find(
         (source) => source.doi === "10.1177/1948550619887702",
@@ -24,8 +24,8 @@ describe("Evidence Base v0 seed", () => {
         evidenceSeedV0.sources.some(
           (source) =>
             source.sourceKey === chunk.sourceKey &&
-            source.licenseCode.startsWith("CC-BY-") &&
-            source.licenseCode !== "CC-BY-NC-4.0",
+            (source.licenseCode === "CC-BY-4.0" ||
+              source.licenseCode === "CC-BY-3.0"),
         ),
       ),
     ).toBe(true);
@@ -59,6 +59,28 @@ describe("Evidence Base v0 seed", () => {
     const mismatchedKey = structuredClone(evidenceSeedV0);
     mismatchedKey.sources[0]!.sourceKey = "doi:10.0000/wrong";
     expect(evidenceSeedSchema.safeParse(mismatchedKey).success).toBe(false);
+
+    const copyrightedChunk = structuredClone(evidenceSeedV0);
+    copyrightedChunk.chunks[0]!.sourceKey = "isbn:5-88782-394-1";
+    expect(evidenceSeedSchema.safeParse(copyrightedChunk).success).toBe(false);
+  });
+
+  it("keeps books and noncommercial sources metadata-only", () => {
+    const rows = toImportRows(evidenceSeedV0);
+    const books = rows.sources.filter((source) =>
+      source.source_key.startsWith("isbn:"),
+    );
+    expect(books).toHaveLength(4);
+    expect(books.every((source) => source.doi === null)).toBe(true);
+    expect(
+      rows.chunks.some((chunk) =>
+        books.some((source) => source.source_key === chunk.source_key),
+      ),
+    ).toBe(false);
+    expect(
+      rows.sources.filter((source) => source.license_code === "CC-BY-NC-4.0")
+        .length,
+    ).toBe(3);
   });
 
   it("exports repeatable records with content hashes", () => {

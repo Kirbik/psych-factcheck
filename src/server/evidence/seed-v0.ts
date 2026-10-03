@@ -8,21 +8,35 @@ const sourceSchema = z.object({
   journal: z.string().min(1).max(300),
   publisher: z.string().min(1).max(200),
   publishedAt: z.iso.date(),
-  doi: z.string().regex(/^10\.\d{4,9}\/.+/),
+  doi: z
+    .string()
+    .regex(/^10\.\d{4,9}\/.+/)
+    .optional(),
+  isbn: z
+    .string()
+    .regex(/^[0-9Xx-]{10,17}$/)
+    .optional(),
   url: z.url().refine((value) => value.startsWith("https://")),
   sourceType: z.enum([
     "journal_article",
     "systematic_review",
     "meta_analysis",
     "commentary",
+    "book",
+    "textbook",
+    "monograph",
   ]),
   status: z.enum(["active", "corrected", "retracted", "withdrawn"]),
-  licenseCode: z.enum(["CC-BY-4.0", "CC-BY-3.0", "CC-BY-NC-4.0"]),
+  licenseCode: z.enum([
+    "CC-BY-4.0",
+    "CC-BY-3.0",
+    "CC-BY-NC-4.0",
+    "ALL-RIGHTS-RESERVED",
+  ]),
   licenseUrl: z
     .url()
-    .refine((value) =>
-      value.startsWith("https://creativecommons.org/licenses/"),
-    ),
+    .refine((value) => value.startsWith("https://"))
+    .nullable(),
   licenseVerifiedAt: z.iso.date(),
   topicTags: z
     .array(
@@ -48,33 +62,54 @@ const chunkSchema = z.object({
 export const evidenceSeedSchema = z
   .object({
     sources: z.array(sourceSchema).min(1),
-    chunks: z.array(chunkSchema).min(1),
+    chunks: z.array(chunkSchema).max(1000),
   })
   .superRefine((seed, context) => {
     const sourceKeys = new Set<string>();
+    const sourcesByKey = new Map<string, z.infer<typeof sourceSchema>>();
     const dois = new Set<string>();
     for (const [index, source] of seed.sources.entries()) {
-      if (source.sourceKey !== `doi:${source.doi}`) {
+      if (
+        (source.doi && source.sourceKey !== `doi:${source.doi}`) ||
+        (!source.doi &&
+          (!source.isbn || source.sourceKey !== `isbn:${source.isbn}`))
+      ) {
         context.addIssue({
           code: "custom",
           path: ["sources", index, "sourceKey"],
-          message: "Source key must be derived from its DOI",
+          message: "Source key must be derived from its DOI or ISBN",
         });
       }
       const expectedLicensePath = {
         "CC-BY-4.0": "/licenses/by/4.0/",
         "CC-BY-3.0": "/licenses/by/3.0/",
         "CC-BY-NC-4.0": "/licenses/by-nc/4.0/",
-      }[source.licenseCode];
-      if (
-        !source.licenseUrl.startsWith(
-          `https://creativecommons.org${expectedLicensePath}`,
-        )
+      }[source.licenseCode as "CC-BY-4.0" | "CC-BY-3.0" | "CC-BY-NC-4.0"];
+      if (source.licenseCode === "ALL-RIGHTS-RESERVED" && source.licenseUrl) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index, "licenseUrl"],
+          message:
+            "All-rights-reserved sources must not declare a reuse license URL",
+        });
+      } else if (
+        source.licenseCode !== "ALL-RIGHTS-RESERVED" &&
+        (!source.licenseUrl ||
+          !source.licenseUrl.startsWith(
+            `https://creativecommons.org${expectedLicensePath}`,
+          ))
       ) {
         context.addIssue({
           code: "custom",
           path: ["sources", index, "licenseUrl"],
           message: "License URL does not match the declared license",
+        });
+      }
+      if (source.doi && source.isbn) {
+        context.addIssue({
+          code: "custom",
+          path: ["sources", index, "isbn"],
+          message: "A source must use either a DOI or an ISBN identifier",
         });
       }
       if (sourceKeys.has(source.sourceKey)) {
@@ -84,7 +119,7 @@ export const evidenceSeedSchema = z
           message: "Duplicate source key",
         });
       }
-      if (dois.has(source.doi)) {
+      if (source.doi && dois.has(source.doi)) {
         context.addIssue({
           code: "custom",
           path: ["sources", index, "doi"],
@@ -92,7 +127,8 @@ export const evidenceSeedSchema = z
         });
       }
       sourceKeys.add(source.sourceKey);
-      dois.add(source.doi);
+      sourcesByKey.set(source.sourceKey, source);
+      if (source.doi) dois.add(source.doi);
     }
 
     const chunkKeys = new Set<string>();
@@ -102,6 +138,19 @@ export const evidenceSeedSchema = z
           code: "custom",
           path: ["chunks", index, "sourceKey"],
           message: "Chunk references an unknown source",
+        });
+      }
+      const source = sourcesByKey.get(chunk.sourceKey);
+      if (
+        source &&
+        source.licenseCode !== "CC-BY-4.0" &&
+        source.licenseCode !== "CC-BY-3.0"
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: ["chunks", index, "sourceKey"],
+          message:
+            "Evidence text can only be stored for reusable CC BY sources",
         });
       }
       const key = `${chunk.sourceKey}\u0000${chunk.chunkKey}`;
@@ -118,6 +167,7 @@ export const evidenceSeedSchema = z
 
 const verifiedDate = "2026-10-01";
 const ccBy4 = "https://creativecommons.org/licenses/by/4.0/";
+const allRightsReserved = "ALL-RIGHTS-RESERVED";
 
 export const evidenceSeedV0 = evidenceSeedSchema.parse({
   sources: [
@@ -393,6 +443,145 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
         "sexual_wellbeing",
       ],
     },
+    {
+      sourceKey: "doi:10.60797/PSY.2025.6.1",
+      title:
+        "Взаимосвязь показателей эмоционального интеллекта и удовлетворенности романтическими отношениями у партнеров молодого возраста",
+      authors: [
+        "Мария Владиславовна Башутина",
+        "Дмитрий Николаевич Чернов",
+        "Анастасия Андреевна Кальчинская",
+      ],
+      journal: "Cifra. Психология, 1(6)",
+      publisher: "Издательский дом «Цифра»",
+      publishedAt: "2025-01-29",
+      doi: "10.60797/PSY.2025.6.1",
+      url: "https://psychology.cifra.science/archive/1-6-2025-january/10.60797/PSY.2025.6.1",
+      sourceType: "journal_article",
+      status: "active",
+      licenseCode: "CC-BY-4.0",
+      licenseUrl: ccBy4,
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    },
+    {
+      sourceKey: "doi:10.17759/sps.2021120109",
+      title:
+        "Социальные представления о брачном партнере: поколенческий подход",
+      authors: ["Татьяна Петровна Емельянова", "Даниил Александрович Шмидт"],
+      journal: "Социальная психология и общество, 12(1)",
+      publisher:
+        "Московский государственный психолого-педагогический университет",
+      publishedAt: "2021-04-01",
+      doi: "10.17759/sps.2021120109",
+      url: "https://psyjournals.ru/journals/sps/archive/2021_n1/Emelyanova_Shmidt",
+      sourceType: "journal_article",
+      status: "active",
+      licenseCode: "CC-BY-NC-4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-nc/4.0/",
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships"],
+    },
+    {
+      sourceKey: "doi:10.17759/sps.2017080104",
+      title:
+        "Социально-психологические факторы удовлетворенности отношениями в молодых супружеских парах",
+      authors: ["Олег Александрович Сычев"],
+      journal: "Социальная психология и общество, 8(1)",
+      publisher:
+        "Московский государственный психолого-педагогический университет",
+      publishedAt: "2017-03-26",
+      doi: "10.17759/sps.2017080104",
+      url: "https://psyjournals.ru/journals/sps/archive/2017_n1/sychev",
+      sourceType: "journal_article",
+      status: "active",
+      licenseCode: "CC-BY-NC-4.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-nc/4.0/",
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    },
+    {
+      sourceKey: "doi:10.21638/spbu16.2024.107",
+      title:
+        "Супружеские пары: значение психологического благополучия и субъективного одиночества для чувств любви",
+      authors: ["Елена Геннадьевна Трошихина"],
+      journal: "Вестник Санкт-Петербургского университета. Психология, 14(1)",
+      publisher: "Санкт-Петербургский государственный университет",
+      publishedAt: "2024-05-22",
+      doi: "10.21638/spbu16.2024.107",
+      url: "https://doi.org/10.21638/spbu16.2024.107",
+      sourceType: "journal_article",
+      status: "active",
+      licenseCode: allRightsReserved,
+      licenseUrl: null,
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships"],
+    },
+    {
+      sourceKey: "isbn:5-88782-394-1",
+      title: "Психология и психотерапия семьи",
+      authors: ["Эдмонд Георгиевич Эйдемиллер", "Виктор Викторович Юстицкис"],
+      journal: "Книга; 2-е расширенное и дополненное издание",
+      publisher: "Питер",
+      publishedAt: "1999-01-01",
+      isbn: "5-88782-394-1",
+      url: "https://search.rsl.ru/ru/record/01000606829",
+      sourceType: "monograph",
+      status: "active",
+      licenseCode: allRightsReserved,
+      licenseUrl: null,
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    },
+    {
+      sourceKey: "isbn:978-5-89353-338-5",
+      title:
+        "Теория семейных систем Мюррея Боуэна: основные понятия, методы и клиническая практика",
+      authors: ["Кэтрин Бейкер", "Анна Яковлевна Варга"],
+      journal: "Книга; научная редакция",
+      publisher: "Когито-Центр",
+      publishedAt: "2015-01-01",
+      isbn: "978-5-89353-338-5",
+      url: "https://www.hse.ru/edu/courses/795377934",
+      sourceType: "textbook",
+      status: "active",
+      licenseCode: allRightsReserved,
+      licenseUrl: null,
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    },
+    {
+      sourceKey: "isbn:978-5-8291-1206-6",
+      title: "Семейная психология: антология",
+      authors: ["Лидия Бернгардовна Шнейдер"],
+      journal: "Книга; антология",
+      publisher: "Трикста; Академический проект",
+      publishedAt: "2010-01-01",
+      isbn: "978-5-8291-1206-6",
+      url: "https://search.rsl.ru/ru/record/01004633364",
+      sourceType: "textbook",
+      status: "active",
+      licenseCode: allRightsReserved,
+      licenseUrl: null,
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["romantic_relationships", "couple_communication"],
+    },
+    {
+      sourceKey: "isbn:5-225-00129-7",
+      title: "Введение в сексологию",
+      authors: ["Игорь Семенович Кон"],
+      journal: "Книга; учебное научное издание",
+      publisher: "Медицина",
+      publishedAt: "1988-01-01",
+      isbn: "5-225-00129-7",
+      url: "https://lib.mgppu.ru/OpacUnicode/index.php?url=%2Fauteurs%2Fview%2F3343%2Fsource%3Adefault%2Forder%3Atitle",
+      sourceType: "monograph",
+      status: "active",
+      licenseCode: allRightsReserved,
+      licenseUrl: null,
+      licenseVerifiedAt: "2026-10-03",
+      topicTags: ["sexual_wellbeing"],
+    },
   ],
   chunks: [
     {
@@ -611,6 +800,22 @@ export const evidenceSeedV0 = evidenceSeedSchema.parse({
       content:
         "Results indicated that variables related to positive sexuality were more highly interconnected than the rest of the network. There were small-to-negligible connections between positive sexuality and relationship satisfaction variables, both of which had negligible or no connections with health. The network was globally invariant across gender, though a few connections were gender-specific. The most important variables, regardless of gender, related to pleasurable feelings during sexual intercourse.",
     },
+    {
+      sourceKey: "doi:10.60797/PSY.2025.6.1",
+      chunkKey: "methods-sample-limit",
+      locator: "Раздел 2 > Цели и задачи исследования",
+      language: "ru",
+      content:
+        "В исследовании приняли участие 44 юношей и девушек, находящихся в романтических отношениях больше полугода и не живущих вместе. Всего – 22 пары (средний возраст – 21,5 лет). Выборка состояла из студентов РНИМУ им. Н.И. Пирогова.",
+    },
+    {
+      sourceKey: "doi:10.60797/PSY.2025.6.1",
+      chunkKey: "results-correlational-limit",
+      locator: "Раздел 6 > Заключение",
+      language: "ru",
+      content:
+        "У молодых людей и девушек наблюдается взаимосвязь представлений о сплоченности и согласии в отношениях с показателями межличностного эмоционального интеллекта такими как способность управлять эмоциями других людей и способность понимать эмоции других людей.",
+    },
   ],
 });
 
@@ -630,7 +835,7 @@ export function toImportRows(seed: EvidenceSeed) {
       journal: source.journal,
       publisher: source.publisher,
       published_at: source.publishedAt,
-      doi: source.doi,
+      doi: source.doi ?? null,
       canonical_url: source.url,
       source_type: source.sourceType,
       status: source.status,
@@ -638,6 +843,11 @@ export function toImportRows(seed: EvidenceSeed) {
       license_url: source.licenseUrl,
       provenance: {
         license_verified_at: source.licenseVerifiedAt,
+        ...(source.isbn ? { isbn: source.isbn } : {}),
+        ...(source.isbn ? { publication_date_precision: "year" } : {}),
+        ...(source.licenseCode === "ALL-RIGHTS-RESERVED"
+          ? { chunks_permitted: false, rights_status: "all_rights_reserved" }
+          : {}),
         ...(source.topicTags ? { topic_tags: source.topicTags } : {}),
       },
     })),
