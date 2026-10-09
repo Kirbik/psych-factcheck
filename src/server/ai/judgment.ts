@@ -40,7 +40,7 @@ const extractedClaimSchema = z
   .strict()
   .refine((claim) => claim.endSeconds >= claim.startSeconds);
 
-const evidenceItemSchema = z
+export const evidenceItemSchema = z
   .object({
     sourceId: z.uuid(),
     chunkId: z.uuid(),
@@ -54,6 +54,10 @@ const evidenceItemSchema = z
         title: z.string().min(1).max(1_000),
         authors: z.array(z.string().min(1).max(500)).max(100),
         journal: z.string().max(500),
+        publisher: z.string().max(1_000).optional(),
+        doi: z.string().max(255).nullable().optional(),
+        licenseCode: z.string().max(100).nullable().optional(),
+        licenseUrl: z.url().nullable().optional(),
         publishedAt: z.string().max(100),
         type: sourceTypeSchema,
         canonicalUrl: z.url().max(2_000),
@@ -80,6 +84,7 @@ const evidenceItemSchema = z
 
 export const evidencePackageSchema = z
   .object({
+    schemaVersion: z.literal("evidence-package-v2").optional(),
     claim: extractedClaimSchema,
     evidence: z.array(evidenceItemSchema).max(MAX_JUDGMENT_EVIDENCE_ITEMS),
     retrievalVersion: z.string().min(1).max(100),
@@ -114,7 +119,7 @@ export const evidencePackageSchema = z
           .object({
             provider: z.string().min(1).max(100),
             model: z.string().min(1).max(200),
-            embeddingVersion: z.string().min(1).max(100),
+            embeddingVersion: z.string().min(1).max(100).optional(),
             filters: z
               .object({
                 sourceStatus: z.literal("active"),
@@ -137,6 +142,29 @@ export const evidencePackageSchema = z
   })
   .strict()
   .superRefine((evidencePackage, context) => {
+    if (evidencePackage.retrievalVersion === "publication-search-v1") {
+      if (evidencePackage.schemaVersion !== "evidence-package-v2") {
+        context.addIssue({
+          code: "custom",
+          message: "Publication package schema version missing",
+        });
+      }
+      for (const item of evidencePackage.evidence) {
+        if (
+          !item.attribution ||
+          item.text.length > 1000 ||
+          item.text.length < 40 ||
+          item.source.licenseCode !== "CC-BY-4.0" ||
+          item.source.licenseUrl !==
+            "https://creativecommons.org/licenses/by/4.0/"
+        ) {
+          context.addIssue({
+            code: "custom",
+            message: "Publication evidence lacks approved audit rights",
+          });
+        }
+      }
+    }
     for (const [index, item] of evidencePackage.evidence.entries()) {
       if (
         item.attribution &&

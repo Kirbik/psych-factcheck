@@ -7,7 +7,13 @@ import type { Verdict } from "@/types/fact-check";
 
 vi.mock("server-only", () => ({}));
 
-function completedReport(verdict: Verdict, cited = true, brokenSource = false) {
+function completedReport(
+  verdict: Verdict,
+  cited = true,
+  brokenSource = false,
+  foreignPackage = false,
+  overrides: Record<string, unknown> = {},
+) {
   const rows: Record<string, unknown> = {
     content_items: { id: "content", original_file_name: "video.mp4" },
     analysis_jobs: {
@@ -56,28 +62,51 @@ function completedReport(verdict: Verdict, cited = true, brokenSource = false) {
       },
     ],
     fact_check_evidence: cited
-      ? [{ fact_check_id: "check", evidence_chunk_id: "chunk", ordinal: 0 }]
+      ? [
+          {
+            fact_check_id: "check",
+            evidence_chunk_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            ordinal: 0,
+          },
+        ]
       : [],
-    evidence_chunks: [{ id: "chunk", source_id: "source" }],
-    sources: brokenSource
+
+    evidence_package_items: brokenSource
       ? []
       : [
           {
-            id: "source",
-            title: "Исследование",
-            authors: ["Исследователь"],
-            journal: "Журнал",
-            publisher: "Издатель",
-            published_at: "2020",
-            source_type: "journal_article",
-            canonical_url: "https://example.org/study",
+            evidence_package_id: foreignPackage ? "other-package" : "package",
+            evidence_chunk_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            snapshot: {
+              chunkId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              sourceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              chunkKey: "licensed-excerpt",
+              text: "A real received fixture passage",
+              language: "en",
+              locator: "paragraph",
+              retrievalScore: 0.9,
+              relevanceScore: 0.8,
+              source: {
+                key: "doi:10.0000/fixture",
+                title: "Исследование",
+                authors: ["Исследователь"],
+                journal: "Журнал",
+                publisher: "Издатель",
+                publishedAt: "2020",
+                type: "journal_article",
+                canonicalUrl: "https://example.org/study",
+              },
+            },
           },
         ],
     report_localizations: [],
   };
+  Object.assign(rows, overrides);
   // Only this repository's fluent read methods are mocked; no SDK or API calls.
   const client = {
     from: vi.fn((table: string) => {
+      if (table === "sources" || table === "evidence_chunks")
+        throw new Error("Retired RAG table accessed");
       const response = Promise.resolve({ data: rows[table], error: null });
       return {
         select: vi.fn().mockReturnThis(),
@@ -93,6 +122,84 @@ function completedReport(verdict: Verdict, cited = true, brokenSource = false) {
 }
 
 describe("report status evidence criteria", () => {
+  it("keeps a historical narrative bound to its exact saved judgment when newer packages exist", async () => {
+    const claimId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const oldId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const newId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    const check = (
+      id: string,
+      version: string,
+      verdict: Verdict,
+      pkg: string,
+    ) => ({
+      id,
+      claim_id: claimId,
+      evidence_package_id: pkg,
+      judgment_version: version,
+      verdict,
+      confidence: 0.3,
+      explanation: "Источники дают ограниченные данные.",
+    });
+    const result = await completedReport("SUPPORTED", true, false, false, {
+      claims: [
+        {
+          id: claimId,
+          original_text: "Утверждение ролика.",
+          normalized_text: "Утверждение ролика.",
+          start_seconds: 0,
+          end_seconds: 5,
+          ordinal: 0,
+        },
+      ],
+      evidence_packages: [
+        { id: "package", claim_id: claimId },
+        { id: "new-package", claim_id: claimId },
+      ],
+      fact_checks: [
+        check(
+          newId,
+          FACT_CHECK_JUDGMENT_VERSION,
+          "CONTRADICTED",
+          "new-package",
+        ),
+        check(oldId, "fact-check-judgment-v1", "SUPPORTED", "package"),
+      ],
+      fact_check_evidence: [
+        {
+          fact_check_id: oldId,
+          evidence_chunk_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          ordinal: 0,
+        },
+      ],
+      analysis_report_narratives: {
+        payload: {
+          claims: [
+            {
+              claimId,
+              factCheckId: oldId,
+              commentary: "Сохранённый комментарий.",
+            },
+          ],
+          overallConclusion: "Сохранённый общий вывод.",
+          subjectiveOpinion: "Сохранённое мнение.",
+        },
+      },
+    });
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready")
+      throw new Error("Historical report must stay readable");
+    expect(result.report.claims[0]).toMatchObject({
+      verdict: "SUPPORTED",
+      modelCommentary: "Сохранённый комментарий.",
+    });
+    expect(result.report.claims[0].sources).toHaveLength(1);
+  });
+
+  it("rejects a citation whose received snapshot belongs to another package", async () => {
+    expect((await completedReport("SUPPORTED", true, false, true)).kind).toBe(
+      "unavailable",
+    );
+  });
   it("shows insufficient but cited evidence as disputed while preserving the saved verdict", async () => {
     const result = await completedReport("INSUFFICIENT_EVIDENCE");
     expect(result.kind).toBe("ready");
@@ -100,7 +207,9 @@ describe("report status evidence criteria", () => {
     expect(result.report.claims[0]).toMatchObject({
       verdict: "INSUFFICIENT_EVIDENCE",
       status: "disputed",
-      sources: [expect.objectContaining({ id: "source" })],
+      sources: [
+        expect.objectContaining({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }),
+      ],
     });
   });
 

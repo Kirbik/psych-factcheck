@@ -53,6 +53,10 @@ export interface EvidenceItem {
     readonly title: string;
     readonly authors: readonly string[];
     readonly journal: string;
+    readonly publisher?: string;
+    readonly doi?: string | null;
+    readonly licenseCode?: string | null;
+    readonly licenseUrl?: string | null;
     readonly publishedAt: string;
     readonly type:
       "journal_article" | "systematic_review" | "meta_analysis" | "commentary";
@@ -85,6 +89,7 @@ export interface PublicationReference {
 }
 
 export interface EvidencePackage {
+  readonly schemaVersion?: "evidence-package-v2";
   readonly claim: ExtractedClaim;
   readonly evidence: readonly EvidenceItem[];
   readonly retrievalVersion: string;
@@ -96,7 +101,7 @@ export interface EvidencePackage {
     readonly retrieval: {
       readonly provider: string;
       readonly model: string;
-      readonly embeddingVersion: string;
+      readonly embeddingVersion?: string;
       readonly filters: {
         readonly sourceStatus: "active";
         readonly language: string | null;
@@ -151,12 +156,4 @@ export interface TranscriptionProvider {
 export interface TranscriptionResult {
   readonly language: string | null;
   readonly segments: readonly TranscriptSegment[];
-}
-
-export interface EmbeddingProvider {
-  readonly provider: string;
-  readonly model: string;
-  readonly version: string;
-  readonly dimensions: number;
-  embed(texts: readonly string[]): Promise<readonly (readonly number[])[]>;
 }

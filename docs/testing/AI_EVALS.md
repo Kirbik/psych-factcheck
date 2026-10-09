@@ -2,7 +2,9 @@
 
 ## Current status
 
-`pnpm evals` validates synthetic fact-check, topic-screening, and claim-extraction fixtures and computes an offline lexical retrieval reference over six provisional AI-reviewed queries. The original three labels were checked against query intent and passages on 2026-10-01; the relationship and sexuality cases were checked on 2026-10-02. None have human/expert review. The offline lexical P@5 is 0.300 (per-case: 0.400, 0.600, 0.200, 0.200, 0.200, 0.200). Live embedding retrieval returned P@5 0.300 on this six-case fixture; the labels remain provisional. The small curated set is not a medical/scientific gold standard. The command does not call OpenAI or measure live embedding retrieval or model quality.
+`pnpm evals` runs synthetic screening/extraction/judgment contracts and publication-search rights/citation contracts. It makes no live provider/model calls and establishes no scientific relevance or verdict quality. Expert-reviewed golden cases remain absent.
+
+Session 26 retires the seed-based lexical P@5 evals and `retrieval-v2.json`, because that corpus and vector path are removed from runtime. The former provisional six-case P@5 0.300 remains a historical Session 24 result, not a baseline for public API discovery. Replacement contract cases gate text reuse and fabricated citations; relevance/coverage metrics still need representative expert-reviewed API evidence.
 
 ## Golden dataset
 
@@ -21,8 +23,6 @@ Example:
 
 The repository currently contains one synthetic fixture demonstrating the expected case shape. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
 
-`evals/fixtures/retrieval-v2.json` contains six provisional AI-reviewed query-to-passage relevance sets. Version 2 excludes the growth-mindset association passage from the intervention query because it is observational rather than intervention evidence. The ego-depletion task-effectiveness passage is retained as a secondary methodological caveat. The relationship and sexuality cases expand coverage but do not establish broad retrieval quality. Human/expert review is still needed; local pgvector integration coverage still requires a dedicated test database.
-
 `evals/fixtures/fact-check-judgment-v1.json` exercises the Session 11 judgment contract with synthetic accepted and rejected outputs, including empty-evidence handling and fabricated-citation rejection. It does not assess whether a passage semantically supports its assigned verdict. The expert-reviewed golden verdict/citation set required for a judgment quality gate has not yet been created; no verdict-quality claim can be based on this fixture.
 
 The screening fixture includes an incidental psychology mention as a false-positive guard, an ambiguous short excerpt as a false-negative guard, and one clear in-scope case. These examples document desired behavior only; no model output is scored against them yet.
@@ -40,6 +40,6 @@ The screening fixture includes an incidental psychology mention as a false-posit
 
 ## Runner and release use
 
-Each case and run records dataset, prompt, schema, provider, model, and retrieval-index versions. Deterministic validators first reject malformed output, unknown verdicts, and citations outside the Evidence Package. Scored results compare against a versioned baseline with explicit thresholds; material regressions block release unless reviewed and documented.
+Each case and run records dataset, prompt, schema, provider, model, and search/provider versions. Deterministic validators first reject malformed output, unknown verdicts, and citations outside the Evidence Package. Scored results compare against a versioned baseline with explicit thresholds; material regressions block release unless reviewed and documented.
 
 AI judges may help exploration but cannot be the sole ground truth. High-risk disagreements receive human review. Do not tune on the hidden evaluation split. Store no copyrighted full text or sensitive user content without an explicit data policy.

@@ -31,13 +31,8 @@ import {
   createOpenAIClaimExtractionProvider,
   ClaimExtractionProviderError,
 } from "@/server/ai/openai-claim-extraction-provider";
-import { createOpenAIEmbeddingProvider } from "@/server/ai/openai-embedding-provider";
-import { searchEvidenceBatch } from "@/server/evidence/search";
 import { createEvidenceSearchProvider } from "@/server/evidence/search-provider";
-import {
-  searchExternalPublications,
-  searchEvidenceWithProviders,
-} from "@/server/evidence/external-publications";
+import { searchExternalPublications } from "@/server/evidence/external-publications";
 import { EvidenceRerankingError } from "@/server/evidence/reranking";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
@@ -69,7 +64,6 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const transcriptionProvider = createOpenAITranscriptionProvider(apiKey);
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
-    const embeddingProvider = createOpenAIEmbeddingProvider(apiKey);
     const evidenceSearchProvider = createEvidenceSearchProvider();
     const judgmentProvider = createOpenAIJudgmentProvider(apiKey);
     const factCheckService = createFactCheckService(
@@ -288,16 +282,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               context.attempt,
               repository,
               (claims) =>
-                searchEvidenceWithProviders(
-                  claims,
-                  () => searchEvidenceBatch(client, embeddingProvider, claims),
-                  () =>
-                    searchExternalPublications(
-                      client,
-                      evidenceSearchProvider,
-                      claims,
-                    ),
-                ),
+                searchExternalPublications(evidenceSearchProvider, claims),
             );
           } catch (error) {
             if (error instanceof EvidenceRerankingError) {

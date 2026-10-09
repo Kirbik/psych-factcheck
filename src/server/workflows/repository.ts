@@ -266,13 +266,16 @@ export function workflowRepository(client: WorkflowClient) {
       }[],
     ) {
       if (packages.length === 0) return;
-      const payload = packages.map(({ claimId, package: evidencePackage }) => ({
-        claimId,
-        retrievalVersion: evidencePackage.retrievalVersion,
-        rerankingVersion: evidencePackage.rerankingVersion,
-        coverage: evidencePackage.coverage,
-        payload: evidencePackage,
-      }));
+      const payload = packages.map(({ claimId, package: inputPackage }) => {
+        const evidencePackage = validateEvidencePackage(inputPackage);
+        return {
+          claimId,
+          retrievalVersion: evidencePackage.retrievalVersion,
+          rerankingVersion: evidencePackage.rerankingVersion,
+          coverage: evidencePackage.coverage,
+          payload: evidencePackage,
+        };
+      });
       const { error } = await client.rpc("save_evidence_packages", {
         p_claim_extraction_id: extractionId,
         p_retrieval_version: EVIDENCE_RETRIEVAL_VERSION,

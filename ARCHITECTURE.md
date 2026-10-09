@@ -8,7 +8,7 @@ Psych Factcheck is a modular monolith for evidence-grounded analysis of psycholo
 
 - Next.js App Router and strict TypeScript for the web application and server code
 - React for UI, Zod for runtime validation
-- Supabase PostgreSQL, Auth, private Storage, and pgvector retrieval
+- Supabase PostgreSQL, Auth, and private Storage
 - Cloudflare Workflows and a Worker cron (Session 6 OpenAI transcription is deployed and live-verified in Production)
 - Vitest, Playwright, ESLint, and Prettier
 - pnpm for package management
@@ -35,11 +35,9 @@ flowchart TD
   SCREEN -->|relevant or uncertain| TRANS[OpenAI timestamped transcription]
   SCREEN -->|clearly unrelated| STOP[Completed as out of scope]
   TRANS --> CLAIMS[OpenAI claim extraction and persistence]
-  CLAIMS --> RAG[Optional local evidence retrieval]
   CLAIMS --> SEARCH[Europe PMC and Crossref publication search]
-  RAG --> PACKAGE[Persisted Evidence Package]
   SEARCH --> RIGHTS[Item-level OA and license gate]
-  RIGHTS --> PACKAGE
+  RIGHTS --> PACKAGE[Owner-scoped Evidence Package]
   PACKAGE --> JUDGE[Evidence-bound judgment]
   JUDGE --> REPORT[Owner-scoped report view from persisted results]
 ```
@@ -57,14 +55,13 @@ External services sit behind these contracts:
 - `ClaimExtractionProvider`: OpenAI claim extraction with versioned prompt/schema
 - `LLMProvider`: evidence-bound judgment contract and OpenAI adapter, connected to the Session 12 Worker workflow
 - `TranscriptionProvider`: timestamped transcription (OpenAI `whisper-1` adapter implemented for Session 6)
-- `EmbeddingProvider`: text vectors
 - `EvidenceSearchProvider`: replaceable publication discovery boundary, implemented by Europe PMC and Crossref adapters
 - `ContentProvider`: future external content acquisition
 - `BillingProvider`: future checkout and subscription operations
 
-Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. The OpenAI transcription, topic-screening, claim-extraction, and embedding adapters are server-only; the first three and evidence retrieval are used by the Cloudflare Worker workflow. Claim extraction uses `gpt-4o-mini` structured output, validates each source excerpt against the transcript, and stores the model, prompt, and schema versions with an idempotent extraction record. Content and billing adapters are not implemented. Topic screening demuxes at most three four-second ranges from the compressed audio track with Mediabunny, then calls OpenAI transcription and structured text classification. When audio-track duration is absent from container metadata, Mediabunny computes it from encoded packet timestamps. Unsupported samples, low-confidence decisions, and screening errors fail open to full transcription. The screening instruction/model versions and bounded decision metadata are persisted without the sample transcript.
+Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. The OpenAI transcription, topic-screening, claim-extraction adapters are server-only; the first three and evidence retrieval are used by the Cloudflare Worker workflow. Claim extraction uses `gpt-4o-mini` structured output, validates each source excerpt against the transcript, and stores the model, prompt, and schema versions with an idempotent extraction record. Content and billing adapters are not implemented. Topic screening demuxes at most three four-second ranges from the compressed audio track with Mediabunny, then calls OpenAI transcription and structured text classification. When audio-track duration is absent from container metadata, Mediabunny computes it from encoded packet timestamps. Unsupported samples, low-confidence decisions, and screening errors fail open to full transcription. The screening instruction/model versions and bounded decision metadata are persisted without the sample transcript.
 
-Publication discovery supplements the Evidence Base. Europe PMC is the only full-text retrieval path and uses its Open Access subset. A passage enters evidence only when that publication's license is verified as CC BY 4.0. At most one excerpt of 1,000 characters is retained. Crossref contributes bibliographic metadata, DOI, and license links only; abstracts are not used. Metadata-only results remain references and cannot be cited. This extension was deployed on 2026-10-03 in Worker version `9b3415bf-5f13-4795-ad0c-c5debe5605df`; its scientific API calls have not yet been live-verified. API coverage is incomplete and expert-reviewed model-quality cases are still absent.
+Publication discovery is the sole evidence search path in the Session 26 code. Europe PMC is the only full-text retrieval path and uses its Open Access subset. A passage enters evidence only when that publication's license is verified as CC BY 4.0. At most one excerpt of 1,000 characters is retained. Crossref contributes bibliographic metadata, DOI, and license links only; abstracts are not used. Metadata-only results remain references and cannot be cited. This extension was deployed on 2026-10-03 in Worker version `9b3415bf-5f13-4795-ad0c-c5debe5605df`; its scientific API calls have not yet been live-verified. API coverage is incomplete and expert-reviewed model-quality cases are still absent.
 
 ## Supabase boundary
 
@@ -76,11 +73,13 @@ Session 25 also persists a separate report narrative after the immutable judgmen
 
 Sessions 6A–12 run bounded topic screening, timestamped transcription, claim extraction, evidence retrieval, deterministic reranking, Evidence Package persistence, and evidence-bound judgment in the generation/run-fenced Cloudflare Workflow. Session 12 runs one durable Worker step per claim, validates package-member citations and claim identity, and persists immutable fact checks through a run-fenced SQL wrapper before completing a job. The Worker and migrations were deployed to Production on 2026-10-01; authenticated Production job `2fb0f3e6-deea-4e46-a206-9c330ef9b32f` completed at `stage = complete` in generation 2. The Playwright browser suite remains incomplete. The processing screen opens the owner-scoped report after fact checks persist; the report view is assembled at read time and no report artifact is written. See [Background workflows](docs/architecture/WORKFLOWS.md), [AI Pipeline](docs/architecture/AI_PIPELINE.md), and [Session 13 verification](docs/testing/SESSION_13.md).
 
-## AI and Evidence Base
+## AI and evidence snapshots
 
-The AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and claim extraction have completed Production jobs. Session 9 embeddings/retrieval, Session 10 reranking/Evidence Package persistence, and Session 12 evidence-bound judgment are deployed and connected to the workflow; a fresh authenticated Production analysis completed the full path in generation 2. `/report` now renders those persisted results for an authenticated owner. Successful job completion does not establish model quality. A separately persisted report artifact remains unimplemented. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and retrieved text are untrusted data, never instructions.
+The AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and claim extraction have completed Production jobs. Historically, Sessions 9–12 deployed local retrieval, package persistence and judgment; a fresh authenticated Production analysis completed that path in generation 2. Session 26 replaces local retrieval in repository code, with deployment pending. `/report` now renders those persisted results for an authenticated owner. Successful job completion does not establish model quality. A separately persisted report artifact remains unimplemented. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and retrieved text are untrusted data, never instructions.
 
-Session 8's shared `sources` and `evidence_chunks` tables and reviewed seed are deployed to Production. The catalog contains 10 publications and 23 verbatim passages; one CC BY-NC source is stored as metadata only. Remote readback confirmed 10 source rows, 23 chunk rows, and no missing source links. Session 9 embeddings/pgvector retrieval, Session 10 persisted Evidence Packages, and Session 11–12 fact-check persistence/workflow are deployed. Expert-reviewed quality cases and stored report artifacts remain future work. Judgment must receive a bounded Evidence Package, and every cited identifier must resolve to a real stored source. See [Evidence Base](docs/architecture/EVIDENCE_BASE.md), [Session 8 verification](docs/testing/SESSION_8.md), and [Session 12 verification](docs/testing/SESSION_12.md).
+Session 26 removes the shared scientific catalog, seed import, embeddings, and vector retrieval from runtime. Search results become bounded claim-specific snapshots; DOI/PMCID-derived source and excerpt IDs remain stable without catalog rows. Reports resolve citations through the selected fact check's own package items, including earlier retrieval versions. Claims, judgments, commentary, history, prompt versions, and run fencing are preserved.
+
+Migration `20261009120000_retire_local_rag.sql` copies cited publication attribution into existing package items, scopes citation foreign keys to the exact package, and drops `sources`, `evidence_chunks`, `evidence_embeddings`, `claim_embeddings`, and the import/vector RPCs. Earlier migrations remain historical upgrade steps. The retirement is implemented locally and **not applied or deployed to Production**. A coordinated maintenance rollout is required; see [Evidence storage](docs/architecture/EVIDENCE_BASE.md). Successful mocks do not verify live API coverage or model quality; expert-reviewed golden cases remain required.
 
 ## Billing abstraction
 
@@ -88,11 +87,11 @@ Runtime access is decided by `EntitlementService` and `UsageService`, never vend
 
 ## Domain overview
 
-Core domains are identity (`profiles`), content (`content_items`, `transcripts`), fact checking (`claims`, `sources`, `evidence_chunks`, `fact_checks`, `fact_check_evidence`), orchestration (`analysis_jobs`), and commercial access (`plans`, `subscriptions`, `billing_customers`, `entitlements`, `usage_events`). Ownership and lifecycle are specified in `docs/architecture/DATA_MODEL.md`.
+Core domains are identity (`profiles`), content (`content_items`, `transcripts`), fact checking (`claims`, `evidence_packages`, `evidence_package_items`, `fact_checks`, `fact_check_evidence`), orchestration (`analysis_jobs`), and commercial access (`plans`, `subscriptions`, `billing_customers`, `entitlements`, `usage_events`). Ownership and lifecycle are specified in `docs/architecture/DATA_MODEL.md`.
 
 ## Scaling principles
 
-Keep the modular monolith until measured constraints justify change. The durable Cloudflare workflow, pgvector retrieval, and report view are in place; Session 12 has completed a fresh authenticated Production analysis. Next verify the report browser flow and complete the remaining release checks. Scale background concurrency and version prompts/schemas/eval datasets as measured needs require. Introduce caching, partitioning, or a separate service only in response to observed constraints. Preserve provider contracts and repository boundaries so adapters can change without rewriting business logic.
+Keep the modular monolith until measured constraints justify change. The durable Cloudflare workflow and report view are in place; Session 12 has completed a fresh authenticated Production analysis. Next verify the report browser flow and complete the remaining release checks. Scale background concurrency and version prompts/schemas/eval datasets as measured needs require. Introduce caching, partitioning, or a separate service only in response to observed constraints. Preserve provider contracts and repository boundaries so adapters can change without rewriting business logic.
 
 ## Product UI and design references
 

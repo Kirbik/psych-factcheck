@@ -9,7 +9,11 @@ import type {
 } from "../ai/providers.ts";
 import type { EvidenceCandidate, EvidenceSearchResult } from "./search.ts";
 
-export const EVIDENCE_RERANKING_VERSION = "evidence-reranking-v1";
+export const EVIDENCE_RERANKING_VERSION = "evidence-reranking-v2";
+export const SUPPORTED_EVIDENCE_RERANKING_VERSIONS = [
+  EVIDENCE_RERANKING_VERSION,
+  "evidence-reranking-v1",
+] as const;
 export const MAX_EVIDENCE_PACKAGE_SIZE = 5;
 export const MAX_CHUNKS_PER_SOURCE = 2;
 const RETRIEVAL_SCORE_WEIGHT = 0.6;
@@ -89,7 +93,6 @@ export const deterministicEvidenceReranker: EvidenceReranker = {
     return candidates
       .map((candidate) => {
         const retrievalScore = candidate.similarity;
-        const normalizedSimilarity = (retrievalScore + 1) / 2;
         const directTermCoverage = lexicalCoverage(
           claimTerms,
           candidate.content,
@@ -97,7 +100,7 @@ export const deterministicEvidenceReranker: EvidenceReranker = {
         return {
           chunkId: candidate.chunkId,
           relevanceScore:
-            RETRIEVAL_SCORE_WEIGHT * normalizedSimilarity +
+            RETRIEVAL_SCORE_WEIGHT * retrievalScore +
             DIRECT_TERM_COVERAGE_WEIGHT * directTermCoverage,
           retrievalScore,
         };
@@ -227,6 +230,7 @@ export async function buildEvidencePackage(
   }
 
   return {
+    schemaVersion: "evidence-package-v2",
     claim,
     evidence: selected,
     retrievalVersion: retrieval.retrievalVersion,
@@ -238,7 +242,6 @@ export async function buildEvidencePackage(
       retrieval: {
         provider: retrieval.provider,
         model: retrieval.model,
-        embeddingVersion: retrieval.embeddingVersion,
         filters: retrieval.filters,
       },
       candidateCount: retrieval.candidates.length,

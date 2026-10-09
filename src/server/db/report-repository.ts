@@ -8,7 +8,7 @@ import {
   TRANSCRIPTION_VERSION,
 } from "@/features/analysis/job-contract";
 import {
-  FACT_CHECK_JUDGMENT_VERSION,
+  evidenceItemSchema,
   SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS,
 } from "@/server/ai/judgment";
 import {
@@ -16,8 +16,8 @@ import {
   translateReportTextToRussian,
 } from "@/server/ai/report-localization";
 import { CLAIM_EXTRACTION_VERSION } from "@/server/ai/claim-extraction";
-import { EVIDENCE_RERANKING_VERSION } from "@/server/evidence/reranking";
-import { EVIDENCE_RETRIEVAL_VERSION } from "@/server/evidence/search";
+import { SUPPORTED_EVIDENCE_RERANKING_VERSIONS } from "@/server/evidence/reranking";
+import { SUPPORTED_EVIDENCE_RETRIEVAL_VERSIONS } from "@/server/evidence/search";
 import {
   REPORT_NARRATIVE_SCHEMA_VERSION,
   persistedReportNarrativeSchema,
@@ -176,8 +176,8 @@ export function reportRepository(client: ReportClient) {
         .from("evidence_packages")
         .select("id, claim_id")
         .in("claim_id", claimIds)
-        .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
-        .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
+        .in("retrieval_version", [...SUPPORTED_EVIDENCE_RETRIEVAL_VERSIONS])
+        .in("reranking_version", [...SUPPORTED_EVIDENCE_RERANKING_VERSIONS]);
       if (packagesError || !packages) return { kind: "unavailable", ...common };
       const packageByClaim = new Map(
         packages.map((item) => [item.claim_id, item]),
@@ -193,15 +193,38 @@ export function reportRepository(client: ReportClient) {
         )
         .in("claim_id", claimIds)
         .in("evidence_package_id", packageIds)
-        .in("judgment_version", [...SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS]);
+        .in("judgment_version", [...SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS])
+        .order("created_at", { ascending: false });
       if (factChecksError || !factChecks)
         return { kind: "unavailable", ...common };
       const checkByClaim = new Map<string, (typeof factChecks)[number]>();
+      const narrativeCheckIds = new Map(
+        narrativeParsed?.success
+          ? narrativeParsed.data.claims.map((item) => [
+              item.claimId,
+              item.factCheckId,
+            ])
+          : [],
+      );
       for (const item of factChecks) {
+        const expectedId = narrativeCheckIds.get(item.claim_id);
+        if (expectedId && item.id !== expectedId) continue;
+        if (
+          !packages.some(
+            (pkg) =>
+              pkg.id === item.evidence_package_id &&
+              pkg.claim_id === item.claim_id,
+          )
+        )
+          return { kind: "unavailable", ...common };
         const previous = checkByClaim.get(item.claim_id);
+        const rank = (version: string) =>
+          SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS.findIndex(
+            (v) => v === version,
+          );
         if (
           !previous ||
-          item.judgment_version === FACT_CHECK_JUDGMENT_VERSION
+          rank(item.judgment_version) < rank(previous.judgment_version)
         ) {
           checkByClaim.set(item.claim_id, item);
         }
@@ -224,7 +247,7 @@ export function reportRepository(client: ReportClient) {
         }
       }
 
-      const checkIds = factChecks.map(({ id }) => id);
+      const checkIds = [...checkByClaim.values()].map(({ id }) => id);
       const { data: citations, error: citationsError } = await client
         .from("fact_check_evidence")
         .select("fact_check_id, evidence_chunk_id, ordinal")
@@ -233,52 +256,25 @@ export function reportRepository(client: ReportClient) {
       if (citationsError || !citations)
         return { kind: "unavailable", ...common };
 
-      const chunkIds = [
-        ...new Set(citations.map(({ evidence_chunk_id }) => evidence_chunk_id)),
-      ];
-      const { data: chunks, error: chunksError } = chunkIds.length
-        ? await client
-            .from("evidence_chunks")
-            .select("id, source_id")
-            .in("id", chunkIds)
-        : { data: [], error: null };
-      if (chunksError || !chunks) return { kind: "unavailable", ...common };
-      const chunkById = new Map(chunks.map((chunk) => [chunk.id, chunk]));
-      if (
-        citations.some(
-          ({ evidence_chunk_id }) => !chunkById.has(evidence_chunk_id),
-        )
-      )
+      const { data: packageItems, error: itemsError } = await client
+        .from("evidence_package_items")
+        .select("evidence_package_id, evidence_chunk_id, snapshot")
+        .in("evidence_package_id", packageIds);
+      if (itemsError || !packageItems)
         return { kind: "unavailable", ...common };
-
-      const sourceIds = [...new Set(chunks.map(({ source_id }) => source_id))];
-      const { data: sources, error: sourcesError } = sourceIds.length
-        ? await client
-            .from("sources")
-            .select(
-              "id, title, authors, journal, publisher, published_at, source_type, canonical_url",
-            )
-            .in("id", sourceIds)
-        : { data: [], error: null };
-      if (sourcesError || !sources) return { kind: "unavailable", ...common };
-      const sourceById = new Map(
-        sources.map((source) => [
-          source.id,
-          {
-            id: source.id,
-            title: source.title,
-            authors: source.authors,
-            journal: source.journal,
-            publisher: source.publisher,
-            publishedAt: source.published_at,
-            sourceType: source.source_type,
-            url: safeWebUrl(source.canonical_url),
-          } satisfies ReportSource,
-        ]),
-      );
-      if (chunks.some(({ source_id }) => !sourceById.has(source_id)))
-        return { kind: "unavailable", ...common };
-
+      const snapshotById = new Map<
+        string,
+        ReturnType<typeof evidenceItemSchema.parse>
+      >();
+      for (const item of packageItems) {
+        const parsed = evidenceItemSchema.safeParse(item.snapshot);
+        if (!parsed.success || parsed.data.chunkId !== item.evidence_chunk_id)
+          return { kind: "unavailable", ...common };
+        snapshotById.set(
+          item.evidence_package_id + ":" + item.evidence_chunk_id,
+          parsed.data,
+        );
+      }
       const { data: localizations, error: localizationError } = await client
         .from("report_localizations")
         .select("fact_check_id, normalized_text, explanation")
@@ -363,17 +359,32 @@ export function reportRepository(client: ReportClient) {
         }
       }
 
-      const citationsByCheck = new Map<string, Set<string>>();
+      const checkById = new Map(factChecks.map((check) => [check.id, check]));
+      const citationsByCheck = new Map<string, Map<string, ReportSource>>();
       for (const citation of citations) {
-        const chunk = chunkById.get(citation.evidence_chunk_id);
-        const source = chunk ? sourceById.get(chunk.source_id) : null;
-        if (!chunk || !source) return { kind: "unavailable", ...common };
-        const sourceIdsForCheck =
-          citationsByCheck.get(citation.fact_check_id) ?? new Set<string>();
-        sourceIdsForCheck.add(source.id);
-        citationsByCheck.set(citation.fact_check_id, sourceIdsForCheck);
+        const check = checkById.get(citation.fact_check_id);
+        const item = check
+          ? snapshotById.get(
+              check.evidence_package_id + ":" + citation.evidence_chunk_id,
+            )
+          : null;
+        if (!item) return { kind: "unavailable", ...common };
+        const source = item.source;
+        const cited =
+          citationsByCheck.get(citation.fact_check_id) ??
+          new Map<string, ReportSource>();
+        cited.set(item.sourceId, {
+          id: item.sourceId,
+          title: source.title,
+          authors: source.authors,
+          journal: source.journal,
+          publisher: source.publisher ?? "",
+          publishedAt: source.publishedAt,
+          sourceType: source.type,
+          url: safeWebUrl(source.canonicalUrl),
+        });
+        citationsByCheck.set(citation.fact_check_id, cited);
       }
-
       const reportClaims: ReportClaim[] = [];
       for (const claim of claims) {
         const check = checkByClaim.get(claim.id);
@@ -387,7 +398,7 @@ export function reportRepository(client: ReportClient) {
         )
           return { kind: "unavailable", ...common };
         const citedSourceIds =
-          citationsByCheck.get(check.id) ?? new Set<string>();
+          citationsByCheck.get(check.id) ?? new Map<string, ReportSource>();
         const localized = localizedByCheck.get(check.id);
         if (!localized) return { kind: "localization_unavailable", ...common };
         reportClaims.push({
@@ -402,10 +413,7 @@ export function reportRepository(client: ReportClient) {
           confidence: confidence.data,
           explanation: localized.explanation,
           modelCommentary: modelCommentaryByClaim.get(claim.id) ?? null,
-          sources: [...citedSourceIds].flatMap((id) => {
-            const source = sourceById.get(id);
-            return source ? [source] : [];
-          }),
+          sources: [...citedSourceIds.values()],
         });
       }
 

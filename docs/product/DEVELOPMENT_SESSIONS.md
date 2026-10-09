@@ -405,6 +405,17 @@ Session 13 until Session 12 is accepted.
 - **Required checks:** lint, typecheck, unit/integration tests, report E2E, AI evals, and build.
 - **Quality limit:** Tests validate contracts and persistence, not semantic accuracy or model quality.
 
+## Session 26 — Retire Local RAG
+
+**Status:** Implemented locally; lint/typecheck/tests, evals, E2E and both builds passed (258 tests / 4 skips; 8 evals; 13 E2E / 6 skips). Global formatting has 47 pre-existing failures outside scope; changed-file formatting passes. Migration `20261009120000_retire_local_rag.sql` and compatible Worker are not deployed. Earlier catalog counts and retrieval metrics in Sessions 8–10/23–24 are historical.
+
+- **Goal:** Remove the shared RAG corpus and vector search while preserving video claims and saved results.
+- **Scope:** Runtime/modules/scripts/types, owner-scoped evidence snapshots, package-bound citations, compatible old reports, retirement migration, mocked tests/evals and documentation.
+- **Preserved:** Transcription/extraction, scientific verdict policy, public Europe PMC/Crossref search, subjective narrative, UI, history, billing, artifact idempotency and run fencing.
+- **Checks:** See [Session 26 verification](../testing/SESSION_26.md).
+- **Limits:** OA/CC BY 4.0 coverage is narrow; absent evidence cannot refute claims. No expert-reviewed golden cases establish model quality.
+- **Rollout:** Back up data, pause intake/dispatch, drain active runs, migrate/deploy together, resume and verify old reports plus a fresh authenticated analysis. Production catalog deletion needs a reviewed coordinated rollout.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

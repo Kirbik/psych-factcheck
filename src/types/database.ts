@@ -329,131 +329,40 @@ export type Database = {
           },
         ];
       };
-      evidence_chunks: {
+      evidence_package_items: {
         Row: {
-          chunk_key: string;
-          content: string;
-          content_sha256: string;
-          created_at: string;
-          id: string;
-          language: string;
-          locator: string;
-          provenance: Json;
-          source_id: string;
-          updated_at: string;
+          evidence_package_id: string;
+          evidence_chunk_id: string;
+          ordinal: number;
+          retrieval_score: number;
+          relevance_score: number;
+          snapshot: Json;
+          legacy_provenance: Json;
         };
         Insert: {
-          chunk_key: string;
-          content: string;
-          content_sha256: string;
-          created_at?: string;
-          id?: string;
-          language: string;
-          locator: string;
-          provenance?: Json;
-          source_id: string;
-          updated_at?: string;
+          evidence_package_id: string;
+          evidence_chunk_id: string;
+          ordinal: number;
+          retrieval_score: number;
+          relevance_score: number;
+          snapshot: Json;
+          legacy_provenance?: Json;
         };
         Update: {
-          chunk_key?: string;
-          content?: string;
-          content_sha256?: string;
-          created_at?: string;
-          id?: string;
-          language?: string;
-          locator?: string;
-          provenance?: Json;
-          source_id?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "evidence_chunks_source_id_fkey";
-            columns: ["source_id"];
-            isOneToOne: false;
-            referencedRelation: "sources";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      evidence_embeddings: {
-        Row: {
-          content_sha256: string;
-          created_at: string;
-          dimensions: number;
-          embedding: string;
-          embedding_version: string;
-          evidence_chunk_id: string;
-          model: string;
-          provider: string;
-        };
-        Insert: {
-          content_sha256: string;
-          created_at?: string;
-          dimensions: number;
-          embedding: string;
-          embedding_version: string;
-          evidence_chunk_id: string;
-          model: string;
-          provider: string;
-        };
-        Update: {
-          content_sha256?: string;
-          created_at?: string;
-          dimensions?: number;
-          embedding?: string;
-          embedding_version?: string;
+          evidence_package_id?: string;
           evidence_chunk_id?: string;
-          model?: string;
-          provider?: string;
+          ordinal?: number;
+          retrieval_score?: number;
+          relevance_score?: number;
+          snapshot?: Json;
+          legacy_provenance?: Json;
         };
         Relationships: [
           {
-            foreignKeyName: "evidence_embeddings_evidence_chunk_id_fkey";
-            columns: ["evidence_chunk_id"];
+            foreignKeyName: "evidence_package_items_evidence_package_id_fkey";
+            columns: ["evidence_package_id"];
             isOneToOne: false;
-            referencedRelation: "evidence_chunks";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      claim_embeddings: {
-        Row: {
-          claim_id: string;
-          content_sha256: string;
-          created_at: string;
-          dimensions: number;
-          embedding: string;
-          embedding_version: string;
-          model: string;
-          provider: string;
-        };
-        Insert: {
-          claim_id: string;
-          content_sha256: string;
-          created_at?: string;
-          dimensions: number;
-          embedding: string;
-          embedding_version: string;
-          model: string;
-          provider: string;
-        };
-        Update: {
-          claim_id?: string;
-          content_sha256?: string;
-          created_at?: string;
-          dimensions?: number;
-          embedding?: string;
-          embedding_version?: string;
-          model?: string;
-          provider?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "claim_embeddings_claim_id_fkey";
-            columns: ["claim_id"];
-            isOneToOne: false;
-            referencedRelation: "claims";
+            referencedRelation: "evidence_packages";
             referencedColumns: ["id"];
           },
         ];
@@ -561,6 +470,7 @@ export type Database = {
       fact_check_evidence: {
         Row: {
           evidence_chunk_id: string;
+          evidence_package_id: string;
           fact_check_id: string;
           ordinal: number;
           rationale: string;
@@ -568,6 +478,7 @@ export type Database = {
         };
         Insert: {
           evidence_chunk_id: string;
+          evidence_package_id: string;
           fact_check_id: string;
           ordinal: number;
           rationale: string;
@@ -575,6 +486,7 @@ export type Database = {
         };
         Update: {
           evidence_chunk_id?: string;
+          evidence_package_id?: string;
           fact_check_id?: string;
           ordinal?: number;
           rationale?: string;
@@ -582,11 +494,18 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "fact_check_evidence_evidence_chunk_id_fkey";
-            columns: ["evidence_chunk_id"];
+            foreignKeyName: "fact_check_evidence_package_item_fkey";
+            columns: ["evidence_package_id", "evidence_chunk_id"];
             isOneToOne: false;
-            referencedRelation: "evidence_chunks";
-            referencedColumns: ["id"];
+            referencedRelation: "evidence_package_items";
+            referencedColumns: ["evidence_package_id", "evidence_chunk_id"];
+          },
+          {
+            foreignKeyName: "fact_check_evidence_check_package_fkey";
+            columns: ["fact_check_id", "evidence_package_id"];
+            isOneToOne: false;
+            referencedRelation: "fact_checks";
+            referencedColumns: ["id", "evidence_package_id"];
           },
           {
             foreignKeyName: "fact_check_evidence_fact_check_id_fkey";
@@ -659,63 +578,6 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      sources: {
-        Row: {
-          authors: string[];
-          canonical_url: string;
-          created_at: string;
-          doi: string | null;
-          id: string;
-          journal: string;
-          license_code: string;
-          license_url: string;
-          provenance: Json;
-          published_at: string;
-          publisher: string;
-          source_key: string;
-          source_type: string;
-          status: string;
-          title: string;
-          updated_at: string;
-        };
-        Insert: {
-          authors: string[];
-          canonical_url: string;
-          created_at?: string;
-          doi?: string | null;
-          id?: string;
-          journal: string;
-          license_code: string;
-          license_url: string;
-          provenance?: Json;
-          published_at: string;
-          publisher: string;
-          source_key: string;
-          source_type: string;
-          status?: string;
-          title: string;
-          updated_at?: string;
-        };
-        Update: {
-          authors?: string[];
-          canonical_url?: string;
-          created_at?: string;
-          doi?: string | null;
-          id?: string;
-          journal?: string;
-          license_code?: string;
-          license_url?: string;
-          provenance?: Json;
-          published_at?: string;
-          publisher?: string;
-          source_key?: string;
-          source_type?: string;
-          status?: string;
-          title?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -853,41 +715,6 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
-      };
-      import_evidence_seed: {
-        Args: { p_chunks: Json; p_sources: Json };
-        Returns: {
-          chunk_count: number;
-          source_count: number;
-        }[];
-      };
-      match_evidence_chunks_v1: {
-        Args: {
-          p_embedding_model: string;
-          p_embedding_version: string;
-          p_language?: string | null;
-          p_match_count?: number;
-          p_published_after?: string | null;
-          p_published_before?: string | null;
-          p_query_embedding: string;
-          p_source_types?: string[] | null;
-        };
-        Returns: {
-          authors: string[];
-          canonical_url: string;
-          chunk_id: string;
-          chunk_key: string;
-          content: string;
-          journal: string;
-          language: string;
-          locator: string;
-          published_at: string;
-          similarity: number;
-          source_id: string;
-          source_key: string;
-          source_type: string;
-          title: string;
-        }[];
       };
       request_analysis_job: {
         Args: { p_content_item_id: string; p_retry_generation?: number };

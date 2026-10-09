@@ -69,30 +69,9 @@ successful workflow run, not extraction quality. The screening duration
 fallback was deployed on 2026-09-30; the previously affected clip must be
 uploaded again to verify the fresh screening path.
 
-Sessions 9–10 add the deployed evidence stages after extraction. The Worker
-embeds normalized claims in a batch, searches active Evidence Base chunks with
-the versioned pgvector RPC and metadata filters, deterministically reranks the
-validated candidates, and persists a bounded Evidence Package per claim.
-`build_evidence` uses an idempotent database RPC; package rows and ordered
-chunk links are owner-readable through RLS. Empty or narrow retrieval is saved
-with explicit coverage and warnings. This stage does not assign a verdict.
-Migration `20261001140000_evidence_packages_v1.sql` and Worker version
-`7279e730-7eae-4a78-8126-2a67ebf045ed` were deployed on 2026-10-01. Existing
-completed jobs were not requeued; a new upload is needed to verify this stage
-in a live analysis.
+Session 26 replaces the earlier local vector path in `build_evidence` with public publication search only. Normalized claims go to `EvidenceSearchProvider`; Europe PMC/Crossref responses are validated, and only publication-specific Europe PMC OA/CC BY 4.0 excerpts enter evidence. Crossref and unusable records remain references. Search timeout, rate limit or unavailability become warnings and empty evidence; no model knowledge substitutes for missing passages. The deterministic reranker and idempotent package RPC preserve bounded claim-specific snapshots, not a shared corpus. No full article, embedding query, seed import or vector RPC is used.
 
-The Session 12 literature-search extension runs Europe PMC and Crossref after
-claim extraction alongside local vector search. Local RAG is optional:
-embedding or local search failures are retained as warnings and do not block
-the external providers. Crossref metadata and Europe PMC records without
-confirmed reuse rights are package references only. Only a Europe PMC OA
-subset result whose publication-specific XML confirms CC BY 4.0 can contribute
-a stored passage; at most one 1,000-character excerpt with PMCID, source URL,
-and license provenance is retained. Stable DOI/PMCID source keys and package
-version keys keep retries idempotent. No full article is stored. Provider
-timeouts, rate limits, malformed responses, and empty results fail toward
-insufficient evidence. The extension is implemented locally but has not been
-deployed or live-verified in Production.
+The current search/reranking versions create new packages without mutating historical artifacts. Reports accept supported earlier versions and resolve each citation in its own package. Claims, transcript versions, generation/run fences and durable per-claim judgment steps are preserved. Migration `20261009120000_retire_local_rag.sql` and the compatible Worker are prepared locally, not deployed in this session. See [Evidence storage](EVIDENCE_BASE.md) for the coordinated maintenance rollout; migration and code must ship together with active runs drained.
 
 Session 12 connects the Session 11 evidence-bound judgment service after
 Evidence Package persistence. The Worker validates each current package,

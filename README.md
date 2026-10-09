@@ -4,7 +4,7 @@ An MVP in development for evidence-grounded fact-checking of psychological video
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, embeddings/retrieval, reranking, Evidence Package persistence, and evidence-bound judgment are implemented and deployed. The `/report` interface reads persisted results; it does not store a separate report artifact.
+Next.js App Router, React, strict TypeScript, Zod, Supabase PostgreSQL/Auth/Storage, `@supabase/ssr`, Cloudflare Workers and Workflows, pnpm, ESLint, Prettier, Vitest, and Playwright. The repo also contains a Vinext/Vite/Cloudflare Workers build path. Screening, transcription, claim extraction, public publication search, reranking, Evidence Package persistence, and evidence-bound judgment are implemented. Session 26 removes local RAG; its migration/deployment is pending. The `/report` interface reads persisted results; it does not store a separate report artifact.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ pnpm test:unit         # unit tests
 pnpm test:integration  # Supabase Auth and PostgreSQL RLS integration tests
 pnpm test:db           # PostgreSQL schema/RLS tests; needs local Supabase and SUPABASE_TEST_DB_URL
 pnpm test:e2e          # Playwright UI smoke and configured auth/upload flows
-pnpm evals             # synthetic contract checks and provisional offline retrieval references
+pnpm evals             # synthetic AI and publication-search contract checks
 pnpm check             # lint + typecheck + all current Vitest tests
 pnpm dev:vinext        # experimental Vinext/Vite development server on port 3001
 pnpm build:vinext      # experimental Cloudflare/Vinext build
@@ -52,11 +52,11 @@ Supabase configuration, migrations, type generation, RLS, local setup, hosted se
 
 ## Testing status
 
-The suite includes unit tests for auth validation/actions, Supabase configuration, upload validation, and UI components; Supabase Auth and PostgreSQL/RLS integration suites that require explicit local test configuration; and Playwright tests for login/registration UI, preview pages, and optionally configured auth/upload flows. Without test service variables, only those dependent cases skip. `pnpm evals` validates synthetic AI output contracts and computes small provisional retrieval references; it does not call a model or establish model quality. Synthetic examples are not medical ground truth.
+The suite includes unit tests for auth validation/actions, Supabase configuration, upload validation, and UI components; Supabase Auth and PostgreSQL/RLS integration suites that require explicit local test configuration; and Playwright tests for login/registration UI, preview pages, and optionally configured auth/upload flows. Without test service variables, only those dependent cases skip. `pnpm evals` validates synthetic AI output and publication-search contracts; it does not call a model or establish model quality. Synthetic examples are not medical ground truth.
 
 ## Deployment concept
 
-The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. Production Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` has the workflow binding and scheduled recovery; the endpoint returned HTTP 200. A fresh authenticated analysis completed through fact-check persistence on 2026-10-01; the Playwright browser suite remains incomplete. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL, private Storage, and pgvector retrieval are used by server routes/workflows.
+The standard Next.js scripts (`dev`, `build`, `start`) remain available. The Vinext/Vite Cloudflare Worker path is deployed to the project's `workers.dev` address. Production Worker version `1201cf3a-a17e-4782-a986-e003f24e88bb` has the workflow binding and scheduled recovery; the endpoint returned HTTP 200. A fresh authenticated analysis completed through fact-check persistence on 2026-10-01; the Playwright browser suite remains incomplete. The hosted `videos` bucket is private and has a 100 MiB limit with MP4, WebM, and MOV MIME types; see [Supabase foundation](docs/architecture/SUPABASE.md). Supabase Auth, PostgreSQL and private Storage are used by server routes/workflows. See the coordinated RAG retirement rollout in [Evidence storage](docs/architecture/EVIDENCE_BASE.md).
 
 ## Documentation
 

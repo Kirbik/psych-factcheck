@@ -400,7 +400,7 @@ describe("workflow execution", () => {
       expect.objectContaining({
         claimId,
         package: expect.objectContaining({
-          rerankingVersion: "evidence-reranking-v1",
+          rerankingVersion: "evidence-reranking-v2",
           trace: expect.objectContaining({ candidateCount: 1 }),
         }),
       }),
