@@ -60,6 +60,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     await db.exec(await sqlFile("20261002150000_report_localizations_ru.sql"));
     await db.exec(await sqlFile("20261003120000_report_narratives.sql"));
+    await db.exec(await sqlFile("20261012120000_report_narratives_v6.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -535,8 +536,8 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     const currentFactCheck = await db.query<{ id: string }>(
       `select public.save_fact_check_for_analysis_run(
-        $1, 1, 'judgment_run', $2, $3, 'fact-check-judgment-v4',
-        'openai', 'gpt-4o-mini', 'instructions-v4', 'schema-v4', $4::jsonb
+        $1, 1, 'judgment_run', $2, $3, 'fact-check-judgment-v6',
+        'openai', 'gpt-4o-mini', 'instructions-v6', 'schema-v6', $4::jsonb
       ) as id`,
       [
         analysisJob.rows[0]?.id,
