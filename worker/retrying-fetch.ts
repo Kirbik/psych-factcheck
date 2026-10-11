@@ -13,6 +13,7 @@ export type FetchRetryFailure = {
   readonly route: SupabaseRoute;
   readonly attempts: number;
   readonly kind: FailureKind;
+  readonly phase?: "fetch" | "response_body";
   readonly errorName?: "TypeError" | "AbortError" | "TimeoutError";
   readonly status?: number;
 };
@@ -81,6 +82,17 @@ function retryAfterMilliseconds(response: Response, fallback: number) {
   return Math.min(2_000, Math.max(0, requestedDelay));
 }
 
+async function bufferRestResponse(response: Response): Promise<Response> {
+  if (response.body === null) return response;
+
+  const body = await response.arrayBuffer();
+  return new Response(body.byteLength > 0 ? body : null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
 /** Retries transient failures for idempotent Worker-to-Supabase requests. */
 export function createRetryingFetch(
   fetchImplementation: typeof fetch = fetch,
@@ -92,12 +104,17 @@ export function createRetryingFetch(
     const metadata = requestMetadata(input, init);
     for (let attempt = 0; ; attempt += 1) {
       let response: Response;
+      let failurePhase: "fetch" | "response_body" = "fetch";
       try {
         const requestInput = input instanceof Request ? input.clone() : input;
         response = await fetchImplementation(requestInput, {
           ...init,
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
+        if (metadata.route === "rest_rpc" || metadata.route === "rest_table") {
+          failurePhase = "response_body";
+          response = await bufferRestResponse(response);
+        }
       } catch (error) {
         if (!isRetryableNetworkError(error)) {
           throw error;
@@ -107,6 +124,7 @@ export function createRetryingFetch(
             ...metadata,
             attempts: attempt + 1,
             kind: "network_error",
+            phase: failurePhase,
             ...(networkErrorName(error)
               ? { errorName: networkErrorName(error) }
               : {}),

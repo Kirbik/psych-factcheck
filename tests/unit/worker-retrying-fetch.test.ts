@@ -85,6 +85,7 @@ describe("Worker Supabase fetch retries", () => {
       route: "rest_rpc",
       attempts: 6,
       kind: "network_error",
+      phase: "fetch",
       errorName: "TimeoutError",
     });
     expect(JSON.stringify(logFailure.mock.calls)).not.toContain("secret");
@@ -120,6 +121,83 @@ describe("Worker Supabase fetch retries", () => {
       kind: "transient_http_status",
       status: 503,
     });
+  });
+
+  it("retries a REST response whose body stream fails after HTTP headers arrive", async () => {
+    const bodyFailure = new TypeError("response body connection reset");
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("{"));
+              controller.error(bodyFailure);
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response('{"claim_id":"claim-1"}', {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+
+    const response = await createRetryingFetch(
+      fetchImplementation,
+      waitBeforeRetry,
+    )("https://project.supabase.co/rest/v1/evidence_packages?select=payload");
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ claim_id: "claim-1" });
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
+    expect(waitBeforeRetry).toHaveBeenCalledWith(250);
+  });
+
+  it("logs sanitized response-body failures when retries are exhausted", async () => {
+    const bodyFailure = new TypeError("response body connection reset");
+    const fetchImplementation = vi.fn<typeof fetch>().mockImplementation(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(bodyFailure);
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+    const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
+
+    await expect(
+      createRetryingFetch(
+        fetchImplementation,
+        waitBeforeRetry,
+        logFailure,
+      )(
+        "https://project.supabase.co/rest/v1/evidence_packages?select=private",
+      ),
+    ).rejects.toBe(bodyFailure);
+
+    expect(fetchImplementation).toHaveBeenCalledTimes(6);
+    expect(logFailure).toHaveBeenCalledExactlyOnceWith({
+      method: "GET",
+      host: "project.supabase.co",
+      route: "rest_table",
+      attempts: 6,
+      kind: "network_error",
+      phase: "response_body",
+      errorName: "TypeError",
+    });
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain("private");
   });
 
   it("honors Retry-After for transient provider responses", async () => {

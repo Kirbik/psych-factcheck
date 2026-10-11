@@ -148,3 +148,22 @@ generation 6, completed in 13.3 seconds; Supabase confirmed `stage = complete`,
 its Supabase retry budget, so the new failure diagnostic was not exercised.
 This successful run verifies the complete Production path after the migrations,
 but it does not establish the cause of the earlier intermittent HTTP status 0.
+
+### Production follow-up (2026-10-11, job `bf3ce069-92cd-469b-a9a8-5ce2ab96ec99`)
+
+Generations 1 and 2 failed during `judge_claims`. Generation 1 saved no
+fact-checks; generation 2 saved 5 of 8 claims and no report narrative. Its
+Cloudflare trace contains successful PostgREST `HTTP 200` spans, while the
+failed step reports `Evidence package read failed` with status 0. Inspection of
+the installed `postgrest-js` implementation showed that it retries the fetch
+call but consumes the response body afterward, outside that retry block. A
+response-stream interruption can therefore become status 0 even when headers
+arrived with HTTP 200, and it bypasses the Worker fetch retry/logging boundary.
+
+The fix buffers PostgREST response bodies inside the Worker retry wrapper so
+stream failures are retried and logged with a sanitized `response_body` phase.
+It was deployed to Production as Worker version
+`24bc9d3c-ed7f-42be-94a8-fc78e51a7a86` on 2026-10-11. The deploy command
+completed successfully and the public Worker endpoint returned HTTP 200. No
+new job generation was started, so recovery of this specific analysis and the
+full authenticated path after this transport fix remain unverified.

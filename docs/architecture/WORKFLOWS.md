@@ -197,6 +197,10 @@ times with bounded delays; each request retains its 15-second timeout. When
 that retry budget is exhausted, the Worker logs only the HTTP method, Supabase
 host, broad endpoint category, attempt count and sanitized failure kind/name or
 HTTP status. It never logs request URLs, query parameters, headers, or bodies.
+For PostgREST routes, the Worker reads the response body inside that retry
+boundary before returning it to the Supabase SDK. This lets response-stream
+network failures retry too; response bodies are not logged or persisted by the
+fetch adapter. Storage responses are not buffered by this adapter.
 Fact-check write errors preserve a sanitized Supabase error code for Workflow
 diagnostics. Permanent input/configuration errors stop immediately.
 
