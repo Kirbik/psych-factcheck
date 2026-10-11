@@ -43,6 +43,19 @@ const sourceTypeLabels: Record<string, string> = {
   journal_article: "Научная статья",
   commentary: "Научный комментарий",
 };
+const assessmentConfidenceLabels = {
+  high: "Высокая",
+  moderate: "Умеренная",
+  low: "Низкая",
+} as const;
+const evidenceStrengthLabels = {
+  high: "Высокая",
+  moderate: "Умеренная",
+  low: "Низкая",
+  very_low: "Очень низкая",
+  insufficient: "Недостаточная",
+  not_applicable: "Не применимо",
+} as const;
 
 function formatDate(value: string): string {
   const parts = new Intl.DateTimeFormat("ru-RU", {
@@ -395,7 +408,11 @@ function ClaimDetail({ claim }: { claim: ReportClaim }) {
             {statusLabels[claim.status]}
           </span>
           <p className={reportStyles.confidence}>
-            Оценка уверенности модели: {Math.round(claim.confidence * 100)}%
+            {claim.assessment
+              ? `Уверенность оценки: ${assessmentConfidenceLabels[claim.assessment.confidence]} · Сила доказательств: ${evidenceStrengthLabels[claim.assessment.evidenceStrength]}`
+              : claim.confidence === null
+                ? "Категориальная оценка недоступна."
+                : `Оценка уверенности модели: ${Math.round(claim.confidence * 100)}%`}
           </p>
           <h3>Почему сделан такой вывод</h3>
           <p className={reportStyles.explanation}>{claim.explanation}</p>

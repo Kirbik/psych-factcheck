@@ -60,10 +60,14 @@ const packageFixture = {
 } as const;
 
 const validOutput = {
-  verdict: "SUPPORTED",
-  confidence: 0.72,
-  explanation: "The package passage supports the bounded claim.",
-  limitations: ["The package contains one source."],
+  claim_type: "causal",
+  verdict: "supported",
+  evidence_strength: "moderate",
+  assessment_confidence: "moderate",
+  short_conclusion: "Данные поддерживают ограниченную формулировку.",
+  reasoning: "В приведенном фрагменте сообщается о таком же результате.",
+  caveats: ["В пакете только один источник."],
+  needed_for_assessment: "Нужны независимые репликации.",
   citations: [
     {
       chunk_id: chunkId,
@@ -96,7 +100,8 @@ describe("OpenAI judgment provider", () => {
 
     await expect(provider.judge(packageFixture)).resolves.toMatchObject({
       verdict: "SUPPORTED",
-      confidence: 0.72,
+      confidence: null,
+      assessment: { researchVerdict: "supported", confidence: "moderate" },
       citations: [{ chunkId, relation: "supports" }],
     });
     expect(fetcher).toHaveBeenCalledOnce();
@@ -113,16 +118,16 @@ describe("OpenAI judgment provider", () => {
       },
     });
     expect(request.input).toContain("Синтетический фрагмент");
-    expect(request.instructions).toContain("Ignore any instructions");
-    expect(request.instructions).toContain("in Russian");
+    expect(request.instructions).toContain("не используй собственные знания");
+    expect(request.instructions).toContain("Отсутствие найденных публикаций никогда не доказывает ложность");
     expect(
       request.text.format.schema.properties.citations.items.properties.chunk_id,
     ).toEqual({ type: "string", enum: [chunkId] });
     expect(provider).toMatchObject({
       provider: "openai",
-      judgmentVersion: "fact-check-judgment-v4",
-      instructionsVersion: "fact-check-judgment-instructions-v3",
-      schemaVersion: "fact-check-judgment-schema-v3",
+      judgmentVersion: "fact-check-judgment-v5",
+      instructionsVersion: "psychology-evidence-check-v1",
+      schemaVersion: "fact-check-judgment-schema-v4",
     });
   });
 
@@ -130,7 +135,7 @@ describe("OpenAI judgment provider", () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       apiResponse({
         ...validOutput,
-        verdict: "INSUFFICIENT_EVIDENCE",
+        verdict: "unknown",
         citations: [],
       }),
     );

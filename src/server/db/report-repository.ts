@@ -9,6 +9,7 @@ import {
 } from "@/features/analysis/job-contract";
 import {
   evidenceItemSchema,
+  psychologyEvidenceAssessmentSchema,
   SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS,
 } from "@/server/ai/judgment";
 import {
@@ -189,7 +190,7 @@ export function reportRepository(client: ReportClient) {
       const { data: factChecks, error: factChecksError } = await client
         .from("fact_checks")
         .select(
-          "id, claim_id, evidence_package_id, judgment_version, verdict, confidence, explanation",
+          "id, claim_id, evidence_package_id, judgment_version, verdict, confidence, assessment, explanation",
         )
         .in("claim_id", claimIds)
         .in("evidence_package_id", packageIds)
@@ -390,10 +391,17 @@ export function reportRepository(client: ReportClient) {
         const check = checkByClaim.get(claim.id);
         if (!check) return { kind: "unavailable", ...common };
         const verdict = verdictSchema.safeParse(check.verdict);
-        const confidence = confidenceSchema.safeParse(check.confidence);
+        const confidence = check.confidence === null
+          ? { success: true as const, data: null }
+          : confidenceSchema.safeParse(check.confidence);
+        const assessment = check.assessment === null
+          ? { success: true as const, data: null }
+          : psychologyEvidenceAssessmentSchema.safeParse(check.assessment);
         if (
           !verdict.success ||
           !confidence.success ||
+          !assessment.success ||
+          (check.confidence === null && assessment.data === null) ||
           !check.explanation.trim()
         )
           return { kind: "unavailable", ...common };
@@ -411,6 +419,7 @@ export function reportRepository(client: ReportClient) {
           verdict: verdict.data,
           status: toReportStatus(verdict.data, citedSourceIds.size > 0),
           confidence: confidence.data,
+          assessment: assessment.data,
           explanation: localized.explanation,
           modelCommentary: modelCommentaryByClaim.get(claim.id) ?? null,
           sources: [...citedSourceIds.values()],

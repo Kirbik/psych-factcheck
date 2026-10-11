@@ -84,6 +84,7 @@ export function factCheckRepository(client: SupabaseClient<Database>) {
         p_judgment: {
           verdict: judgment.verdict,
           confidence: judgment.confidence,
+          assessment: judgment.assessment ?? null,
           explanation: judgment.explanation,
           limitations: judgment.limitations,
           citations: judgment.citations.map((citation) => ({

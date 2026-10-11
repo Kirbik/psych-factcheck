@@ -148,7 +148,7 @@ describe("fact-check repository", () => {
         p_run_id: metadata.runId,
         p_claim_id: claimId,
         p_evidence_package_id: packageId,
-        p_judgment: expect.objectContaining({ verdict: "SUPPORTED" }),
+        p_judgment: expect.objectContaining({ verdict: "SUPPORTED", assessment: null }),
       }),
     );
   });

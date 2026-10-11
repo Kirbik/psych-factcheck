@@ -9,9 +9,9 @@ import {
   validateEvidenceBoundJudgment,
 } from "./judgment";
 import {
-  FACT_CHECK_JUDGMENT_INSTRUCTIONS,
-  FACT_CHECK_JUDGMENT_INSTRUCTIONS_VERSION,
-} from "./prompts/fact-check-judgment-v1";
+  PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS,
+  PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS_VERSION,
+} from "./prompts/psychology-evidence-check-v1";
 import type { EvidencePackage, JudgmentProvider } from "./providers";
 
 const responseContentSchema = z
@@ -40,31 +40,25 @@ function outputJsonSchema(allowedChunkIds: readonly string[]) {
     type: "object",
     additionalProperties: false,
     required: [
+      "claim_type",
       "verdict",
-      "confidence",
-      "explanation",
-      "limitations",
+      "evidence_strength",
+      "assessment_confidence",
+      "short_conclusion",
+      "reasoning",
+      "caveats",
+      "needed_for_assessment",
       "citations",
     ],
     properties: {
-      verdict: {
-        type: "string",
-        enum: [
-          "SUPPORTED",
-          "MOSTLY_SUPPORTED",
-          "OVERSIMPLIFIED",
-          "INSUFFICIENT_EVIDENCE",
-          "CONTRADICTED",
-          "UNVERIFIABLE",
-        ],
-      },
-      confidence: { type: "number", minimum: 0, maximum: 1 },
-      explanation: { type: "string", minLength: 1, maxLength: 4_000 },
-      limitations: {
-        type: "array",
-        maxItems: 8,
-        items: { type: "string", minLength: 1, maxLength: 500 },
-      },
+      claim_type: { type: "string", enum: ["factual","causal","predictive","intervention_effect","practical_advice","normative","metaphor","unclear"] },
+      verdict: { type: "string", enum: ["supported","false","misleading","complicated","unsupported","unknown","not_empirical"] },
+      evidence_strength: { type: "string", enum: ["high","moderate","low","very_low","insufficient","not_applicable"] },
+      assessment_confidence: { type: "string", enum: ["high","moderate","low"] },
+      short_conclusion: { type: "string", minLength: 1, maxLength: 600 },
+      reasoning: { type: "string", minLength: 1, maxLength: 1700 },
+      caveats: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 180 } },
+      needed_for_assessment: { type: "string", minLength: 1, maxLength: 350 },
       citations: {
         type: "array",
         maxItems: allowedChunkIds.length ? 5 : 0,
@@ -74,10 +68,7 @@ function outputJsonSchema(allowedChunkIds: readonly string[]) {
           required: ["chunk_id", "relation", "rationale"],
           properties: {
             chunk_id: citationChunkIdSchema,
-            relation: {
-              type: "string",
-              enum: ["supports", "qualifies", "contradicts"],
-            },
+            relation: { type: "string", enum: ["supports","qualifies","contradicts"] },
             rationale: { type: "string", minLength: 1, maxLength: 600 },
           },
         },
@@ -123,7 +114,7 @@ export function createOpenAIJudgmentProvider(
     provider: "openai",
     model: FACT_CHECK_JUDGMENT_MODEL,
     judgmentVersion: FACT_CHECK_JUDGMENT_VERSION,
-    instructionsVersion: FACT_CHECK_JUDGMENT_INSTRUCTIONS_VERSION,
+    instructionsVersion: PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS_VERSION,
     schemaVersion: FACT_CHECK_JUDGMENT_SCHEMA_VERSION,
     async judge(evidencePackage: EvidencePackage) {
       if (!apiKey) {
@@ -155,7 +146,7 @@ export function createOpenAIJudgmentProvider(
             model: FACT_CHECK_JUDGMENT_MODEL,
             store: false,
             max_output_tokens: 4_000,
-            instructions: FACT_CHECK_JUDGMENT_INSTRUCTIONS,
+            instructions: PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS,
             input: JSON.stringify(input),
             text: {
               format: {

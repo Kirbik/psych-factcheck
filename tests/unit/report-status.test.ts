@@ -58,6 +58,7 @@ function completedReport(
         judgment_version: FACT_CHECK_JUDGMENT_VERSION,
         verdict,
         confidence: 0.3,
+        assessment: null,
         explanation: "Источники дают ограниченные данные для решения.",
       },
     ],
@@ -138,6 +139,7 @@ describe("report status evidence criteria", () => {
       judgment_version: version,
       verdict,
       confidence: 0.3,
+      assessment: null,
       explanation: "Источники дают ограниченные данные.",
     });
     const result = await completedReport("SUPPORTED", true, false, false, {

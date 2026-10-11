@@ -63,6 +63,31 @@ async function savePackage(pkg: EvidencePackage) {
 function judgmentFor(pkg: EvidencePackage): FactCheckJudgment {
   return {
     verdict: "SUPPORTED",
+    confidence: null,
+    assessment: {
+      claimType: "causal",
+      researchVerdict: "supported",
+      evidenceStrength: "moderate",
+      confidence: "moderate",
+      shortConclusion: "The received passage supports the bounded claim.",
+      reasoning: "The synthetic package passage reports the same outcome.",
+      caveats: ["Mock scientific evidence only."],
+      neededForAssessment: "Independent replication is needed.",
+    },
+    explanation: "The received synthetic passage supports this bounded claim.",
+    limitations: ["Mock scientific evidence only."],
+    citations: [
+      {
+        chunkId: pkg.evidence[0].chunkId,
+        relation: "supports",
+        rationale: "The fixture reports memory effects.",
+      },
+    ],
+  };
+}
+function legacyJudgmentFor(pkg: EvidencePackage): FactCheckJudgment {
+  return {
+    verdict: "SUPPORTED",
     confidence: 0.7,
     explanation: "The received synthetic passage supports this bounded claim.",
     limitations: ["Mock scientific evidence only."],
@@ -237,7 +262,7 @@ describe("retire local RAG while preserving claim results", () => {
     legacyCheckId = (
       await saveCheck(
         legacyPackageId,
-        judgmentFor(legacy),
+        legacyJudgmentFor(legacy),
         1,
         "run-1",
         "fact-check-judgment-v1",
@@ -252,6 +277,7 @@ describe("retire local RAG while preserving claim results", () => {
     returns setof public.evidence_chunks language sql as 'select * from public.evidence_chunks where false';
   `);
     await db.exec(await sqlFile("20261009120000_retire_local_rag.sql"));
+    await db.exec(await sqlFile("20261011100000_psychology_evidence_assessment.sql"));
   }, 30000);
   afterAll(async () => {
     await db?.close();
@@ -423,11 +449,13 @@ describe("retire local RAG while preserving claim results", () => {
     expect(
       (
         await db.query(
-          "select id from public.fact_checks where evidence_package_id=$1",
+          "select id,confidence,assessment from public.fact_checks where evidence_package_id=$1",
           [pkgId],
         )
       ).rows,
-    ).toHaveLength(1);
+    ).toMatchObject([
+      { confidence: null, assessment: { researchVerdict: "supported" } },
+    ]);
     expect(
       (
         await db.query(

@@ -126,9 +126,30 @@ export interface EvidencePackage {
   };
 }
 
+export type PsychologyClaimType =
+  | "factual" | "causal" | "predictive" | "intervention_effect"
+  | "practical_advice" | "normative" | "metaphor" | "unclear";
+export type PsychologyResearchVerdict =
+  | "supported" | "false" | "misleading" | "complicated"
+  | "unsupported" | "unknown" | "not_empirical";
+export type EvidenceStrength =
+  | "high" | "moderate" | "low" | "very_low" | "insufficient" | "not_applicable";
+export type AssessmentConfidence = "high" | "moderate" | "low";
+export interface PsychologyEvidenceAssessment {
+  readonly claimType: PsychologyClaimType;
+  readonly researchVerdict: PsychologyResearchVerdict;
+  readonly evidenceStrength: EvidenceStrength;
+  readonly confidence: AssessmentConfidence;
+  readonly shortConclusion: string;
+  readonly reasoning: string;
+  readonly caveats: readonly string[];
+  readonly neededForAssessment: string;
+}
+
 export interface FactCheckJudgment {
   readonly verdict: Verdict;
-  readonly confidence: number;
+  readonly confidence: number | null;
+  readonly assessment?: PsychologyEvidenceAssessment;
   readonly explanation: string;
   readonly limitations: readonly string[];
   readonly citations: readonly {

@@ -76,7 +76,7 @@ function packageFor(claim: string, chunkIds: readonly string[]) {
   };
 }
 
-describe("synthetic fact-check judgment contract eval", () => {
+describe("synthetic psychology evidence-check judgment contract eval", () => {
   it("accepts only taxonomy verdicts and package-member citations", () => {
     const fixtureUrl = new URL(
       "./fixtures/fact-check-judgment-v1.json",

@@ -1,6 +1,6 @@
 # Data Model
 
-IDs are UUIDs, timestamps UTC, and user-owned rows use RLS plus server ownership checks. Session 26 retires shared RAG tables and RPCs while retaining transcripts, claims, Evidence Packages, judgments, citations and narrative/history. Migration `20261009120000_retire_local_rag.sql` is prepared locally, not applied to Production. Historical migrations create the catalog before this upgrade removes it; the latest TypeScript contract describes the post-upgrade schema. Billing remains future schema.
+IDs are UUIDs, timestamps UTC, and user-owned rows use RLS plus server ownership checks. Session 26 retires shared RAG tables and RPCs while retaining transcripts, claims, Evidence Packages, judgments, citations and narrative/history. Migrations `20261009120000_retire_local_rag.sql` and `20261011100000_psychology_evidence_assessment.sql` are prepared locally, not applied to Production. Historical migrations create the catalog before this upgrade removes it; the latest TypeScript contract describes the post-upgrade schema. Billing remains future schema.
 
 ## Identity and content
 
@@ -94,12 +94,12 @@ After Session 26 migration, `sources`, `evidence_chunks`, `evidence_embeddings`,
 - Europe PMC excerpts require publication-specific OA/CC BY 4.0 rights and a maximum of 1,000 characters. Unknown/unsuitable licenses and Crossref records remain metadata references. Full text is transient and is not retained.
 - Model and database boundaries reject citations outside the exact package. Empty evidence cannot support an evidence-based verdict.
 
-### `fact_checks` — Session 11, migration deployed
+### `fact_checks` — Sessions 11 and 27
 
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
-- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, verdict, confidence, explanation, limitations, and creation time.
+- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, app verdict, nullable legacy numeric confidence, optional JSON assessment, explanation, limitations, and creation time. Session 27 assessment stores skill claim type/verdict, categorical evidence strength/confidence, conclusion, reasoning, caveats and needed evidence.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
-- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. Judgment prompt/model/schema versions remain independent of search versions. No Production upgrade verification has been performed for Session 26.
+- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. Judgment prompt/model/schema versions remain independent of search versions. Sessions 26 and 27 migrations are local only; no Production upgrade verification has been performed.
 
 ### `fact_check_evidence` — Session 11, migration deployed
 

@@ -416,6 +416,16 @@ Session 13 until Session 12 is accepted.
 - **Limits:** OA/CC BY 4.0 coverage is narrow; absent evidence cannot refute claims. No expert-reviewed golden cases establish model quality.
 - **Rollout:** Back up data, pause intake/dispatch, drain active runs, migrate/deploy together, resume and verify old reports plus a fresh authenticated analysis. Production catalog deletion needs a reviewed coordinated rollout.
 
+## Session 27 — Apply Psychology Evidence Check to Video Claims
+
+**Status:** Implemented locally. Lint, typecheck, tests (258 passed / 4 skipped), E2E (13 passed / 6 skipped), evals (8 passed), and production build passed. The deployed Worker cannot load the user's local Codex skill file, so its method is represented by a versioned server-side prompt (`psychology-evidence-check-v1`). Judgment v5 saves the skill-style verdict, claim type, categorical evidence strength/confidence, caveats and evidence needed in `fact_checks.assessment`; the existing verdicts/statuses remain compatible. The report uses the existing conclusion block to show qualitative assessment and evidence strength. Legacy numeric judgments remain readable. Migration `20261011100000_psychology_evidence_assessment.sql` is not deployed.
+
+- **Goal:** Run extracted video claims through the psychology evidence-check method after the Evidence Package is validated, then adapt its result to the current report.
+- **Scope:** Versioned judgment prompt/schema, strict package-bound citations, persisted typed assessment, existing report presentation, mocked and PGlite tests, architecture/data/testing documentation.
+- **Preserved:** Transcription and claim extraction, Evidence Package and licensed-text gate, report status vocabulary, idempotency, retry and run fencing.
+- **Limits:** Europe PMC and Crossref coverage is incomplete; metadata-only publications are not evidence. Categorical confidence is not calibrated. Model quality is not confirmed without expert-reviewed golden cases. This implementation is not Production deployed or live-verified.
+- **Required checks:** lint, typecheck, tests, E2E, evals and production build; no live external API calls in regular tests.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

@@ -86,6 +86,17 @@ claims have current persisted fact checks. Empty claim extractions complete
 without model calls. Session 13 renders persisted results after this workflow
 completes; report rendering does not add another Workflow stage.
 
+Session 27 updates the judgment stage to `fact-check-judgment-v5`, a server-side
+implementation of the `psychology-evidence-check-v1` skill method. Research
+verdict, evidence strength and assessment confidence are saved categorically;
+the report maps these into existing statuses and displays categorical values
+in its existing claim conclusion block. Old numeric-confidence judgments stay
+readable. Migration `20261011100000_psychology_evidence_assessment.sql` is
+prepared locally and has not been applied to Production. The Codex skill file
+itself is not callable in the deployed Worker; the Worker uses versioned prompt
+instructions. Europe PMC/Crossref coverage is incomplete and no expert-reviewed
+golden cases verify model quality.
+
 The judgment response schema constrains `chunk_id` to the current package's
 evidence members, and the server validates membership again before persistence.
 On 2026-10-03, Production generation 2 for job

@@ -38,7 +38,17 @@ const reportResult: ReportLoadResult = {
         endSeconds: 42,
         verdict: "CONTRADICTED",
         status: "contradicted",
-        confidence: 0.81,
+        confidence: null,
+        assessment: {
+          claimType: "causal",
+          researchVerdict: "false",
+          evidenceStrength: "moderate",
+          confidence: "moderate",
+          shortConclusion: "Данные не подтверждают абсолютную формулировку.",
+          reasoning: "Синтетическая оценка для интерфейсного теста.",
+          caveats: [],
+          neededForAssessment: "Нужны дополнительные исследования.",
+        },
         explanation: "Эффект зависит от дозы и индивидуальных особенностей.",
         modelCommentary:
           "Абсолютная формулировка требует осторожного прочтения.",
@@ -54,6 +64,7 @@ const reportResult: ReportLoadResult = {
         verdict: "SUPPORTED",
         status: "supported",
         confidence: 0.71,
+        assessment: null,
         explanation: "Данные подтверждают кратковременный эффект.",
         modelCommentary:
           "В этом утверждении важно не переносить кратковременный эффект на все ситуации.",
@@ -102,6 +113,7 @@ describe("ReportPreview", () => {
     fireEvent.click(
       screen.getByRole("tab", { name: /Кофеин всегда усиливает тревожность/ }),
     );
+    expect(screen.getByText(/Уверенность оценки: Умеренная/)).toBeInTheDocument();
     expect(screen.getByText("00:34–00:42")).toBeInTheDocument();
     expect(
       screen.getByText("Кофе всегда усиливает тревожность."),

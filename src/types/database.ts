@@ -413,8 +413,9 @@ export type Database = {
       };
       fact_checks: {
         Row: {
+          assessment: Json | null;
           claim_id: string;
-          confidence: number;
+          confidence: number | null;
           created_at: string;
           evidence_package_id: string;
           explanation: string;
@@ -428,8 +429,9 @@ export type Database = {
           verdict: string;
         };
         Insert: {
+          assessment?: Json | null;
           claim_id: string;
-          confidence: number;
+          confidence: number | null;
           created_at?: string;
           evidence_package_id: string;
           explanation: string;
@@ -443,8 +445,9 @@ export type Database = {
           verdict: string;
         };
         Update: {
+          assessment?: Json | null;
           claim_id?: string;
-          confidence?: number;
+          confidence?: number | null;
           created_at?: string;
           evidence_package_id?: string;
           explanation?: string;

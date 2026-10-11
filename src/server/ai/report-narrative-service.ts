@@ -6,6 +6,7 @@ import type { ReportNarrativeProvider } from "./report-narrative";
 import { reportNarrativeSchema } from "./report-narrative";
 import {
   FACT_CHECK_JUDGMENT_VERSION,
+  psychologyEvidenceAssessmentSchema,
   validateEvidenceBoundJudgment,
   validateEvidencePackage,
 } from "./judgment";
@@ -64,7 +65,7 @@ export function createReportNarrativeService(
           ? client
               .from("fact_checks")
               .select(
-                "id, claim_id, evidence_package_id, verdict, confidence, explanation, limitations",
+                "id, claim_id, evidence_package_id, verdict, confidence, assessment, explanation, limitations",
               )
               .in("claim_id", claimIds)
               .in("evidence_package_id", packageIds)
@@ -124,9 +125,13 @@ export function createReportNarrativeService(
           const limitations = stringList(check.limitations);
           if (!limitations)
             throw new Error("Stored fact-check limitations are invalid");
+          const assessment = check.assessment == null
+            ? null
+            : psychologyEvidenceAssessmentSchema.parse(check.assessment);
           const judgment: FactCheckJudgment = {
             verdict: check.verdict as FactCheckJudgment["verdict"],
             confidence: check.confidence,
+            ...(assessment ? { assessment } : {}),
             explanation: check.explanation,
             limitations,
             citations: citations

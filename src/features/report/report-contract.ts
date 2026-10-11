@@ -1,3 +1,5 @@
+import type { PsychologyEvidenceAssessment } from "@/server/ai/providers";
+
 export type ReportClaimStatus =
   "contradicted" | "disputed" | "not-found" | "supported";
 
@@ -21,7 +23,8 @@ export type ReportClaim = {
   readonly endSeconds: number;
   readonly verdict: string;
   readonly status: ReportClaimStatus;
-  readonly confidence: number;
+  readonly confidence: number | null;
+  readonly assessment: PsychologyEvidenceAssessment | null;
   readonly explanation: string;
   readonly modelCommentary: string | null;
   readonly sources: readonly ReportSource[];

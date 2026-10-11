@@ -23,7 +23,7 @@ Example:
 
 The repository currently contains one synthetic fixture demonstrating the expected case shape. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
 
-`evals/fixtures/fact-check-judgment-v1.json` exercises the Session 11 judgment contract with synthetic accepted and rejected outputs, including empty-evidence handling and fabricated-citation rejection. It does not assess whether a passage semantically supports its assigned verdict. The expert-reviewed golden verdict/citation set required for a judgment quality gate has not yet been created; no verdict-quality claim can be based on this fixture.
+`evals/fixtures/fact-check-judgment-v1.json` exercises the Session 11 judgment contract with synthetic accepted and rejected outputs, including empty-evidence handling and fabricated-citation rejection. Session 27 unit/integration tests cover the psychology-evidence-check-v1 output mapping, categorical assessment persistence, required citation relations, package membership and legacy numeric rows. These checks do not assess whether a passage semantically supports its assigned verdict. Europe PMC/Crossref coverage is incomplete, and the expert-reviewed golden verdict/citation set required for a judgment quality gate has not yet been created; no model-quality claim can be based on synthetic fixtures.
 
 The screening fixture includes an incidental psychology mention as a false-positive guard, an ambiguous short excerpt as a false-negative guard, and one clear in-scope case. These examples document desired behavior only; no model output is scored against them yet.
 
