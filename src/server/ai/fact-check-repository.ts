@@ -70,7 +70,7 @@ export function factCheckRepository(client: SupabaseClient<Database>) {
         persistedPackage,
         judgmentInput,
       );
-      const { data, error } = await client.rpc(
+      const { data, error, status } = await client.rpc(
         "save_fact_check_for_analysis_run",
         {
           p_job_id: metadata.jobId,
@@ -102,8 +102,12 @@ export function factCheckRepository(client: SupabaseClient<Database>) {
           error.code && /^[a-z0-9_-]{1,32}$/i.test(error.code)
             ? error.code
             : "unavailable";
+        const safeStatus =
+          Number.isInteger(status) && status >= 0 && status <= 599
+            ? `, HTTP status ${status}`
+            : "";
         throw new Error(
-          `Fact-check write failed (Supabase error code ${safeCode})`,
+          `Fact-check write failed (Supabase error code ${safeCode}${safeStatus})`,
         );
       }
       if (!data)

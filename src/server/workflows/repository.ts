@@ -45,12 +45,23 @@ const persistedClaimSchema = z
   })
   .strict();
 
-export function workflowDatabaseFailure(operation: string, code?: string) {
+export function workflowDatabaseFailure(
+  operation: string,
+  code?: string,
+  status?: number,
+) {
   const safeCode = code && /^[a-z0-9_-]{1,32}$/i.test(code) ? code : null;
+  const safeStatus =
+    status !== undefined &&
+    Number.isInteger(status) &&
+    status >= 0 &&
+    status <= 599
+      ? `, HTTP status ${status}`
+      : "";
   return new Error(
     safeCode
-      ? `${operation} failed (Supabase error code ${safeCode})`
-      : `${operation} failed (Supabase error code unavailable)`,
+      ? `${operation} failed (Supabase error code ${safeCode}${safeStatus})`
+      : `${operation} failed (Supabase error code unavailable${safeStatus})`,
   );
 }
 
@@ -101,7 +112,11 @@ export function workflowRepository(client: WorkflowClient) {
       attempt = 0,
       errorCode?: string,
     ): Promise<AnalysisJob | null> {
-      const { data, error } = await client.rpc("advance_analysis_job", {
+      const {
+        data,
+        error,
+        status: responseStatus,
+      } = await client.rpc("advance_analysis_job", {
         p_job_id: payload.jobId,
         p_generation: payload.generation,
         p_run_id: runId,
@@ -109,7 +124,12 @@ export function workflowRepository(client: WorkflowClient) {
         p_attempt: attempt,
         p_error_code: errorCode,
       });
-      if (error) throw workflowDatabaseFailure("Job transition", error.code);
+      if (error)
+        throw workflowDatabaseFailure(
+          "Job transition",
+          error.code,
+          responseStatus,
+        );
       return data?.[0] ?? null;
     },
     async setStage(
@@ -118,14 +138,18 @@ export function workflowRepository(client: WorkflowClient) {
       stage: string,
       attempt: number,
     ) {
-      const { data, error } = await client.rpc("set_analysis_job_stage", {
-        p_job_id: payload.jobId,
-        p_generation: payload.generation,
-        p_run_id: runId,
-        p_stage: stage,
-        p_attempt: attempt,
-      });
-      if (error) throw workflowDatabaseFailure("Job stage update", error.code);
+      const { data, error, status } = await client.rpc(
+        "set_analysis_job_stage",
+        {
+          p_job_id: payload.jobId,
+          p_generation: payload.generation,
+          p_run_id: runId,
+          p_stage: stage,
+          p_attempt: attempt,
+        },
+      );
+      if (error)
+        throw workflowDatabaseFailure("Job stage update", error.code, status);
       return data === true;
     },
     async hasTranscript(contentItemId: string) {

@@ -84,6 +84,7 @@ function repositoryWithPersistedPackage(
   rpcResult: {
     data: string | null;
     error: { code?: string } | null;
+    status?: number;
   } = {
     data: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
     error: null,
@@ -174,5 +175,22 @@ describe("fact-check repository", () => {
     await expect(
       repository.save(metadata, savedPackage, judgment),
     ).rejects.toThrow("Fact-check write failed (Supabase error code P0001)");
+  });
+
+  it("exposes the HTTP status when Supabase returns no safe error code", async () => {
+    const savedPackage = createEvidencePackage(
+      "The persisted passage reports an association.",
+    );
+    const { repository } = repositoryWithPersistedPackage(savedPackage, {
+      data: null,
+      error: { code: "" },
+      status: 0,
+    });
+
+    await expect(
+      repository.save(metadata, savedPackage, judgment),
+    ).rejects.toThrow(
+      "Fact-check write failed (Supabase error code unavailable, HTTP status 0)",
+    );
   });
 });

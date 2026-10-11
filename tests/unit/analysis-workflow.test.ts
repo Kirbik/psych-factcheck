@@ -53,6 +53,9 @@ describe("workflow database errors", () => {
     expect(
       workflowDatabaseFailure("Job read", "secret query details").message,
     ).toBe("Job read failed (Supabase error code unavailable)");
+    expect(workflowDatabaseFailure("Job transition", "", 0).message).toBe(
+      "Job transition failed (Supabase error code unavailable, HTTP status 0)",
+    );
   });
 });
 const payload = { jobId, generation: 1 };
