@@ -11,7 +11,7 @@ import {
 import {
   PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS,
   PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS_VERSION,
-} from "./prompts/psychology-evidence-check-v3";
+} from "./prompts/psychology-evidence-check-v4";
 import type { EvidencePackage, JudgmentProvider } from "./providers";
 
 const responseContentSchema = z
@@ -52,14 +52,63 @@ function outputJsonSchema(allowedChunkIds: readonly string[]) {
       "citations",
     ],
     properties: {
-      claim_type: { type: "string", enum: ["factual","causal","predictive","intervention_effect","practical_advice","normative","metaphor","unclear"] },
-      model_verdict: { type: "string", enum: ["plausible","questionable","overgeneralized","not_assessable","not_empirical"] },
-      verdict: { type: "string", enum: ["supported","false","misleading","complicated","unsupported","unknown","not_empirical"] },
-      evidence_strength: { type: "string", enum: ["high","moderate","low","very_low","insufficient","not_applicable"] },
-      assessment_confidence: { type: "string", enum: ["high","moderate","low"] },
+      claim_type: {
+        type: "string",
+        enum: [
+          "factual",
+          "causal",
+          "predictive",
+          "intervention_effect",
+          "practical_advice",
+          "normative",
+          "metaphor",
+          "unclear",
+        ],
+      },
+      model_verdict: {
+        type: "string",
+        enum: [
+          "plausible",
+          "questionable",
+          "overgeneralized",
+          "not_assessable",
+          "not_empirical",
+        ],
+      },
+      verdict: {
+        type: "string",
+        enum: [
+          "supported",
+          "false",
+          "misleading",
+          "complicated",
+          "unsupported",
+          "unknown",
+          "not_empirical",
+        ],
+      },
+      evidence_strength: {
+        type: "string",
+        enum: [
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          "insufficient",
+          "not_applicable",
+        ],
+      },
+      assessment_confidence: {
+        type: "string",
+        enum: ["high", "moderate", "low"],
+      },
       short_conclusion: { type: "string", minLength: 1, maxLength: 600 },
       reasoning: { type: "string", minLength: 1, maxLength: 1700 },
-      caveats: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 180 } },
+      caveats: {
+        type: "array",
+        maxItems: 6,
+        items: { type: "string", minLength: 1, maxLength: 180 },
+      },
       needed_for_assessment: { type: "string", minLength: 1, maxLength: 350 },
       citations: {
         type: "array",
@@ -70,7 +119,10 @@ function outputJsonSchema(allowedChunkIds: readonly string[]) {
           required: ["chunk_id", "relation", "rationale"],
           properties: {
             chunk_id: citationChunkIdSchema,
-            relation: { type: "string", enum: ["supports","qualifies","contradicts"] },
+            relation: {
+              type: "string",
+              enum: ["supports", "qualifies", "contradicts"],
+            },
             rationale: { type: "string", minLength: 1, maxLength: 600 },
           },
         },

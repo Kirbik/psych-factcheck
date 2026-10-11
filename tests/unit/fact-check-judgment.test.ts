@@ -142,7 +142,7 @@ describe("evidence-bound fact-check judgment", () => {
     ).toBe("INSUFFICIENT_EVIDENCE");
   });
 
-  it("rejects scientific verdicts from memory for no-search packages", () => {
+  it("normalizes a model-produced scientific verdict for no-search packages", () => {
     const noSearchPackage = {
       ...evidencePackage([]),
       retrievalVersion: "psychology-skill-no-search-v1",
@@ -161,25 +161,88 @@ describe("evidence-bound fact-check judgment", () => {
         },
       },
     };
-    expect(() =>
-      validateEvidenceBoundJudgment(noSearchPackage, {
-        verdict: "INSUFFICIENT_EVIDENCE",
-        confidence: null,
-        assessment: {
-          claimType: "causal",
-          researchVerdict: "unsupported",
-          evidenceStrength: "insufficient",
-          confidence: "low",
-          shortConclusion: "Данные недостаточны.",
-          reasoning: "Научный поиск не выполнялся.",
-          caveats: ["Источники не проверялись."],
-          neededForAssessment: "Нужно проверить исследования.",
+    const result = validateEvidenceBoundJudgment(noSearchPackage, {
+      verdict: "CONTRADICTED",
+      confidence: null,
+      assessment: {
+        claimType: "causal",
+        researchVerdict: "false",
+        modelVerdict: "questionable",
+        evidenceStrength: "high",
+        confidence: "high",
+        shortConclusion: "Формулировка звучит категорично.",
+        reasoning: "Тезис не уточняет условия, при которых он применим.",
+        caveats: [],
+        neededForAssessment: "Нужно проверить релевантные исследования.",
+      },
+      explanation: "Модель не должна превращать мнение в доказательство.",
+      limitations: [],
+      citations: [],
+    });
+
+    expect(result.judgment).toMatchObject({
+      verdict: "INSUFFICIENT_EVIDENCE",
+      assessment: {
+        researchVerdict: "unknown",
+        modelVerdict: "questionable",
+        evidenceStrength: "insufficient",
+        confidence: "low",
+        shortConclusion: "Формулировка звучит категорично.",
+      },
+      citations: [],
+    });
+    expect(result.judgment.limitations).toContain(
+      "Научные источники в этом запуске не проверялись.",
+    );
+  });
+
+  it("normalizes non-empirical claims to UNVERIFIABLE", () => {
+    const emptyPackage = evidencePackage([]);
+    const noSearchPackage = {
+      ...emptyPackage,
+      retrievalVersion: "psychology-skill-no-search-v1",
+      rerankingVersion: "no-reranking-v1",
+      warnings: ["scientific_search_not_performed"],
+      trace: {
+        ...emptyPackage.trace,
+        retrieval: {
+          ...emptyPackage.trace.retrieval,
+          provider: "none",
+          model: "none",
+          filters: {
+            ...emptyPackage.trace.retrieval.filters,
+            sourceStatus: "not_used",
+          },
         },
-        explanation: "Данные недостаточны.",
-        limitations: ["Источники не проверялись."],
-        citations: [],
-      }),
-    ).toThrowError("FACT_CHECK_EVIDENCE_REQUIRED");
+      },
+    };
+    const result = validateEvidenceBoundJudgment(noSearchPackage, {
+      verdict: "INSUFFICIENT_EVIDENCE",
+      confidence: null,
+      assessment: {
+        claimType: "normative",
+        researchVerdict: "unknown",
+        modelVerdict: "not_empirical",
+        evidenceStrength: "insufficient",
+        confidence: "low",
+        shortConclusion: "Это нормативное высказывание.",
+        reasoning: "Оно выражает оценку, а не проверяемый факт.",
+        caveats: [],
+        neededForAssessment: "Проверка источников не требуется.",
+      },
+      explanation: "Предварительная оценка.",
+      limitations: [],
+      citations: [],
+    });
+
+    expect(result.judgment).toMatchObject({
+      verdict: "UNVERIFIABLE",
+      assessment: {
+        researchVerdict: "not_empirical",
+        evidenceStrength: "not_applicable",
+      },
+      citations: [],
+    });
   });
 
   it("accepts a separate preliminary model verdict without treating it as evidence", () => {
@@ -211,7 +274,8 @@ describe("evidence-bound fact-check judgment", () => {
         evidenceStrength: "insufficient",
         confidence: "low",
         shortConclusion: "Предварительно тезис выглядит чрезмерно общим.",
-        reasoning: "Формулировка превращает сложную зависимость в универсальное правило.",
+        reasoning:
+          "Формулировка превращает сложную зависимость в универсальное правило.",
         caveats: ["Научный поиск не выполнялся."],
         neededForAssessment: "Нужна проверка научных публикаций.",
       },

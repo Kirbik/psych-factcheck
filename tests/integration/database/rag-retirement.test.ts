@@ -279,9 +279,14 @@ describe("retire local RAG while preserving claim results", () => {
     returns setof public.evidence_chunks language sql as 'select * from public.evidence_chunks where false';
   `);
     await db.exec(await sqlFile("20261009120000_retire_local_rag.sql"));
-    await db.exec(await sqlFile("20261011100000_psychology_evidence_assessment.sql"));
+    await db.exec(
+      await sqlFile("20261011100000_psychology_evidence_assessment.sql"),
+    );
     await db.exec(await sqlFile("20261012100000_no_search_skill_judgment.sql"));
     await db.exec(await sqlFile("20261012130000_prompt_model_verdict.sql"));
+    await db.exec(
+      await sqlFile("20261012140000_no_search_judgment_normalization.sql"),
+    );
   }, 30000);
   afterAll(async () => {
     await db?.close();
@@ -528,7 +533,8 @@ describe("retire local RAG while preserving claim results", () => {
         evidenceStrength: "insufficient",
         confidence: "low",
         shortConclusion: "Источники в этом запуске не проверялись.",
-        reasoning: "Научный поиск отключен, поэтому поддержка тезиса неизвестна.",
+        reasoning:
+          "Научный поиск отключен, поэтому поддержка тезиса неизвестна.",
         caveats: ["Это не означает, что тезис ложен."],
         neededForAssessment: "Нужно проверить подходящие научные публикации.",
       },
@@ -536,10 +542,61 @@ describe("retire local RAG while preserving claim results", () => {
       limitations: ["Это не означает, что тезис ложен."],
       citations: [],
     };
-    const savedId = (
-      await saveCheck(pkgId, valid)
-    ).rows[0].id;
+    const savedId = (await saveCheck(pkgId, valid)).rows[0].id;
     expect(savedId).toBeTruthy();
+    expect((await saveCheck(pkgId, valid)).rows[0].id).toBe(savedId);
+
+    const inconsistentModelOutput: FactCheckJudgment = {
+      ...valid,
+      verdict: "CONTRADICTED",
+      assessment: {
+        ...valid.assessment!,
+        researchVerdict: "false",
+        evidenceStrength: "high",
+        confidence: "high",
+      },
+    };
+    const normalized = validateEvidenceBoundJudgment(
+      pkg,
+      inconsistentModelOutput,
+    ).judgment;
+    expect(normalized).toMatchObject({
+      verdict: "INSUFFICIENT_EVIDENCE",
+      assessment: {
+        researchVerdict: "unknown",
+        modelVerdict: "questionable",
+        evidenceStrength: "insufficient",
+        confidence: "low",
+      },
+      citations: [],
+    });
+    const normalizedPackage = {
+      ...pkg,
+      rerankingVersion: "no-reranking-normalization-test-v1",
+    };
+    await savePackage(normalizedPackage);
+    const normalizedPackageId = (
+      await db.query<{ id: string }>(
+        "select id from public.evidence_packages where claim_id=$1 and reranking_version=$2",
+        [claimId, normalizedPackage.rerankingVersion],
+      )
+    ).rows[0].id;
+    const normalizedId = (await saveCheck(normalizedPackageId, normalized))
+      .rows[0].id;
+    expect(normalizedId).not.toBe(savedId);
+    expect(
+      (
+        await db.query<{
+          verdict: string;
+          assessment: { researchVerdict: string };
+        }>("select verdict, assessment from public.fact_checks where id=$1", [
+          normalizedId,
+        ])
+      ).rows[0],
+    ).toMatchObject({
+      verdict: "INSUFFICIENT_EVIDENCE",
+      assessment: { researchVerdict: "unknown" },
+    });
 
     const unsupportedPackage = {
       ...pkg,

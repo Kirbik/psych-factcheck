@@ -7,13 +7,16 @@ import {
 } from "./providers";
 import { verdicts } from "../../types/fact-check";
 
-export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v7";
-export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v6";
-export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v5";
-export const OLDER_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
-export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
-export const HISTORIC_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
-export const OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
+export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v8";
+export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v7";
+export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v6";
+export const OLDER_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v5";
+export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
+export const HISTORIC_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
+export const OLDER_HISTORIC_FACT_CHECK_JUDGMENT_VERSION =
+  "fact-check-judgment-v2";
+export const OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION =
+  "fact-check-judgment-v1";
 export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
   FACT_CHECK_JUDGMENT_VERSION,
   PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
@@ -21,10 +24,11 @@ export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
   OLDER_FACT_CHECK_JUDGMENT_VERSION,
   OLDEST_FACT_CHECK_JUDGMENT_VERSION,
   HISTORIC_FACT_CHECK_JUDGMENT_VERSION,
+  OLDER_HISTORIC_FACT_CHECK_JUDGMENT_VERSION,
   OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION,
 ] as const;
 export const FACT_CHECK_JUDGMENT_SCHEMA_VERSION =
-  "fact-check-judgment-schema-v6";
+  "fact-check-judgment-schema-v7";
 export const FACT_CHECK_JUDGMENT_MODEL = "gpt-4o-mini";
 export const MAX_JUDGMENT_EVIDENCE_ITEMS = 5;
 export const MAX_JUDGMENT_LIMITATIONS = 8;
@@ -217,76 +221,125 @@ export const evidencePackageSchema = z
   });
 
 const psychologyClaimTypes = [
-  "factual", "causal", "predictive", "intervention_effect",
-  "practical_advice", "normative", "metaphor", "unclear",
+  "factual",
+  "causal",
+  "predictive",
+  "intervention_effect",
+  "practical_advice",
+  "normative",
+  "metaphor",
+  "unclear",
 ] as const;
 const psychologyVerdicts = [
-  "supported", "false", "misleading", "complicated",
-  "unsupported", "unknown", "not_empirical",
+  "supported",
+  "false",
+  "misleading",
+  "complicated",
+  "unsupported",
+  "unknown",
+  "not_empirical",
 ] as const;
 const psychologyModelVerdicts = [
-  "plausible", "questionable", "overgeneralized", "not_assessable",
+  "plausible",
+  "questionable",
+  "overgeneralized",
+  "not_assessable",
   "not_empirical",
 ] as const;
 const evidenceStrengths = [
-  "high", "moderate", "low", "very_low", "insufficient", "not_applicable",
+  "high",
+  "moderate",
+  "low",
+  "very_low",
+  "insufficient",
+  "not_applicable",
 ] as const;
 const assessmentConfidences = ["high", "moderate", "low"] as const;
 
-export const psychologyEvidenceAssessmentSchema = z.object({
-  claimType: z.enum(psychologyClaimTypes),
-  modelVerdict: z.enum(psychologyModelVerdicts).optional(),
-  researchVerdict: z.enum(psychologyVerdicts),
-  evidenceStrength: z.enum(evidenceStrengths),
-  confidence: z.enum(assessmentConfidences),
-  shortConclusion: z.string().trim().min(1).max(600),
-  reasoning: z.string().trim().min(1).max(1_700),
-  caveats: z.array(z.string().trim().min(1).max(180)).max(6),
-  neededForAssessment: z.string().trim().min(1).max(350),
-}).strict();
+export const psychologyEvidenceAssessmentSchema = z
+  .object({
+    claimType: z.enum(psychologyClaimTypes),
+    modelVerdict: z.enum(psychologyModelVerdicts).optional(),
+    researchVerdict: z.enum(psychologyVerdicts),
+    evidenceStrength: z.enum(evidenceStrengths),
+    confidence: z.enum(assessmentConfidences),
+    shortConclusion: z.string().trim().min(1).max(600),
+    reasoning: z.string().trim().min(1).max(1_700),
+    caveats: z.array(z.string().trim().min(1).max(180)).max(6),
+    neededForAssessment: z.string().trim().min(1).max(350),
+  })
+  .strict();
 
-const rawJudgmentSchema = z.object({
-  claim_type: z.enum(psychologyClaimTypes),
-  model_verdict: z.enum(psychologyModelVerdicts),
-  verdict: z.enum(psychologyVerdicts),
-  evidence_strength: z.enum(evidenceStrengths),
-  assessment_confidence: z.enum(assessmentConfidences),
-  short_conclusion: z.string().trim().min(1).max(600),
-  reasoning: z.string().trim().min(1).max(1_700),
-  caveats: z.array(z.string().trim().min(1).max(180)).max(6),
-  needed_for_assessment: z.string().trim().min(1).max(350),
-  citations: z.array(z.object({
-    chunk_id: z.uuid(),
-    relation: z.enum(["supports", "qualifies", "contradicts"]),
-    rationale: z.string().trim().min(1).max(600),
-  }).strict()).max(MAX_JUDGMENT_EVIDENCE_ITEMS),
-}).strict();
+const rawJudgmentSchema = z
+  .object({
+    claim_type: z.enum(psychologyClaimTypes),
+    model_verdict: z.enum(psychologyModelVerdicts),
+    verdict: z.enum(psychologyVerdicts),
+    evidence_strength: z.enum(evidenceStrengths),
+    assessment_confidence: z.enum(assessmentConfidences),
+    short_conclusion: z.string().trim().min(1).max(600),
+    reasoning: z.string().trim().min(1).max(1_700),
+    caveats: z.array(z.string().trim().min(1).max(180)).max(6),
+    needed_for_assessment: z.string().trim().min(1).max(350),
+    citations: z
+      .array(
+        z
+          .object({
+            chunk_id: z.uuid(),
+            relation: z.enum(["supports", "qualifies", "contradicts"]),
+            rationale: z.string().trim().min(1).max(600),
+          })
+          .strict(),
+      )
+      .max(MAX_JUDGMENT_EVIDENCE_ITEMS),
+  })
+  .strict();
 
-const legacyFactCheckJudgmentSchema = z.object({
-  verdict: z.enum(verdicts),
-  confidence: z.number().finite().min(0).max(1),
-  assessment: z.null().optional(),
-  explanation: z.string().trim().min(1).max(4_000),
-  limitations: z.array(z.string().trim().min(1).max(500)).max(MAX_JUDGMENT_LIMITATIONS),
-  citations: z.array(z.object({
-    chunkId: z.uuid(),
-    relation: z.enum(["supports", "qualifies", "contradicts"]),
-    rationale: z.string().trim().min(1).max(600),
-  }).strict()).max(MAX_JUDGMENT_EVIDENCE_ITEMS),
-}).strict();
+const legacyFactCheckJudgmentSchema = z
+  .object({
+    verdict: z.enum(verdicts),
+    confidence: z.number().finite().min(0).max(1),
+    assessment: z.null().optional(),
+    explanation: z.string().trim().min(1).max(4_000),
+    limitations: z
+      .array(z.string().trim().min(1).max(500))
+      .max(MAX_JUDGMENT_LIMITATIONS),
+    citations: z
+      .array(
+        z
+          .object({
+            chunkId: z.uuid(),
+            relation: z.enum(["supports", "qualifies", "contradicts"]),
+            rationale: z.string().trim().min(1).max(600),
+          })
+          .strict(),
+      )
+      .max(MAX_JUDGMENT_EVIDENCE_ITEMS),
+  })
+  .strict();
 
-const currentFactCheckJudgmentSchema = z.object({
-  verdict: z.enum(verdicts),
-  confidence: z.null(),
-  assessment: psychologyEvidenceAssessmentSchema,
-  explanation: z.string().trim().min(1).max(4_000),
-  limitations: z.array(z.string().trim().min(1).max(500)).max(MAX_JUDGMENT_LIMITATIONS),
-  citations: z.array(z.object({
-    chunkId: z.uuid(),
-    relation: z.enum(["supports", "qualifies", "contradicts"]),
-    rationale: z.string().trim().min(1).max(600),
-  }).strict()).max(MAX_JUDGMENT_EVIDENCE_ITEMS),
-}).strict();
+const currentFactCheckJudgmentSchema = z
+  .object({
+    verdict: z.enum(verdicts),
+    confidence: z.null(),
+    assessment: psychologyEvidenceAssessmentSchema,
+    explanation: z.string().trim().min(1).max(4_000),
+    limitations: z
+      .array(z.string().trim().min(1).max(500))
+      .max(MAX_JUDGMENT_LIMITATIONS),
+    citations: z
+      .array(
+        z
+          .object({
+            chunkId: z.uuid(),
+            relation: z.enum(["supports", "qualifies", "contradicts"]),
+            rationale: z.string().trim().min(1).max(600),
+          })
+          .strict(),
+      )
+      .max(MAX_JUDGMENT_EVIDENCE_ITEMS),
+  })
+  .strict();
 
 const factCheckJudgmentSchema = z.union([
   currentFactCheckJudgmentSchema,
@@ -312,13 +365,20 @@ function appVerdictForPsychologyVerdict(
   verdict: (typeof psychologyVerdicts)[number],
 ): FactCheckJudgment["verdict"] {
   switch (verdict) {
-    case "supported": return "SUPPORTED";
-    case "false": return "CONTRADICTED";
-    case "misleading": return "OVERSIMPLIFIED";
-    case "complicated": return "MOSTLY_SUPPORTED";
-    case "unsupported": return "INSUFFICIENT_EVIDENCE";
-    case "unknown": return "INSUFFICIENT_EVIDENCE";
-    case "not_empirical": return "UNVERIFIABLE";
+    case "supported":
+      return "SUPPORTED";
+    case "false":
+      return "CONTRADICTED";
+    case "misleading":
+      return "OVERSIMPLIFIED";
+    case "complicated":
+      return "MOSTLY_SUPPORTED";
+    case "unsupported":
+      return "INSUFFICIENT_EVIDENCE";
+    case "unknown":
+      return "INSUFFICIENT_EVIDENCE";
+    case "not_empirical":
+      return "UNVERIFIABLE";
   }
 }
 
@@ -378,10 +438,16 @@ export function validateEvidenceBoundJudgment(
     throw new FactCheckJudgmentError("FACT_CHECK_JUDGMENT_INVALID");
   }
 
+  const noSearchAssessment =
+    evidencePackage.retrievalVersion === "psychology-skill-no-search-v1" &&
+    parsedJudgment.data.assessment
+      ? normalizeNoSearchJudgment(parsedJudgment.data)
+      : parsedJudgment.data;
+
   const packageChunkIds = new Set(
     evidencePackage.evidence.map((item) => item.chunkId),
   );
-  const citations = parsedJudgment.data.citations;
+  const citations = noSearchAssessment.citations;
   const citedChunkIds = citations.map((citation) => citation.chunkId);
   if (
     new Set(citedChunkIds).size !== citedChunkIds.length ||
@@ -391,12 +457,15 @@ export function validateEvidenceBoundJudgment(
   }
 
   const requiresEvidenceCitation = [
-    "SUPPORTED", "MOSTLY_SUPPORTED", "OVERSIMPLIFIED", "CONTRADICTED",
-  ].includes(parsedJudgment.data.verdict);
+    "SUPPORTED",
+    "MOSTLY_SUPPORTED",
+    "OVERSIMPLIFIED",
+    "CONTRADICTED",
+  ].includes(noSearchAssessment.verdict);
   if (
     (evidencePackage.evidence.length === 0 &&
-      parsedJudgment.data.verdict !== "INSUFFICIENT_EVIDENCE" &&
-      parsedJudgment.data.verdict !== "UNVERIFIABLE") ||
+      noSearchAssessment.verdict !== "INSUFFICIENT_EVIDENCE" &&
+      noSearchAssessment.verdict !== "UNVERIFIABLE") ||
     (requiresEvidenceCitation && citedChunkIds.length === 0)
   ) {
     throw new FactCheckJudgmentError("FACT_CHECK_EVIDENCE_REQUIRED");
@@ -404,40 +473,86 @@ export function validateEvidenceBoundJudgment(
 
   if (
     evidencePackage.retrievalVersion === "psychology-skill-no-search-v1" &&
-    parsedJudgment.data.assessment &&
-    (parsedJudgment.data.assessment.researchVerdict === "unknown"
-      ? parsedJudgment.data.assessment.evidenceStrength !== "insufficient" ||
-        parsedJudgment.data.assessment.confidence !== "low"
-      : parsedJudgment.data.assessment.researchVerdict !== "not_empirical" ||
-        parsedJudgment.data.assessment.evidenceStrength !== "not_applicable")
+    noSearchAssessment.assessment &&
+    (noSearchAssessment.assessment.researchVerdict === "unknown"
+      ? noSearchAssessment.assessment.evidenceStrength !== "insufficient" ||
+        noSearchAssessment.assessment.confidence !== "low"
+      : noSearchAssessment.assessment.researchVerdict !== "not_empirical" ||
+        noSearchAssessment.assessment.evidenceStrength !== "not_applicable")
   ) {
     throw new FactCheckJudgmentError("FACT_CHECK_EVIDENCE_REQUIRED");
   }
 
-  if ("assessment" in parsedJudgment.data && parsedJudgment.data.assessment) {
-    const assessment = parsedJudgment.data.assessment;
+  if ("assessment" in noSearchAssessment && noSearchAssessment.assessment) {
+    const assessment = noSearchAssessment.assessment;
     if (
       assessment.researchVerdict === "false" &&
       !citations.some((citation) => citation.relation === "contradicts")
     ) {
-      throw new FactCheckJudgmentError("FACT_CHECK_CONTRADICTION_EVIDENCE_REQUIRED");
+      throw new FactCheckJudgmentError(
+        "FACT_CHECK_CONTRADICTION_EVIDENCE_REQUIRED",
+      );
     }
     if (
       assessment.researchVerdict === "supported" &&
       !citations.some((citation) => citation.relation === "supports")
     ) {
-      throw new FactCheckJudgmentError("FACT_CHECK_SUPPORTING_EVIDENCE_REQUIRED");
+      throw new FactCheckJudgmentError(
+        "FACT_CHECK_SUPPORTING_EVIDENCE_REQUIRED",
+      );
     }
     if (
       assessment.researchVerdict === "misleading" &&
-      !citations.some((citation) => citation.relation === "qualifies" || citation.relation === "contradicts")
+      !citations.some(
+        (citation) =>
+          citation.relation === "qualifies" ||
+          citation.relation === "contradicts",
+      )
     ) {
-      throw new FactCheckJudgmentError("FACT_CHECK_QUALIFYING_EVIDENCE_REQUIRED");
+      throw new FactCheckJudgmentError(
+        "FACT_CHECK_QUALIFYING_EVIDENCE_REQUIRED",
+      );
     }
   }
 
   return {
     evidencePackage,
-    judgment: parsedJudgment.data as FactCheckJudgment,
+    judgment: noSearchAssessment as FactCheckJudgment,
   };
+}
+
+function normalizeNoSearchJudgment(
+  judgment: z.infer<typeof factCheckJudgmentSchema>,
+): z.infer<typeof factCheckJudgmentSchema> {
+  if (!("assessment" in judgment) || !judgment.assessment) return judgment;
+
+  const isNonEmpirical = ["normative", "metaphor"].includes(
+    judgment.assessment.claimType,
+  );
+  const assessment: PsychologyEvidenceAssessment = {
+    ...judgment.assessment,
+    researchVerdict: isNonEmpirical ? "not_empirical" : "unknown",
+    evidenceStrength: isNonEmpirical ? "not_applicable" : "insufficient",
+    confidence: isNonEmpirical ? judgment.assessment.confidence : "low",
+    caveats: Array.from(
+      new Set([
+        ...judgment.assessment.caveats,
+        "Научные источники в этом запуске не проверялись.",
+      ]),
+    ).slice(0, 6),
+  };
+  const verdict = isNonEmpirical ? "UNVERIFIABLE" : "INSUFFICIENT_EVIDENCE";
+  const normalized: FactCheckJudgment = {
+    ...judgment,
+    verdict,
+    confidence: null,
+    assessment,
+    explanation: assessmentExplanation(assessment),
+    limitations: assessment.caveats,
+  };
+  const validated = currentFactCheckJudgmentSchema.safeParse(normalized);
+  if (!validated.success) {
+    throw new FactCheckJudgmentError("FACT_CHECK_JUDGMENT_INVALID");
+  }
+  return validated.data;
 }

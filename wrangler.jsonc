@@ -10,6 +10,19 @@
     "NEXT_PUBLIC_SUPABASE_URL": "https://iqqaglkueheksfyvwjpw.supabase.co",
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_ZpYc_qkrhaap5d-QYUVT-g_rCWL17vq",
   },
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "head_sampling_rate": 1,
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+    },
+  },
   "triggers": {
     "crons": ["* * * * *"],
   },

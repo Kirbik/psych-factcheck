@@ -454,6 +454,16 @@ Session 13 until Session 12 is accepted.
 - **Limit:** Preliminary model categories are not scientific fact-check results. Confidence is low for empirical claims; model quality remains unconfirmed without expert-reviewed golden cases.
 - **Required checks:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm evals`, `pnpm test:db`, and `pnpm build`.
 
+## Session 31 — Normalize No-Search Judgment Before Persistence
+
+**Status:** Implemented locally; verification and Production rollout pending. A Production run reached judgment with an empty no-search Evidence Package, then failed because the model's returned scientific fields did not satisfy the empty-package contract. Judgment v8 now normalizes those fields before package validation and persistence: empirical claims become `unknown` / `INSUFFICIENT_EVIDENCE` with insufficient evidence strength and low confidence; normative/metaphorical claims become `not_empirical` / `UNVERIFIABLE`. The prompt-only `modelVerdict` and wording analysis are preserved. A migration accepts v8 and updates the narrative version fence. No verdict or citation is inferred from missing evidence.
+
+- **Goal:** Prevent model output from making an evidence-backed scientific claim when no scientific sources were searched, while retaining the separate prompt-based assessment.
+- **Scope:** Judgment normalization, versioned prompt/schema, run-fenced SQL contract, regression/database tests, AI pipeline/workflow/data model/session documentation.
+- **Preserved:** Claim extraction, Evidence Packages, report UI/history, scientific search remains disabled, citation checks, idempotency, retry semantics, generation/run fencing.
+- **Limit:** Model quality remains unconfirmed without expert-reviewed golden cases. Production migration and Worker deployment must be completed and a fresh authenticated analysis verified.
+- **Required checks:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm evals`, `pnpm test:e2e`, and `pnpm build`.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

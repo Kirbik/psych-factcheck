@@ -111,6 +111,18 @@ Codex skill is not loaded at Worker runtime; its method is represented by
 versioned server prompts. Model quality remains unconfirmed without
 expert-reviewed golden cases.
 
+Session 31 adds judgment v8 after Production generation 2 exposed a contract
+mismatch: a model response could contain an evidence-based scientific verdict
+for an empty no-search package, causing the database to reject it and the retry
+to fail local validation. The server now normalizes no-search judgments before
+validation and persistence: empirical claims save `unknown` /
+`INSUFFICIENT_EVIDENCE`, insufficient evidence strength, and low confidence;
+normative/metaphorical claims save `not_empirical` / `UNVERIFIABLE`. The
+separate `modelVerdict` and its claim-wording explanation are preserved. The
+database migration allows v8 and advances the narrative fence to v8; apply the
+migration before deploying the Worker. Prompt, schema, and judgment versions
+are recorded. Idempotency and generation/run fencing are unchanged.
+
 The judgment response schema constrains `chunk_id` to the current package's
 evidence members, and the server validates membership again before persistence.
 On 2026-10-03, Production generation 2 for job
