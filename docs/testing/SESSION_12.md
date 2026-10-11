@@ -227,3 +227,22 @@ mitigation was deployed on 2026-10-11 as Worker version
 `207f86c2-c4b4-4ff6-8e00-a7b7467f23a5` (100% traffic). The public endpoint
 returned HTTP 200. No new analysis generation was triggered, so this specific
 fallback and a complete authenticated Production run remain unverified.
+
+#### Production follow-up (2026-10-11, job `d6e57083-3ea6-42ec-8708-0cc269eaeefe`)
+
+Generation 1 failed during `judge_claims`. Cloudflare recorded five exhausted
+Supabase fetches, each with six attempts and `kind=unexpected_error`,
+`errorName=Error`, `phase=fetch`; the failed requests were PostgREST RPC POSTs.
+Supabase API Gateway had no matching requests, so these calls failed before
+reaching its HTTP API. The retained trace does not expose the underlying
+transport cause. The Worker already retried unexpected PostgREST fetch errors;
+the missing diagnostic was a sanitized code from an exception's nested
+`cause`, when the runtime provides one.
+
+The retry adapter now logs only network cause codes from a fixed allowlist,
+never arbitrary codes or cause messages. This improves diagnosis and does not
+claim to fix an external transport failure. Worker version
+`cebb59ae-f89e-419c-90cc-1caa4036d397` was deployed on 2026-10-11; the
+Production endpoint HEAD check returned HTTP 200. No new analysis generation
+was started, so this failure's recovery and the next cause diagnostic remain
+unverified.

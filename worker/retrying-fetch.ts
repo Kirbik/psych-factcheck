@@ -10,6 +10,21 @@ type FailureKind =
   | "transient_http_status"
   | "unexpected_error";
 type SupabaseRoute = "rest_rpc" | "rest_table" | "storage" | "auth" | "other";
+const SAFE_NETWORK_CAUSE_CODES = [
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "EAI_AGAIN",
+  "ENOTFOUND",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+  "UND_ERR_SOCKET",
+  "ERR_SOCKET_CLOSED",
+] as const;
+type SafeNetworkCauseCode = (typeof SAFE_NETWORK_CAUSE_CODES)[number];
 
 export type FetchRetryFailure = {
   readonly method: string;
@@ -20,6 +35,7 @@ export type FetchRetryFailure = {
   readonly phase?: "fetch" | "response_body";
   readonly errorName?:
     "TypeError" | "AbortError" | "TimeoutError" | "Error" | "UnknownError";
+  readonly causeCode?: SafeNetworkCauseCode;
   readonly status?: number;
 };
 
@@ -71,6 +87,39 @@ function sanitizedErrorName(error: unknown): FetchRetryFailure["errorName"] {
   const knownNetworkName = networkErrorName(error);
   if (knownNetworkName) return knownNetworkName;
   return error instanceof Error ? "Error" : "UnknownError";
+}
+
+function safeNetworkCauseCode(
+  error: unknown,
+): SafeNetworkCauseCode | undefined {
+  let current = error;
+  const visited = new Set<object>();
+
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (
+      (typeof current !== "object" && typeof current !== "function") ||
+      current === null
+    ) {
+      return undefined;
+    }
+    if (visited.has(current)) return undefined;
+    visited.add(current);
+
+    try {
+      const code = Reflect.get(current, "code");
+      if (
+        typeof code === "string" &&
+        SAFE_NETWORK_CAUSE_CODES.includes(code as SafeNetworkCauseCode)
+      ) {
+        return code as SafeNetworkCauseCode;
+      }
+      current = Reflect.get(current, "cause");
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
 }
 
 function isRetryableNetworkError(error: unknown) {
@@ -139,16 +188,19 @@ export function createRetryingFetch(
           isRetryableNetworkError(error) ||
           isRetryableSupabaseRoute(metadata.route, metadata.method);
         if (!retryable) {
+          const causeCode = safeNetworkCauseCode(error);
           logFailure({
             ...metadata,
             attempts: attempt + 1,
             kind: "unexpected_error",
             phase: failurePhase,
             errorName: sanitizedErrorName(error),
+            ...(causeCode ? { causeCode } : {}),
           });
           throw error;
         }
         if (attempt >= MAX_RETRIES) {
+          const causeCode = safeNetworkCauseCode(error);
           logFailure({
             ...metadata,
             attempts: attempt + 1,
@@ -162,6 +214,7 @@ export function createRetryingFetch(
                   : "unexpected_error",
             phase: failurePhase,
             errorName: sanitizedErrorName(error),
+            ...(causeCode ? { causeCode } : {}),
           });
           throw error;
         }

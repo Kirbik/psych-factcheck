@@ -260,7 +260,12 @@ describe("Worker Supabase fetch retries", () => {
   });
 
   it("logs an exhausted unexpected PostgREST fetch error without its message", async () => {
-    const fetchError = new Error("sensitive details must not be logged");
+    const fetchError = new Error("sensitive details must not be logged", {
+      cause: {
+        code: "ECONNRESET",
+        message: "private socket details must not be logged",
+      },
+    });
     const fetchImplementation = vi
       .fn<typeof fetch>()
       .mockRejectedValue(fetchError);
@@ -289,10 +294,52 @@ describe("Worker Supabase fetch retries", () => {
       kind: "unexpected_error",
       phase: "fetch",
       errorName: "Error",
+      causeCode: "ECONNRESET",
     });
     expect(JSON.stringify(logFailure.mock.calls)).not.toContain("secret");
     expect(JSON.stringify(logFailure.mock.calls)).not.toContain(
       "sensitive details",
+    );
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain(
+      "private socket details",
+    );
+  });
+
+  it("does not log unrecognized nested error codes", async () => {
+    const fetchError = new Error("private transport details", {
+      cause: { code: "SECRET_CODE", cause: { code: "ENOTFOUND" } },
+    });
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(fetchError);
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+    const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
+
+    await expect(
+      createRetryingFetch(
+        fetchImplementation,
+        waitBeforeRetry,
+        logFailure,
+      )("https://project.supabase.co/rest/v1/rpc/save_fact_check", {
+        method: "POST",
+      }),
+    ).rejects.toBe(fetchError);
+
+    expect(logFailure).toHaveBeenCalledExactlyOnceWith({
+      method: "POST",
+      host: "project.supabase.co",
+      route: "rest_rpc",
+      attempts: 6,
+      kind: "unexpected_error",
+      phase: "fetch",
+      errorName: "Error",
+      causeCode: "ENOTFOUND",
+    });
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain("SECRET_CODE");
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain(
+      "private transport details",
     );
   });
 

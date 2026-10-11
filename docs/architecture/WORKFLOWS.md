@@ -203,8 +203,11 @@ This covers RPC POSTs protected by run fencing or uniqueness, table GETs, and
 the workflow's ignore-duplicate table upserts. Storage retries are limited to
 GET downloads. When that retry budget is exhausted, the Worker logs only the
 HTTP method, Supabase host, broad endpoint category, attempt count and
-sanitized failure kind/name or HTTP status. It never logs exception messages,
-request URLs, query parameters, headers, or bodies. For PostgREST routes, the Worker
+sanitized failure kind/name or HTTP status. If an exception exposes a known
+network cause, the log may include only its code from a fixed allowlist (for
+example `ECONNRESET` or `ETIMEDOUT`); arbitrary codes and cause messages are
+omitted. It never logs exception messages, request URLs, query parameters,
+headers, or bodies. For PostgREST routes, the Worker
 reads the response body inside that retry boundary before returning it to the
 Supabase SDK. Any exception while consuming that body is retried within the
 same bound, because the database operation can have committed even if its
