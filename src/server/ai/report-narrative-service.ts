@@ -23,6 +23,22 @@ const stringList = (value: Json): readonly string[] | null => {
   return value.filter((item): item is string => typeof item === "string");
 };
 
+function databaseFailure(operation: string, code?: string, status?: number) {
+  const safeCode = code && /^[a-z0-9_-]{1,32}$/i.test(code) ? code : null;
+  const safeStatus =
+    status !== undefined &&
+    Number.isInteger(status) &&
+    status >= 0 &&
+    status <= 599
+      ? `, HTTP status ${status}`
+      : "";
+  return new Error(
+    safeCode
+      ? `${operation} failed (Supabase error code ${safeCode}${safeStatus})`
+      : `${operation} failed (Supabase error code unavailable${safeStatus})`,
+  );
+}
+
 export function createReportNarrativeService(
   client: SupabaseClient<Database>,
   provider: ReportNarrativeProvider,
@@ -34,14 +50,23 @@ export function createReportNarrativeService(
       readonly generation: number;
       readonly runId: string;
     }) {
-      const { data: existing, error: existingError } = await client
+      const {
+        data: existing,
+        error: existingError,
+        status: existingStatus,
+      } = await client
         .from("analysis_report_narratives")
         .select("id")
         .eq("job_id", input.jobId)
         .eq("generation", input.generation)
         .eq("schema_version", provider.schemaVersion)
         .maybeSingle();
-      if (existingError) throw new Error("Report narrative read failed");
+      if (existingError)
+        throw databaseFailure(
+          "Report narrative read",
+          existingError.code,
+          existingStatus,
+        );
       if (existing) return existing.id;
 
       const claimIds = input.targets.map(({ claimId }) => claimId);
@@ -60,7 +85,7 @@ export function createReportNarrativeService(
               .from("evidence_packages")
               .select("id, claim_id, payload")
               .in("id", packageIds)
-          : Promise.resolve({ data: [], error: null }),
+          : Promise.resolve({ data: [], error: null, status: 200 }),
         claimIds.length
           ? client
               .from("fact_checks")
@@ -70,7 +95,7 @@ export function createReportNarrativeService(
               .in("claim_id", claimIds)
               .in("evidence_package_id", packageIds)
               .eq("judgment_version", FACT_CHECK_JUDGMENT_VERSION)
-          : Promise.resolve({ data: [], error: null }),
+          : Promise.resolve({ data: [], error: null, status: 200 }),
       ]);
       if (
         packagesResult.error ||
@@ -78,7 +103,11 @@ export function createReportNarrativeService(
         checksResult.error ||
         !checksResult.data
       )
-        throw new Error("Report narrative inputs read failed");
+        throw databaseFailure(
+          "Report narrative inputs read",
+          packagesResult.error?.code ?? checksResult.error?.code,
+          packagesResult.error ? packagesResult.status : checksResult.status,
+        );
       const packagesById = new Map(
         packagesResult.data.map((row) => [row.id, row]),
       );
@@ -103,7 +132,11 @@ export function createReportNarrativeService(
           return row ? [row] : [];
         },
       );
-      const { data: citations, error: citationError } = checkRows.length
+      const {
+        data: citations,
+        error: citationError,
+        status: citationStatus,
+      } = checkRows.length
         ? await client
             .from("fact_check_evidence")
             .select("fact_check_id, evidence_chunk_id, relation, rationale")
@@ -111,9 +144,13 @@ export function createReportNarrativeService(
               "fact_check_id",
               checkRows.map(({ id }) => id),
             )
-        : { data: [], error: null };
+        : { data: [], error: null, status: 200 };
       if (citationError || !citations)
-        throw new Error("Report narrative citations read failed");
+        throw databaseFailure(
+          "Report narrative citations read",
+          citationError?.code,
+          citationStatus,
+        );
 
       const promptInputs = input.targets.map(
         ({ claimId, evidencePackageId }) => {
@@ -125,9 +162,10 @@ export function createReportNarrativeService(
           const limitations = stringList(check.limitations);
           if (!limitations)
             throw new Error("Stored fact-check limitations are invalid");
-          const assessment = check.assessment == null
-            ? null
-            : psychologyEvidenceAssessmentSchema.parse(check.assessment);
+          const assessment =
+            check.assessment == null
+              ? null
+              : psychologyEvidenceAssessmentSchema.parse(check.assessment);
           const judgment: FactCheckJudgment = {
             verdict: check.verdict as FactCheckJudgment["verdict"],
             confidence: check.confidence,
@@ -167,7 +205,7 @@ export function createReportNarrativeService(
         subjectiveOpinion: narrative.subjectiveOpinion,
         historicalReferences: narrative.historicalReferences ?? [],
       };
-      const { data, error } = await client.rpc(
+      const { data, error, status } = await client.rpc(
         "save_analysis_report_narrative_for_run",
         {
           p_job_id: input.jobId,
@@ -181,7 +219,9 @@ export function createReportNarrativeService(
           p_payload: payload as unknown as Json,
         },
       );
-      if (error || !data) throw new Error("Report narrative write failed");
+      if (error)
+        throw databaseFailure("Report narrative write", error.code, status);
+      if (!data) throw new Error("Report narrative write returned no row");
       return data;
     },
   };

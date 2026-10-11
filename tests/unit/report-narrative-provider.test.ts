@@ -409,4 +409,34 @@ describe("report narrative provider", () => {
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it("includes a safe HTTP status when reading the existing narrative fails", async () => {
+    const query = {
+      select: vi.fn(() => query),
+      eq: vi.fn(() => query),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: "" },
+        status: 0,
+      }),
+    };
+    const client = {
+      from: vi.fn(() => query),
+    } as unknown as SupabaseClient<Database>;
+    const service = createReportNarrativeService(
+      client,
+      createOpenAIReportNarrativeProvider("test-key"),
+    );
+
+    await expect(
+      service.generateAndSave({
+        targets: [],
+        jobId: claimId,
+        generation: 4,
+        runId: "current-run",
+      }),
+    ).rejects.toThrow(
+      "Report narrative read failed (Supabase error code unavailable, HTTP status 0)",
+    );
+  });
 });
