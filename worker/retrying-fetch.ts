@@ -19,11 +19,7 @@ export type FetchRetryFailure = {
   readonly kind: FailureKind;
   readonly phase?: "fetch" | "response_body";
   readonly errorName?:
-    | "TypeError"
-    | "AbortError"
-    | "TimeoutError"
-    | "Error"
-    | "UnknownError";
+    "TypeError" | "AbortError" | "TimeoutError" | "Error" | "UnknownError";
   readonly status?: number;
 };
 
@@ -85,6 +81,13 @@ function isRetryableNetworkError(error: unknown) {
   );
 }
 
+function isRetryableSupabaseRoute(route: SupabaseRoute, method: string) {
+  if (route === "rest_rpc") return method === "POST";
+  if (route === "rest_table") return method === "GET" || method === "POST";
+  if (route === "storage") return method === "GET";
+  return false;
+}
+
 function retryAfterMilliseconds(response: Response, fallback: number) {
   const retryAfter = response.headers.get("retry-after");
   if (!retryAfter) return fallback;
@@ -132,7 +135,9 @@ export function createRetryingFetch(
         }
       } catch (error) {
         const retryable =
-          failurePhase === "response_body" || isRetryableNetworkError(error);
+          failurePhase === "response_body" ||
+          isRetryableNetworkError(error) ||
+          isRetryableSupabaseRoute(metadata.route, metadata.method);
         if (!retryable) {
           logFailure({
             ...metadata,
@@ -148,10 +153,13 @@ export function createRetryingFetch(
             ...metadata,
             attempts: attempt + 1,
             kind:
-              failurePhase === "response_body" &&
-              !isRetryableNetworkError(error)
-                ? "response_body_error"
-                : "network_error",
+              failurePhase === "response_body"
+                ? isRetryableNetworkError(error)
+                  ? "network_error"
+                  : "response_body_error"
+                : isRetryableNetworkError(error)
+                  ? "network_error"
+                  : "unexpected_error",
             phase: failurePhase,
             errorName: sanitizedErrorName(error),
           });

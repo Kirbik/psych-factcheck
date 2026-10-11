@@ -182,9 +182,7 @@ describe("Worker Supabase fetch retries", () => {
         fetchImplementation,
         waitBeforeRetry,
         logFailure,
-      )(
-        "https://project.supabase.co/rest/v1/evidence_packages?select=private",
-      ),
+      )("https://project.supabase.co/rest/v1/evidence_packages?select=private"),
     ).rejects.toBe(bodyFailure);
 
     expect(fetchImplementation).toHaveBeenCalledTimes(6);
@@ -230,29 +228,64 @@ describe("Worker Supabase fetch retries", () => {
     expect(waitBeforeRetry).toHaveBeenCalledWith(250);
   });
 
-  it("logs sanitized unexpected fetch errors without exposing their message", async () => {
+  it("retries unexpected PostgREST fetch errors before logging sanitized details", async () => {
     const fetchError = new Error("sensitive details must not be logged");
     const fetchImplementation = vi
       .fn<typeof fetch>()
-      .mockRejectedValueOnce(fetchError);
+      .mockRejectedValueOnce(fetchError)
+      .mockRejectedValueOnce(fetchError)
+      .mockRejectedValueOnce(fetchError)
+      .mockRejectedValueOnce(fetchError)
+      .mockRejectedValueOnce(fetchError)
+      .mockResolvedValueOnce(new Response("ok"));
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+    const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
+
+    const response = await createRetryingFetch(
+      fetchImplementation,
+      waitBeforeRetry,
+      logFailure,
+    )("https://project.supabase.co/rest/v1/rpc/save_fact_check?secret=value", {
+      method: "POST",
+      body: "private payload",
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchImplementation).toHaveBeenCalledTimes(6);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(1, 250);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(5, 8_000);
+    expect(logFailure).not.toHaveBeenCalled();
+  });
+
+  it("logs an exhausted unexpected PostgREST fetch error without its message", async () => {
+    const fetchError = new Error("sensitive details must not be logged");
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(fetchError);
     const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
       async () => undefined,
     );
     const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
 
     await expect(
-      createRetryingFetch(fetchImplementation, waitBeforeRetry, logFailure)(
+      createRetryingFetch(
+        fetchImplementation,
+        waitBeforeRetry,
+        logFailure,
+      )(
         "https://project.supabase.co/rest/v1/rpc/save_fact_check?secret=value",
+        { method: "POST", body: "private payload" },
       ),
     ).rejects.toBe(fetchError);
 
-    expect(fetchImplementation).toHaveBeenCalledTimes(1);
-    expect(waitBeforeRetry).not.toHaveBeenCalled();
+    expect(fetchImplementation).toHaveBeenCalledTimes(6);
     expect(logFailure).toHaveBeenCalledExactlyOnceWith({
-      method: "GET",
+      method: "POST",
       host: "project.supabase.co",
       route: "rest_rpc",
-      attempts: 1,
+      attempts: 6,
       kind: "unexpected_error",
       phase: "fetch",
       errorName: "Error",
@@ -261,6 +294,26 @@ describe("Worker Supabase fetch retries", () => {
     expect(JSON.stringify(logFailure.mock.calls)).not.toContain(
       "sensitive details",
     );
+  });
+
+  it("does not retry unexpected errors for unclassified endpoints", async () => {
+    const fetchError = new Error("unexpected endpoint error");
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(fetchError);
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+
+    await expect(
+      createRetryingFetch(
+        fetchImplementation,
+        waitBeforeRetry,
+      )("https://example.org/api"),
+    ).rejects.toBe(fetchError);
+
+    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(waitBeforeRetry).not.toHaveBeenCalled();
   });
 
   it("honors Retry-After for transient provider responses", async () => {

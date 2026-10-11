@@ -189,3 +189,26 @@ returned HTTP 200. The app browser had no authenticated session, so no
 controlled retry of this job was started. The exact thrown transport exception
 and a successful post-fix analysis remain unverified; do not treat the
 non-`TypeError` body-stream failure as confirmed.
+
+The supplied generation 2 was then inspected in Cloudflare. Instance
+`analysis-3397791e-5228-4706-82c8-ed782cda2134-2` ran on Worker version
+`748a7e41-3ef8-45d5-a7ff-f295c29b9766`, deployed at 17:14 UTC. Six claim
+judgments had persisted before the next claim failed reading its evidence
+package. Cloudflare logged nine `[worker] Supabase fetch failed` events during
+the failed read and stage/failure-state updates. Each recorded
+`phase=fetch`, `kind=unexpected_error`, `errorName=Error`, `attempts=1`; the
+failed read was a PostgREST table `GET`. Thus the immediate code defect is
+confirmed: the adapter retried `TypeError`, timeout and response-stream errors,
+but rejected other fetch exceptions on the first attempt. The underlying
+transport exception message is intentionally absent from telemetry, so its
+network-level cause is still unknown.
+
+The adapter now retries bounded unexpected fetch exceptions for the Worker's
+idempotent Supabase PostgREST operations (fenced/unique RPCs, reads and
+ignore-duplicate upserts) and Storage GET downloads. A regression test covers
+an unexpected exception recovering on retry, exhaustion with sanitized logs,
+and no retry for an unclassified endpoint. Production deployment completed at
+17:25 UTC as Worker version `04fb603f-6b6a-43f1-bc79-37f4b7d333fc`; the public
+Worker endpoint returned HTTP 200. No new analysis generation was triggered,
+so recovery of this failed job and a complete post-fix Production workflow have
+not yet been verified.

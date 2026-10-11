@@ -192,13 +192,15 @@ browser are fixed messages, never raw provider errors. The step retries
 transient failures up to three total attempts. OpenAI requests time out after
 180 seconds, full Storage downloads after 60 seconds, and the Workflow step
 after 4 minutes. Worker-to-Supabase requests retry network failures and
-transient HTTP responses (408, 425, 429 and selected 5xx statuses) up to five
-times with bounded delays; each request retains its 15-second timeout. When
-that retry budget is exhausted, the Worker logs only the HTTP method, Supabase
-host, broad endpoint category, attempt count and sanitized failure kind/name or
-HTTP status. Unexpected fetch exceptions are logged once with the same
-sanitized metadata, then rethrown. It never logs exception messages, request
-URLs, query parameters, headers, or bodies. For PostgREST routes, the Worker
+unexpected fetch exceptions on the worker's idempotent PostgREST operations,
+and transient HTTP responses (408, 425, 429 and selected 5xx statuses) up to
+five times with bounded delays; each request retains its 15-second timeout.
+This covers RPC POSTs protected by run fencing or uniqueness, table GETs, and
+the workflow's ignore-duplicate table upserts. Storage retries are limited to
+GET downloads. When that retry budget is exhausted, the Worker logs only the
+HTTP method, Supabase host, broad endpoint category, attempt count and
+sanitized failure kind/name or HTTP status. It never logs exception messages,
+request URLs, query parameters, headers, or bodies. For PostgREST routes, the Worker
 reads the response body inside that retry boundary before returning it to the
 Supabase SDK. Any exception while consuming that body is retried within the
 same bound, because the database operation can have committed even if its
