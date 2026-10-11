@@ -37,14 +37,30 @@ export function factCheckRepository(client: SupabaseClient<Database>) {
     claimId: string,
     evidencePackageId: string,
   ): Promise<EvidencePackage> {
-    const { data: packageRow, error: readError } = await client
+    const {
+      data: packageRow,
+      error: readError,
+      status,
+    } = await client
       .from("evidence_packages")
       .select("claim_id, payload")
       .eq("id", evidencePackageId)
       .eq("claim_id", claimId)
       .maybeSingle();
-    if (readError || !packageRow)
-      throw new Error("Evidence package read failed");
+    if (readError) {
+      const safeCode =
+        readError.code && /^[a-z0-9_-]{1,32}$/i.test(readError.code)
+          ? readError.code
+          : "unavailable";
+      const safeStatus =
+        Number.isInteger(status) && status >= 0 && status <= 599
+          ? `, HTTP status ${status}`
+          : "";
+      throw new Error(
+        `Evidence package read failed (Supabase error code ${safeCode}${safeStatus})`,
+      );
+    }
+    if (!packageRow) throw new Error("Evidence package not found for claim");
     return validateEvidencePackage(packageRow.payload);
   }
 

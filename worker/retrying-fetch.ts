@@ -1,6 +1,6 @@
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 5;
 const REQUEST_TIMEOUT_MS = 15_000;
-const RETRY_DELAYS_MS = [250, 1_000] as const;
+const RETRY_DELAYS_MS = [250, 1_000, 2_000, 4_000, 8_000] as const;
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 type Wait = (milliseconds: number) => Promise<void>;
@@ -29,7 +29,7 @@ function retryAfterMilliseconds(response: Response, fallback: number) {
   return Math.min(2_000, Math.max(0, requestedDelay));
 }
 
-/** Retries only transient failures for idempotent Worker-to-Supabase requests. */
+/** Retries transient failures for idempotent Worker-to-Supabase requests. */
 export function createRetryingFetch(
   fetchImplementation: typeof fetch = fetch,
   waitBeforeRetry: Wait = wait,

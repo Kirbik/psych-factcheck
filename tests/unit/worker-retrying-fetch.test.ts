@@ -26,6 +26,33 @@ describe("Worker Supabase fetch retries", () => {
     expect(waitBeforeRetry).toHaveBeenCalledWith(250);
   });
 
+  it("keeps retrying a temporary network outage with bounded backoff", async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("network unavailable"))
+      .mockRejectedValueOnce(new TypeError("network unavailable"))
+      .mockRejectedValueOnce(new TypeError("network unavailable"))
+      .mockRejectedValueOnce(new TypeError("network unavailable"))
+      .mockRejectedValueOnce(new TypeError("network unavailable"))
+      .mockResolvedValueOnce(new Response("ok"));
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+
+    const response = await createRetryingFetch(
+      fetchImplementation,
+      waitBeforeRetry,
+    )("https://example.org");
+
+    expect(response.status).toBe(200);
+    expect(fetchImplementation).toHaveBeenCalledTimes(6);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(1, 250);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(2, 1_000);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(3, 2_000);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(4, 4_000);
+    expect(waitBeforeRetry).toHaveBeenNthCalledWith(5, 8_000);
+  });
+
   it("honors Retry-After for transient provider responses", async () => {
     const fetchImplementation = vi
       .fn<typeof fetch>()
