@@ -200,6 +200,69 @@ describe("Worker Supabase fetch retries", () => {
     expect(JSON.stringify(logFailure.mock.calls)).not.toContain("private");
   });
 
+  it("retries response-body failures that are not TypeErrors", async () => {
+    const bodyFailure = new Error("stream interrupted");
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(bodyFailure);
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response('{"ok":true}', { status: 200 }));
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+
+    const response = await createRetryingFetch(
+      fetchImplementation,
+      waitBeforeRetry,
+    )("https://project.supabase.co/rest/v1/rpc/save_fact_check");
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
+    expect(waitBeforeRetry).toHaveBeenCalledWith(250);
+  });
+
+  it("logs sanitized unexpected fetch errors without exposing their message", async () => {
+    const fetchError = new Error("sensitive details must not be logged");
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(fetchError);
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+    const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
+
+    await expect(
+      createRetryingFetch(fetchImplementation, waitBeforeRetry, logFailure)(
+        "https://project.supabase.co/rest/v1/rpc/save_fact_check?secret=value",
+      ),
+    ).rejects.toBe(fetchError);
+
+    expect(fetchImplementation).toHaveBeenCalledTimes(1);
+    expect(waitBeforeRetry).not.toHaveBeenCalled();
+    expect(logFailure).toHaveBeenCalledExactlyOnceWith({
+      method: "GET",
+      host: "project.supabase.co",
+      route: "rest_rpc",
+      attempts: 1,
+      kind: "unexpected_error",
+      phase: "fetch",
+      errorName: "Error",
+    });
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain("secret");
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain(
+      "sensitive details",
+    );
+  });
+
   it("honors Retry-After for transient provider responses", async () => {
     const fetchImplementation = vi
       .fn<typeof fetch>()

@@ -4,7 +4,11 @@ const RETRY_DELAYS_MS = [250, 1_000, 2_000, 4_000, 8_000] as const;
 const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 type Wait = (milliseconds: number) => Promise<void>;
-type FailureKind = "network_error" | "transient_http_status";
+type FailureKind =
+  | "network_error"
+  | "response_body_error"
+  | "transient_http_status"
+  | "unexpected_error";
 type SupabaseRoute = "rest_rpc" | "rest_table" | "storage" | "auth" | "other";
 
 export type FetchRetryFailure = {
@@ -14,7 +18,12 @@ export type FetchRetryFailure = {
   readonly attempts: number;
   readonly kind: FailureKind;
   readonly phase?: "fetch" | "response_body";
-  readonly errorName?: "TypeError" | "AbortError" | "TimeoutError";
+  readonly errorName?:
+    | "TypeError"
+    | "AbortError"
+    | "TimeoutError"
+    | "Error"
+    | "UnknownError";
   readonly status?: number;
 };
 
@@ -62,6 +71,12 @@ function networkErrorName(error: unknown): FetchRetryFailure["errorName"] {
   return undefined;
 }
 
+function sanitizedErrorName(error: unknown): FetchRetryFailure["errorName"] {
+  const knownNetworkName = networkErrorName(error);
+  if (knownNetworkName) return knownNetworkName;
+  return error instanceof Error ? "Error" : "UnknownError";
+}
+
 function isRetryableNetworkError(error: unknown) {
   if (error instanceof TypeError) return true;
   return (
@@ -98,7 +113,7 @@ export function createRetryingFetch(
   fetchImplementation: typeof fetch = fetch,
   waitBeforeRetry: Wait = wait,
   logFailure: FailureLogger = (failure) =>
-    console.warn("[worker] Supabase fetch retry budget exhausted", failure),
+    console.warn("[worker] Supabase fetch failed", failure),
 ): typeof fetch {
   return async (input, init) => {
     const metadata = requestMetadata(input, init);
@@ -116,18 +131,29 @@ export function createRetryingFetch(
           response = await bufferRestResponse(response);
         }
       } catch (error) {
-        if (!isRetryableNetworkError(error)) {
+        const retryable =
+          failurePhase === "response_body" || isRetryableNetworkError(error);
+        if (!retryable) {
+          logFailure({
+            ...metadata,
+            attempts: attempt + 1,
+            kind: "unexpected_error",
+            phase: failurePhase,
+            errorName: sanitizedErrorName(error),
+          });
           throw error;
         }
         if (attempt >= MAX_RETRIES) {
           logFailure({
             ...metadata,
             attempts: attempt + 1,
-            kind: "network_error",
+            kind:
+              failurePhase === "response_body" &&
+              !isRetryableNetworkError(error)
+                ? "response_body_error"
+                : "network_error",
             phase: failurePhase,
-            ...(networkErrorName(error)
-              ? { errorName: networkErrorName(error) }
-              : {}),
+            errorName: sanitizedErrorName(error),
           });
           throw error;
         }

@@ -167,3 +167,25 @@ It was deployed to Production as Worker version
 completed successfully and the public Worker endpoint returned HTTP 200. No
 new job generation was started, so recovery of this specific analysis and the
 full authenticated path after this transport fix remain unverified.
+
+#### Production follow-up (2026-10-11, job `3397791e-5228-4706-82c8-ed782cda2134`)
+
+Cloudflare instance `analysis-3397791e-5228-4706-82c8-ed782cda2134-1` ran on
+Worker version `caa43520-7143-4082-b9a8-da44ca1c7bd1`. Screening,
+transcription, claim extraction, package preparation, and judgment preparation
+all succeeded. The first judgment failed while writing a fact check with
+`HTTP status 0`; its two Workflow retries failed while updating the job stage
+in 9–12 ms. Cloudflare Observability showed no
+`Supabase fetch retry budget exhausted` log for this run. This confirms the
+previous fix was deployed but did not cover the thrown-exception path seen by
+this invocation; the exact transport exception is not present in retained logs.
+
+The follow-up retries all exceptions raised while consuming a PostgREST
+response body (bounded and safe for the idempotent fact-check and stage-
+transition operations), and logs unexpected fetch exceptions once with
+sanitized class/route metadata. It was deployed as Worker version
+`9a68999b-0be2-4600-bc6a-f543e97558be` on 2026-10-11; the public endpoint
+returned HTTP 200. The app browser had no authenticated session, so no
+controlled retry of this job was started. The exact thrown transport exception
+and a successful post-fix analysis remain unverified; do not treat the
+non-`TypeError` body-stream failure as confirmed.
