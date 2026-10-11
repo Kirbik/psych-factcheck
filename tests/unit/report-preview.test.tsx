@@ -153,6 +153,55 @@ describe("ReportPreview", () => {
     ).toBeInTheDocument();
   });
 
+  it("labels prompt-only assessments as preliminary model opinions, not data verdicts", () => {
+    const claim = reportResult.report.claims[0];
+    if (!claim?.assessment) throw new Error("Fixture requires an assessment");
+    render(
+      <ReportPreview
+        result={{
+          kind: "ready",
+          report: {
+            ...reportResult.report,
+            claims: [
+              {
+                ...claim,
+                verdict: "INSUFFICIENT_EVIDENCE",
+                status: "disputed",
+                assessmentMode: "prompt-only",
+                assessment: {
+                  ...claim.assessment,
+                  researchVerdict: "unknown",
+                  modelVerdict: "overgeneralized",
+                  evidenceStrength: "insufficient",
+                  confidence: "low",
+                },
+                sources: [],
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("tab", { name: /Кофеин всегда усиливает тревожность/ }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Предварительная оценка модели" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: /Оценка модели: есть оговорки — 1/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Предварительно: чрезмерное обобщение"),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText("Мнение модели без проверки научных источников; это не научный вердикт."),
+    ).toBeInTheDocument();
+  });
+
   it("does not show demo report content while processing or when no claims were extracted", () => {
     const processing: ReportLoadResult = {
       kind: "processing",

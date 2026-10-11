@@ -37,6 +37,30 @@ const statusLabels: Record<ReportClaimStatus, string> = {
   "not-found": "Данные не найдены",
   supported: "Данные подтверждены",
 };
+const modelStatusLabels: Record<ReportClaimStatus, string> = {
+  contradicted: "Оценка модели: сомнительно",
+  disputed: "Оценка модели: есть оговорки",
+  "not-found": "Научная оценка не выполнена",
+  supported: "Оценка модели: правдоподобно",
+};
+
+function claimStatusLabel(claim: ReportClaim, promptOnly: boolean) {
+  if (!promptOnly) return statusLabels[claim.status];
+  switch (claim.assessment?.modelVerdict) {
+    case "plausible":
+      return "Предварительно: правдоподобно";
+    case "questionable":
+      return "Предварительно: спорно";
+    case "overgeneralized":
+      return "Предварительно: чрезмерное обобщение";
+    case "not_assessable":
+      return "Недостаточно контекста для оценки";
+    case "not_empirical":
+      return "Неэмпирическое утверждение";
+    default:
+      return statusLabels[claim.status];
+  }
+}
 const sourceTypeLabels: Record<string, string> = {
   systematic_review: "Систематический обзор",
   meta_analysis: "Метаанализ",
@@ -200,6 +224,11 @@ function ReportReady({
     status,
     count: report.claims.filter((claim) => claim.status === status).length,
   }));
+  const isPromptOnlyAssessment =
+    report.claims.length > 0 &&
+    report.claims.every((claim) => claim.assessmentMode === "prompt-only");
+  const labelForStatus = (status: ReportClaimStatus) =>
+    isPromptOnlyAssessment ? modelStatusLabels[status] : statusLabels[status];
   const activeClaim = activeIndex >= 0 ? report.claims[activeIndex] : undefined;
   const sourceCount = getSourceCount(report.claims);
 
@@ -269,7 +298,7 @@ function ReportReady({
         <div
           className={reportStyles.chart}
           role="img"
-          aria-label={`Распределение по статусам утверждений: ${counts.map(({ status, count }) => `${statusLabels[status]} — ${count}`).join(", ")}`}
+          aria-label={`Распределение по статусам утверждений: ${counts.map(({ status, count }) => `${labelForStatus(status)} — ${count}`).join(", ")}`}
         >
           {counts
             .filter(({ count }) => count > 0)
@@ -278,7 +307,7 @@ function ReportReady({
                 className={`${reportStyles.segment} ${reportStyles[`segment-${status}`]}`}
                 key={status}
                 style={{ flexGrow: count }}
-                title={`${statusLabels[status]}: ${count}`}
+                title={`${labelForStatus(status)}: ${count}`}
               />
             ))}
         </div>
@@ -289,7 +318,7 @@ function ReportReady({
                 className={`${reportStyles.dot} ${reportStyles[`segment-${status}`]}`}
                 aria-hidden="true"
               />
-              {statusLabels[status]} <b>{count}</b>
+              {labelForStatus(status)} <b>{count}</b>
             </span>
           ))}
         </div>
@@ -346,7 +375,7 @@ function ReportReady({
                     <span
                       className={`${reportStyles.status} ${reportStyles[`status-${claim.status}`]}`}
                     >
-                      {statusLabels[claim.status]}
+                      {claimStatusLabel(claim, isPromptOnlyAssessment)}
                     </span>
                   </span>
                 </button>
@@ -366,7 +395,11 @@ function ReportReady({
             tabIndex={0}
           >
             {activeClaim ? (
-              <ClaimDetail claim={activeClaim} />
+              <ClaimDetail
+                claim={activeClaim}
+                isPromptOnlyAssessment={isPromptOnlyAssessment}
+                statusLabel={claimStatusLabel(activeClaim, isPromptOnlyAssessment)}
+              />
             ) : (
               <OverallConclusion report={report} />
             )}
@@ -377,7 +410,15 @@ function ReportReady({
   );
 }
 
-function ClaimDetail({ claim }: { claim: ReportClaim }) {
+function ClaimDetail({
+  claim,
+  isPromptOnlyAssessment,
+  statusLabel,
+}: {
+  claim: ReportClaim;
+  isPromptOnlyAssessment: boolean;
+  statusLabel: string;
+}) {
   return (
     <>
       <div className={reportStyles.claimHeading}>
@@ -401,14 +442,16 @@ function ClaimDetail({ claim }: { claim: ReportClaim }) {
           className={reportStyles.conclusion}
           aria-label="Заключение по утверждению"
         >
-          <h3>Вывод</h3>
+          <h3>{isPromptOnlyAssessment ? "Предварительная оценка модели" : "Вывод"}</h3>
           <span
             className={`${reportStyles.status} ${reportStyles[`status-${claim.status}`]}`}
           >
-            {statusLabels[claim.status]}
+            {statusLabel}
           </span>
           <p className={reportStyles.confidence}>
-            {claim.assessment
+            {isPromptOnlyAssessment
+              ? "Мнение модели без проверки научных источников; это не научный вердикт."
+              : claim.assessment
               ? `Уверенность оценки: ${assessmentConfidenceLabels[claim.assessment.confidence]} · Сила доказательств: ${evidenceStrengthLabels[claim.assessment.evidenceStrength]}`
               : claim.confidence === null
                 ? "Категориальная оценка недоступна."

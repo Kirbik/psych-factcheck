@@ -132,11 +132,16 @@ export type PsychologyClaimType =
 export type PsychologyResearchVerdict =
   | "supported" | "false" | "misleading" | "complicated"
   | "unsupported" | "unknown" | "not_empirical";
+export type PsychologyModelVerdict =
+  | "plausible" | "questionable" | "overgeneralized"
+  | "not_assessable" | "not_empirical";
 export type EvidenceStrength =
   | "high" | "moderate" | "low" | "very_low" | "insufficient" | "not_applicable";
 export type AssessmentConfidence = "high" | "moderate" | "low";
 export interface PsychologyEvidenceAssessment {
   readonly claimType: PsychologyClaimType;
+  /** Preliminary prompt-only classification, never scientific evidence. */
+  readonly modelVerdict?: PsychologyModelVerdict;
   readonly researchVerdict: PsychologyResearchVerdict;
   readonly evidenceStrength: EvidenceStrength;
   readonly confidence: AssessmentConfidence;

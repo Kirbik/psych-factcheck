@@ -444,6 +444,16 @@ Session 13 until Session 12 is accepted.
 - **Preserved:** Transcription, claim extraction, reports/history, old evidence snapshots, idempotency, generation/run fencing, and the isolated historical provider adapters.
 - **Limit:** Empirical claims cannot be scientifically confirmed or refuted in this mode; they are marked `unknown`. Model quality remains unconfirmed without expert-reviewed golden cases. Production migration/deployment is still required.
 
+## Session 30 — Add a Preliminary Prompt-Based Model Assessment
+
+**Status:** Implemented locally. `pnpm lint`, `pnpm typecheck`, `pnpm test` (272 passed / 4 skipped), `pnpm test:db` (15 passed / 3 skipped), `pnpm evals` (8 passed), and `pnpm build` passed. `pnpm test:e2e` was attempted twice but did not produce test results; the Next.js dev server repeatedly logged unavailable Google Fonts and the run was stopped. Judgment v7 adds a separate `modelVerdict` to the assessment while preserving scientific `unknown` / `INSUFFICIENT_EVIDENCE` for empirical claims with no source search. The report uses clearly labeled preliminary categories and states that sources were not checked. Migration `20261012130000_prompt_model_verdict.sql` updates judgment persistence and report-narrative version matching. No Production deployment or live model-quality verification has been performed.
+
+- **Goal:** Give every extracted thesis a useful preliminary model assessment when scientific search is disabled, instead of presenting “Данные не найдены” as the only conclusion.
+- **Scope:** Versioned judgment prompt/schema, separate model classification field, run-fenced SQL persistence, report labels/disclaimer, regression tests and documentation.
+- **Preserved:** Scientific verdict remains unknown without sources; no invented citations, evidence-based status, source search, transcription, claim extraction, or historical record changes.
+- **Limit:** Preliminary model categories are not scientific fact-check results. Confidence is low for empirical claims; model quality remains unconfirmed without expert-reviewed golden cases.
+- **Required checks:** `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm evals`, `pnpm test:db`, and `pnpm build`.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

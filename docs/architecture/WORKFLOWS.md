@@ -100,18 +100,16 @@ itself is not callable in the deployed Worker; the Worker uses versioned prompt
 instructions. Europe PMC/Crossref coverage is incomplete and no expert-reviewed
 golden cases verify model quality.
 
-Session 29 updates judgment to `fact-check-judgment-v6` and prompt
-`psychology-evidence-check-v2`. The server prompt applies the skill method but
-explicitly performs no source search and forbids using model memory as evidence.
-For the active `psychology-skill-no-search-v1` package, server validation only
-accepts `unknown` or `not_empirical` and citations must be empty. Empirical
-claims therefore save as `INSUFFICIENT_EVIDENCE`; this is not a finding that the
-claim is false. Current package creation stays idempotent and inside the
-existing fenced `build_evidence` stage. No schema migration is required; old
-publication packages and judgments remain supported. The local Codex skill is
-not loaded at Worker runtime; its method is represented by the versioned
-server prompt. Model quality remains unconfirmed without expert-reviewed
-golden cases.
+Session 29 disabled publication search and introduced `fact-check-judgment-v6`
+with prompt `psychology-evidence-check-v2`. Empirical scientific verdicts are
+`unknown` and citations are empty for the active
+`psychology-skill-no-search-v1` package. Session 30 adds judgment v7 and a
+separate low-confidence `modelVerdict` based on prompt analysis of wording.
+It does not change the scientific verdict, count as evidence, or create
+citations. The report labels it as a preliminary model assessment. The local
+Codex skill is not loaded at Worker runtime; its method is represented by
+versioned server prompts. Model quality remains unconfirmed without
+expert-reviewed golden cases.
 
 The judgment response schema constrains `chunk_id` to the current package's
 evidence members, and the server validates membership again before persistence.

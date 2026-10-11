@@ -7,11 +7,12 @@ import {
 } from "./providers";
 import { verdicts } from "../../types/fact-check";
 
-export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v6";
-export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v5";
-export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
-export const OLDER_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
-export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
+export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v7";
+export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v6";
+export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v5";
+export const OLDER_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
+export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
+export const HISTORIC_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
 export const OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
 export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
   FACT_CHECK_JUDGMENT_VERSION,
@@ -19,10 +20,11 @@ export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
   LEGACY_FACT_CHECK_JUDGMENT_VERSION,
   OLDER_FACT_CHECK_JUDGMENT_VERSION,
   OLDEST_FACT_CHECK_JUDGMENT_VERSION,
+  HISTORIC_FACT_CHECK_JUDGMENT_VERSION,
   OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION,
 ] as const;
 export const FACT_CHECK_JUDGMENT_SCHEMA_VERSION =
-  "fact-check-judgment-schema-v5";
+  "fact-check-judgment-schema-v6";
 export const FACT_CHECK_JUDGMENT_MODEL = "gpt-4o-mini";
 export const MAX_JUDGMENT_EVIDENCE_ITEMS = 5;
 export const MAX_JUDGMENT_LIMITATIONS = 8;
@@ -222,6 +224,10 @@ const psychologyVerdicts = [
   "supported", "false", "misleading", "complicated",
   "unsupported", "unknown", "not_empirical",
 ] as const;
+const psychologyModelVerdicts = [
+  "plausible", "questionable", "overgeneralized", "not_assessable",
+  "not_empirical",
+] as const;
 const evidenceStrengths = [
   "high", "moderate", "low", "very_low", "insufficient", "not_applicable",
 ] as const;
@@ -229,6 +235,7 @@ const assessmentConfidences = ["high", "moderate", "low"] as const;
 
 export const psychologyEvidenceAssessmentSchema = z.object({
   claimType: z.enum(psychologyClaimTypes),
+  modelVerdict: z.enum(psychologyModelVerdicts).optional(),
   researchVerdict: z.enum(psychologyVerdicts),
   evidenceStrength: z.enum(evidenceStrengths),
   confidence: z.enum(assessmentConfidences),
@@ -240,6 +247,7 @@ export const psychologyEvidenceAssessmentSchema = z.object({
 
 const rawJudgmentSchema = z.object({
   claim_type: z.enum(psychologyClaimTypes),
+  model_verdict: z.enum(psychologyModelVerdicts),
   verdict: z.enum(psychologyVerdicts),
   evidence_strength: z.enum(evidenceStrengths),
   assessment_confidence: z.enum(assessmentConfidences),
@@ -330,6 +338,7 @@ export function parseJudgmentOutput(input: unknown): FactCheckJudgment {
   }
   const assessment: PsychologyEvidenceAssessment = {
     claimType: parsed.data.claim_type,
+    modelVerdict: parsed.data.model_verdict,
     researchVerdict: parsed.data.verdict,
     evidenceStrength: parsed.data.evidence_strength,
     confidence: parsed.data.assessment_confidence,

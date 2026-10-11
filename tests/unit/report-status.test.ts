@@ -42,6 +42,7 @@ function completedReport(
       {
         id: "package",
         claim_id: "claim",
+        retrieval_version: "evidence-retrieval-v1",
         payload: {
           references: [
             { dataProvider: "crossref", availability: "metadata_only" },
@@ -223,6 +224,56 @@ describe("report status evidence criteria", () => {
     expect(result.report.claims[0]).toMatchObject({
       verdict: "INSUFFICIENT_EVIDENCE",
       status: "not-found",
+      sources: [],
+    });
+  });
+
+  it("maps a prompt-only model verdict separately from scientific evidence status", async () => {
+    const result = await completedReport(
+      "INSUFFICIENT_EVIDENCE",
+      false,
+      false,
+      false,
+      {
+        evidence_packages: [
+          {
+            id: "package",
+            claim_id: "claim",
+            retrieval_version: "psychology-skill-no-search-v1",
+            payload: { evidence: [] },
+          },
+        ],
+        fact_checks: [
+          {
+            id: "check",
+            claim_id: "claim",
+            evidence_package_id: "package",
+            judgment_version: FACT_CHECK_JUDGMENT_VERSION,
+            verdict: "INSUFFICIENT_EVIDENCE",
+            confidence: null,
+            assessment: {
+              claimType: "causal",
+              researchVerdict: "unknown",
+              modelVerdict: "overgeneralized",
+              evidenceStrength: "insufficient",
+              confidence: "low",
+              shortConclusion: "Предварительно формулировка чрезмерно широкая.",
+              reasoning: "В ней отсутствуют условия применимости.",
+              caveats: ["Научный поиск не выполнялся."],
+              neededForAssessment: "Нужно проверить исследования.",
+            },
+            explanation: "Предварительная оценка без источников.",
+          },
+        ],
+        report_localizations: [],
+      },
+    );
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") throw new Error("Report must be ready");
+    expect(result.report.claims[0]).toMatchObject({
+      verdict: "INSUFFICIENT_EVIDENCE",
+      status: "disputed",
+      assessmentMode: "prompt-only",
       sources: [],
     });
   });

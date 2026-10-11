@@ -11,7 +11,7 @@ import {
 import {
   PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS,
   PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS_VERSION,
-} from "./prompts/psychology-evidence-check-v2";
+} from "./prompts/psychology-evidence-check-v3";
 import type { EvidencePackage, JudgmentProvider } from "./providers";
 
 const responseContentSchema = z
@@ -41,6 +41,7 @@ function outputJsonSchema(allowedChunkIds: readonly string[]) {
     additionalProperties: false,
     required: [
       "claim_type",
+      "model_verdict",
       "verdict",
       "evidence_strength",
       "assessment_confidence",
@@ -52,6 +53,7 @@ function outputJsonSchema(allowedChunkIds: readonly string[]) {
     ],
     properties: {
       claim_type: { type: "string", enum: ["factual","causal","predictive","intervention_effect","practical_advice","normative","metaphor","unclear"] },
+      model_verdict: { type: "string", enum: ["plausible","questionable","overgeneralized","not_assessable","not_empirical"] },
       verdict: { type: "string", enum: ["supported","false","misleading","complicated","unsupported","unknown","not_empirical"] },
       evidence_strength: { type: "string", enum: ["high","moderate","low","very_low","insufficient","not_applicable"] },
       assessment_confidence: { type: "string", enum: ["high","moderate","low"] },

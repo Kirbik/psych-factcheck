@@ -79,7 +79,7 @@ function packageFor(claim: string, chunkIds: readonly string[]) {
 describe("synthetic psychology evidence-check judgment contract eval", () => {
   it("accepts only taxonomy verdicts and package-member citations", () => {
     const fixtureUrl = new URL(
-      "./fixtures/fact-check-judgment-v1.json",
+      "./fixtures/fact-check-judgment-v2.json",
       import.meta.url,
     );
     const fixtures = fixtureSchema.parse(

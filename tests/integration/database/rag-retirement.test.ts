@@ -67,6 +67,7 @@ function judgmentFor(pkg: EvidencePackage): FactCheckJudgment {
     confidence: null,
     assessment: {
       claimType: "causal",
+      modelVerdict: "plausible",
       researchVerdict: "supported",
       evidenceStrength: "moderate",
       confidence: "moderate",
@@ -280,6 +281,7 @@ describe("retire local RAG while preserving claim results", () => {
     await db.exec(await sqlFile("20261009120000_retire_local_rag.sql"));
     await db.exec(await sqlFile("20261011100000_psychology_evidence_assessment.sql"));
     await db.exec(await sqlFile("20261012100000_no_search_skill_judgment.sql"));
+    await db.exec(await sqlFile("20261012130000_prompt_model_verdict.sql"));
   }, 30000);
   afterAll(async () => {
     await db?.close();
@@ -522,6 +524,7 @@ describe("retire local RAG while preserving claim results", () => {
       assessment: {
         claimType: "causal",
         researchVerdict: "unknown",
+        modelVerdict: "questionable",
         evidenceStrength: "insufficient",
         confidence: "low",
         shortConclusion: "Источники в этом запуске не проверялись.",

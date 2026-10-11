@@ -142,7 +142,7 @@ describe("evidence-bound fact-check judgment", () => {
     ).toBe("INSUFFICIENT_EVIDENCE");
   });
 
-  it("rejects memory-based assessments for packages explicitly marked no-search", () => {
+  it("rejects scientific verdicts from memory for no-search packages", () => {
     const noSearchPackage = {
       ...evidencePackage([]),
       retrievalVersion: "psychology-skill-no-search-v1",
@@ -180,6 +180,54 @@ describe("evidence-bound fact-check judgment", () => {
         citations: [],
       }),
     ).toThrowError("FACT_CHECK_EVIDENCE_REQUIRED");
+  });
+
+  it("accepts a separate preliminary model verdict without treating it as evidence", () => {
+    const noSearchPackage = {
+      ...evidencePackage([]),
+      retrievalVersion: "psychology-skill-no-search-v1",
+      rerankingVersion: "no-reranking-v1",
+      warnings: ["scientific_search_not_performed"],
+      trace: {
+        ...evidencePackage([]).trace,
+        retrieval: {
+          ...evidencePackage([]).trace.retrieval,
+          provider: "none",
+          model: "none",
+          filters: {
+            ...evidencePackage([]).trace.retrieval.filters,
+            sourceStatus: "not_used",
+          },
+        },
+      },
+    };
+    const result = validateEvidenceBoundJudgment(noSearchPackage, {
+      verdict: "INSUFFICIENT_EVIDENCE",
+      confidence: null,
+      assessment: {
+        claimType: "causal",
+        researchVerdict: "unknown",
+        modelVerdict: "overgeneralized",
+        evidenceStrength: "insufficient",
+        confidence: "low",
+        shortConclusion: "Предварительно тезис выглядит чрезмерно общим.",
+        reasoning: "Формулировка превращает сложную зависимость в универсальное правило.",
+        caveats: ["Научный поиск не выполнялся."],
+        neededForAssessment: "Нужна проверка научных публикаций.",
+      },
+      explanation: "Предварительная оценка без проверки источников.",
+      limitations: ["Научный поиск не выполнялся."],
+      citations: [],
+    });
+    expect(result.judgment).toMatchObject({
+      verdict: "INSUFFICIENT_EVIDENCE",
+      assessment: {
+        researchVerdict: "unknown",
+        modelVerdict: "overgeneralized",
+        evidenceStrength: "insufficient",
+      },
+      citations: [],
+    });
   });
 
   it("keeps metadata-only publications outside the evidence basis", () => {

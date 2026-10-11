@@ -1,0 +1,71 @@
+[
+  {
+    "id": "supported-with-package-citation",
+    "claim": "A specific intervention improves the measured outcome.",
+    "chunkIds": ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
+    "judgment": {
+      "claim_type": "intervention_effect",
+      "model_verdict": "plausible",
+      "verdict": "supported",
+      "evidence_strength": "moderate",
+      "assessment_confidence": "moderate",
+      "short_conclusion": "The package supports the bounded claim.",
+      "reasoning": "The passage reports the measured outcome for the intervention.",
+      "caveats": ["The package contains one source."],
+      "needed_for_assessment": "Independent replication is needed.",
+      "citations": [
+        {
+          "chunk_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "relation": "supports",
+          "rationale": "The passage reports the same intervention and outcome."
+        }
+      ]
+    },
+    "expected": "accepted",
+    "synthetic": true
+  },
+  {
+    "id": "no-evidence-insufficient",
+    "claim": "A testable claim with no retrieved passages.",
+    "chunkIds": [],
+    "judgment": {
+      "claim_type": "factual",
+      "model_verdict": "not_assessable",
+      "verdict": "unknown",
+      "evidence_strength": "insufficient",
+      "assessment_confidence": "low",
+      "short_conclusion": "The package does not establish the claim.",
+      "reasoning": "No evidence passages were supplied.",
+      "caveats": ["No evidence was retrieved."],
+      "needed_for_assessment": "Relevant research is needed.",
+      "citations": []
+    },
+    "expected": "accepted",
+    "synthetic": true
+  },
+  {
+    "id": "fabricated-citation-rejected",
+    "claim": "A bounded claim with one supplied passage.",
+    "chunkIds": ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"],
+    "judgment": {
+      "claim_type": "factual",
+      "model_verdict": "not_assessable",
+      "verdict": "supported",
+      "evidence_strength": "moderate",
+      "assessment_confidence": "moderate",
+      "short_conclusion": "The passage supports the claim.",
+      "reasoning": "The package passage reports this outcome.",
+      "caveats": [],
+      "needed_for_assessment": "Further replication is needed.",
+      "citations": [
+        {
+          "chunk_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          "relation": "supports",
+          "rationale": "This ID does not occur in the package."
+        }
+      ]
+    },
+    "expected": "citation_rejected",
+    "synthetic": true
+  }
+]

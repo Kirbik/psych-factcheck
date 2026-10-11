@@ -23,7 +23,9 @@ import {
   REPORT_NARRATIVE_SCHEMA_VERSION,
   persistedReportNarrativeSchema,
 } from "@/server/ai/report-narrative";
+import { SKILL_ASSESSMENT_RETRIEVAL_VERSION } from "@/server/evidence/skill-assessment-package";
 import { verdicts, type Verdict } from "@/types/fact-check";
+import type { PsychologyEvidenceAssessment } from "@/server/ai/providers";
 import type {
   ReportClaim,
   ReportClaimStatus,
@@ -40,7 +42,20 @@ const confidenceSchema = z.number().finite().min(0).max(1);
 function toReportStatus(
   verdict: Verdict,
   hasResolvedCitations: boolean,
+  modelVerdict?: PsychologyEvidenceAssessment["modelVerdict"],
 ): ReportClaimStatus {
+  if (modelVerdict) {
+    switch (modelVerdict) {
+      case "plausible":
+        return "supported";
+      case "questionable":
+      case "overgeneralized":
+        return "disputed";
+      case "not_assessable":
+      case "not_empirical":
+        return "not-found";
+    }
+  }
   switch (verdict) {
     case "CONTRADICTED":
       return "contradicted";
@@ -177,7 +192,7 @@ export function reportRepository(client: ReportClient) {
       const claimIds = claims.map(({ id }) => id);
       const { data: packages, error: packagesError } = await client
         .from("evidence_packages")
-        .select("id, claim_id")
+        .select("id, claim_id, retrieval_version")
         .in("claim_id", claimIds)
         .in("retrieval_version", [...SUPPORTED_EVIDENCE_RETRIEVAL_VERSIONS])
         .in("reranking_version", [...SUPPORTED_EVIDENCE_RERANKING_VERSIONS]);
@@ -419,7 +434,19 @@ export function reportRepository(client: ReportClient) {
           startSeconds: claim.start_seconds,
           endSeconds: claim.end_seconds,
           verdict: verdict.data,
-          status: toReportStatus(verdict.data, citedSourceIds.size > 0),
+          status: toReportStatus(
+            verdict.data,
+            citedSourceIds.size > 0,
+            packageByClaim.get(claim.id)?.retrieval_version ===
+              SKILL_ASSESSMENT_RETRIEVAL_VERSION
+              ? assessment.data?.modelVerdict
+              : undefined,
+          ),
+          assessmentMode:
+            packageByClaim.get(claim.id)?.retrieval_version ===
+            SKILL_ASSESSMENT_RETRIEVAL_VERSION
+              ? "prompt-only"
+              : "evidence-based",
           confidence: confidence.data,
           assessment: assessment.data,
           explanation: localized.explanation,

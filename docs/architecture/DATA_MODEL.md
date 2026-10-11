@@ -92,12 +92,12 @@ After Session 26 migration, `sources`, `evidence_chunks`, `evidence_embeddings`,
 
 - New workflow runs do not search publication APIs or a local corpus. The former `publication-search-v1` / `external-evidence-v2` versions and provider adapters remain historical/isolated; package schema `evidence-package-v2` remains readable. Historical payloads keep optional embedding traces for read compatibility, with no runtime embedding calls.
 - Legacy Europe PMC excerpts require publication-specific OA/CC BY 4.0 rights and a maximum of 1,000 characters. Unknown/unsuitable licenses and Crossref records remain metadata references. Full text is transient and is not retained.
-- Model and database boundaries reject citations outside the exact package. For the current no-search package, server validation accepts only `unknown` or `not_empirical`; model knowledge cannot support a verdict.
+- Model and database boundaries reject citations outside the exact package. For the current no-search package, the scientific research verdict is restricted to `unknown` or `not_empirical`; a separate `modelVerdict` may provide only a preliminary prompt-based classification. It is stored inside the versioned assessment JSON and never represents source-backed evidence.
 
-### `fact_checks` — Sessions 11, 27 and 29
+### `fact_checks` — Sessions 11, 27, 29 and 30
 
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
-- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, app verdict, nullable legacy numeric confidence, optional JSON assessment, explanation, limitations, and creation time. Current Session 29 judgment v6 stores skill claim type/verdict, categorical evidence strength/confidence, conclusion, reasoning, caveats and needed evidence. Empirical claims without source review save `unknown` and map to `INSUFFICIENT_EVIDENCE`.
+- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, app verdict, nullable legacy numeric confidence, optional JSON assessment, explanation, limitations, and creation time. Current Session 30 judgment v7 stores a separate prompt-only `modelVerdict` plus the scientific verdict, evidence strength/confidence, conclusion, reasoning, caveats and needed evidence. Empirical claims without source review still save scientific `unknown` and map to `INSUFFICIENT_EVIDENCE`; the preliminary model category does not count as evidence.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
 - **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. Judgment prompt/model/schema versions remain independent of package versions. Sessions 26 and 27 migrations are local only; no Production upgrade verification has been performed.
 

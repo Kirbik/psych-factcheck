@@ -61,6 +61,7 @@ const packageFixture = {
 
 const validOutput = {
   claim_type: "causal",
+  model_verdict: "plausible",
   verdict: "supported",
   evidence_strength: "moderate",
   assessment_confidence: "moderate",
@@ -118,16 +119,17 @@ describe("OpenAI judgment provider", () => {
       },
     });
     expect(request.input).toContain("Синтетический фрагмент");
-    expect(request.instructions).toContain("не используй собственные знания");
+    expect(request.instructions).toContain("не выдавай их за проверенную научную литературу");
     expect(request.instructions).toContain("научный поиск отключён");
+    expect(request.text.format.schema.required).toContain("model_verdict");
     expect(
       request.text.format.schema.properties.citations.items.properties.chunk_id,
     ).toEqual({ type: "string", enum: [chunkId] });
     expect(provider).toMatchObject({
       provider: "openai",
-      judgmentVersion: "fact-check-judgment-v6",
-      instructionsVersion: "psychology-evidence-check-v2",
-      schemaVersion: "fact-check-judgment-schema-v5",
+      judgmentVersion: "fact-check-judgment-v7",
+      instructionsVersion: "psychology-evidence-check-v3",
+      schemaVersion: "fact-check-judgment-schema-v6",
     });
   });
 
@@ -157,10 +159,11 @@ describe("OpenAI judgment provider", () => {
     expect(request.text.format.schema.properties.citations.maxItems).toBe(0);
   });
 
-  it("returns unknown for an empirical claim when this run did not search sources", async () => {
+  it("keeps the scientific verdict unknown but returns a separate prompt-only model assessment", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       apiResponse({
         ...validOutput,
+        model_verdict: "overgeneralized",
         verdict: "unknown",
         evidence_strength: "insufficient",
         assessment_confidence: "low",
@@ -186,7 +189,11 @@ describe("OpenAI judgment provider", () => {
       createOpenAIJudgmentProvider("secret", fetcher).judge(emptyPackage),
     ).resolves.toMatchObject({
       verdict: "INSUFFICIENT_EVIDENCE",
-      assessment: { researchVerdict: "unknown", evidenceStrength: "insufficient" },
+      assessment: {
+        researchVerdict: "unknown",
+        modelVerdict: "overgeneralized",
+        evidenceStrength: "insufficient",
+      },
       citations: [],
     });
   });
@@ -207,6 +214,19 @@ describe("OpenAI judgment provider", () => {
 
     await expect(provider.judge(packageFixture)).rejects.toMatchObject({
       code: "FACT_CHECK_CITATION_OUTSIDE_PACKAGE",
+      retryable: false,
+    });
+  });
+
+  it("rejects a preliminary model verdict outside the versioned taxonomy", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      apiResponse({ ...validOutput, model_verdict: "certainly_true" }),
+    );
+
+    await expect(
+      createOpenAIJudgmentProvider("secret", fetcher).judge(packageFixture),
+    ).rejects.toMatchObject({
+      code: "FACT_CHECK_JUDGMENT_INVALID",
       retryable: false,
     });
   });

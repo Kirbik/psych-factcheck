@@ -60,7 +60,15 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     await db.exec(await sqlFile("20261002150000_report_localizations_ru.sql"));
     await db.exec(await sqlFile("20261003120000_report_narratives.sql"));
+    // This focused workflow suite keeps the pre-retirement catalog fixture but
+    // models the package-bound citation column used by current persistence.
+    await db.exec(
+      "alter table public.fact_check_evidence add column evidence_package_id uuid",
+    );
+    await db.exec(await sqlFile("20261011100000_psychology_evidence_assessment.sql"));
+    await db.exec(await sqlFile("20261012100000_no_search_skill_judgment.sql"));
     await db.exec(await sqlFile("20261012120000_report_narratives_v6.sql"));
+    await db.exec(await sqlFile("20261012130000_prompt_model_verdict.sql"));
   }, 30_000);
   afterAll(async () => {
     await db?.close();
@@ -536,14 +544,31 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     );
     const currentFactCheck = await db.query<{ id: string }>(
       `select public.save_fact_check_for_analysis_run(
-        $1, 1, 'judgment_run', $2, $3, 'fact-check-judgment-v6',
-        'openai', 'gpt-4o-mini', 'instructions-v6', 'schema-v6', $4::jsonb
+        $1, 1, 'judgment_run', $2, $3, 'fact-check-judgment-v7',
+        'openai', 'gpt-4o-mini', 'instructions-v3', 'schema-v6', $4::jsonb
       ) as id`,
       [
         analysisJob.rows[0]?.id,
         claim.rows[0]?.id,
         evidencePackageRow.rows[0]?.id,
-        JSON.stringify(factCheckInput),
+        JSON.stringify({
+          verdict: "INSUFFICIENT_EVIDENCE",
+          confidence: null,
+          assessment: {
+            claimType: "causal",
+            researchVerdict: "unknown",
+            modelVerdict: "questionable",
+            evidenceStrength: "insufficient",
+            confidence: "low",
+            shortConclusion: "Предварительная оценка — спорная формулировка.",
+            reasoning: "Научный поиск в этом запуске не выполнялся.",
+            caveats: ["Эта оценка не подтверждена источниками."],
+            neededForAssessment: "Нужно проверить релевантные исследования.",
+          },
+          explanation: "Предварительная оценка без поиска источников.",
+          limitations: ["Эта оценка не подтверждена источниками."],
+          citations: [],
+        }),
       ],
     );
     const narrativePayload = JSON.stringify({
@@ -678,7 +703,7 @@ describe("analysis workflow SQL (isolated PostgreSQL)", () => {
     expect(ownerPackages.packages.rows).toHaveLength(1);
     expect(ownerPackages.items.rows).toHaveLength(1);
     expect(ownerPackages.judgments.rows).toHaveLength(2);
-    expect(ownerPackages.citations.rows).toHaveLength(2);
+    expect(ownerPackages.citations.rows).toHaveLength(1);
     expect(ownerPackages.narratives.rows).toHaveLength(1);
     expect(
       await asUser(other, async () =>

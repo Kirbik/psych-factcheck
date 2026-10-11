@@ -24,6 +24,7 @@ export type ReportClaim = {
   readonly verdict: string;
   readonly status: ReportClaimStatus;
   readonly confidence: number | null;
+  readonly assessmentMode?: "evidence-based" | "prompt-only";
   readonly assessment: PsychologyEvidenceAssessment | null;
   readonly explanation: string;
   readonly modelCommentary: string | null;
