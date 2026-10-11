@@ -66,7 +66,7 @@ IDs are UUIDs, timestamps UTC, and user-owned rows use RLS plus server ownership
 - **Purpose:** record completed extraction, including empty results, and preserve the model/prompt/schema versions used.
 - **Implemented fields:** transcript ID, extraction version, provider, model, instructions version, schema version, and `created_at`.
 - **Relations/ownership:** belongs to a transcript; owner reads follow the transcript's content item. The service role writes.
-- **Lifecycle:** unique by `(transcript_id, extraction_version)` and reused on retry.
+- **Lifecycle:** unique by `(transcript_id, extraction_version)` and reused on retry. Extraction v2 is current; v1 rows remain readable. A retried unfinished job gets a new, versioned extraction and claims, without overwriting prior artifacts.
 
 ## Evidence and fact checks
 

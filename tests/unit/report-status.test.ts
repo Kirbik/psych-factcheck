@@ -114,6 +114,7 @@ function completedReport(
         eq: vi.fn().mockReturnThis(),
         in: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn().mockReturnValue(response),
         then: response.then.bind(response),
       };

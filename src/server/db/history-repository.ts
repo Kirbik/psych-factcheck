@@ -11,7 +11,7 @@ import type {
   HistoryCheck,
   HistoryLoadResult,
 } from "@/features/history/history-contract";
-import { CLAIM_EXTRACTION_VERSION } from "@/server/ai/claim-extraction";
+import { SUPPORTED_CLAIM_EXTRACTION_VERSIONS } from "@/server/ai/claim-extraction";
 import { SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS } from "@/server/ai/judgment";
 
 type HistoryClient = SupabaseClient<Database>;
@@ -56,13 +56,22 @@ export function historyRepository(client: HistoryClient) {
         transcriptIds.length
           ? await client
               .from("claim_extractions")
-              .select("id, transcript_id")
+              .select("id, transcript_id, extraction_version")
               .in("transcript_id", transcriptIds)
-              .eq("extraction_version", CLAIM_EXTRACTION_VERSION)
+              .in("extraction_version", [...SUPPORTED_CLAIM_EXTRACTION_VERSIONS])
+              .order("extraction_version", { ascending: false })
           : { data: [], error: null };
       if (extractionsError || !extractions) return { kind: "unavailable" };
 
-      const extractionIds = extractions.map(({ id }) => id);
+      const newestExtractionByTranscript = new Map<string, string>();
+      for (const extraction of extractions) {
+        if (!newestExtractionByTranscript.has(extraction.transcript_id))
+          newestExtractionByTranscript.set(
+            extraction.transcript_id,
+            extraction.id,
+          );
+      }
+      const extractionIds = [...newestExtractionByTranscript.values()];
       const { data: claims, error: claimsError } = extractionIds.length
         ? await client
             .from("claims")
@@ -85,7 +94,9 @@ export function historyRepository(client: HistoryClient) {
         transcripts.map(({ id, content_item_id }) => [id, content_item_id]),
       );
       const extractionById = new Map(
-        extractions.map(({ id, transcript_id }) => [id, transcript_id]),
+        [...newestExtractionByTranscript].map(
+          ([transcriptId, extractionId]) => [extractionId, transcriptId],
+        ),
       );
       const claimCounts = new Map<string, { total: number; checked: number }>();
       for (const claim of claims) {

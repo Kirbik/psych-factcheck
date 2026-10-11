@@ -6,7 +6,11 @@ import {
 } from "./providers";
 import { CLAIM_EXTRACTION_INSTRUCTIONS_VERSION } from "./prompts/claim-extraction-v2";
 
-export const CLAIM_EXTRACTION_VERSION = "claim-extraction-v1";
+export const CLAIM_EXTRACTION_VERSION = "claim-extraction-v2";
+export const SUPPORTED_CLAIM_EXTRACTION_VERSIONS = [
+  CLAIM_EXTRACTION_VERSION,
+  "claim-extraction-v1",
+] as const;
 export const CLAIM_EXTRACTION_SCHEMA_VERSION = "claim-extraction-schema-v1";
 export const CLAIM_EXTRACTION_MODEL = "gpt-4o-mini";
 export const MAX_CLAIM_TRANSCRIPT_CHARACTERS = 100_000;

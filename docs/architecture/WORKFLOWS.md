@@ -56,9 +56,12 @@ fail explicitly rather than being silently truncated.
 and version, including empty results, plus provider/model/instruction/schema
 versions. `claims` stores each source excerpt, normalized statement, claim
 type, timestamp range, and ordinal. A service-role-only database function
-persists the marker and claims atomically; owner RLS exposes reads. Retries
-reuse existing extraction records. The job pipeline version is
-`claim-extraction-v1`, and stage `extract_claims` follows `transcribe_video`.
+persists the marker and claims atomically; owner RLS exposes reads. Artifact
+version v2 uses instructions v4 to seek all in-scope, independently checkable
+claims, even when no publication is expected. Existing v1 extractions stay
+readable; retries of unfinished jobs use v2 idempotently, without a migration.
+The job pipeline version remains `claim-extraction-v1`, and stage
+`extract_claims` follows `transcribe_video`.
 The migration requeues previously completed in-scope transcription jobs so
 they can run claim extraction while preserving completed `VIDEO_OUT_OF_SCOPE`
 jobs. Sessions 6A–7 are deployed in Production. Earlier claim-extraction
@@ -69,7 +72,7 @@ successful workflow run, not extraction quality. The screening duration
 fallback was deployed on 2026-09-30; the previously affected clip must be
 uploaded again to verify the fresh screening path.
 
-Session 26 replaces the earlier local vector path in `build_evidence` with public publication search only. Normalized claims go to `EvidenceSearchProvider`; Europe PMC/Crossref responses are validated, and only publication-specific Europe PMC OA/CC BY 4.0 excerpts enter evidence. Crossref and unusable records remain references. Search timeout, rate limit or unavailability become warnings and empty evidence; no model knowledge substitutes for missing passages. The deterministic reranker and idempotent package RPC preserve bounded claim-specific snapshots, not a shared corpus. No full article, embedding query, seed import or vector RPC is used.
+Session 26 replaces the earlier local vector path in `build_evidence` with public publication search only. Normalized claims go to `EvidenceSearchProvider`; Europe PMC/Crossref responses are validated, and only publication-specific Europe PMC OA/CC BY 4.0 excerpts enter evidence. Crossref and unusable records remain references. Search timeout, rate limit or unavailability become warnings and empty evidence; no model knowledge substitutes for missing passages. The processing UI labels the extraction stage “Анализ тезисов из видео” and the following stage “Сопоставление тезисов с данными”; publication search remains an internal evidence-discovery operation. The deterministic reranker and idempotent package RPC preserve bounded claim-specific snapshots, not a shared corpus. No full article, embedding query, seed import or vector RPC is used.
 
 The current search/reranking versions create new packages without mutating historical artifacts. Reports accept supported earlier versions and resolve each citation in its own package. Claims, transcript versions, generation/run fences and durable per-claim judgment steps are preserved. Migration `20261009120000_retire_local_rag.sql` and the compatible Worker are prepared locally, not deployed in this session. See [Evidence storage](EVIDENCE_BASE.md) for the coordinated maintenance rollout; migration and code must ship together with active runs drained.
 

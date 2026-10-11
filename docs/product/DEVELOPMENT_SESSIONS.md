@@ -426,6 +426,15 @@ Session 13 until Session 12 is accepted.
 - **Limits:** Europe PMC and Crossref coverage is incomplete; metadata-only publications are not evidence. Categorical confidence is not calibrated. Model quality is not confirmed without expert-reviewed golden cases. This implementation is not Production deployed or live-verified.
 - **Required checks:** lint, typecheck, tests, E2E, evals and production build; no live external API calls in regular tests.
 
+## Session 28 — Analyze All Video Claims Before Evidence Matching
+
+**Status:** Implemented locally. `pnpm check` passed (lint, typecheck, 258 tests passed / 4 skipped); `pnpm evals` passed 8 checks; `pnpm test:e2e` passed 14 / 6 skipped; `pnpm build` passed. The processing timeline now names the transcript stage “Анализ тезисов из видео”; claim extraction v2 uses instructions v4 to seek all distinct in-scope checkable claims, including those with no likely publication match. The following user-visible step is “Сопоставление тезисов с данными”; public source discovery remains behind it and is not represented as guaranteed. Retried unfinished jobs create the new extraction version; reports and history continue to read v1 records. No Production deployment or live job verification has been performed.
+
+- **Goal:** Make transcript-wide thesis analysis explicit and ensure it runs after transcription, including when retrying a job that failed during evidence search.
+- **Scope:** Claim-extraction prompt/artifact version, compatible report/history reads, processing labels/messages, tests and workflow documentation.
+- **Preserved:** Scientific sources remain evidence-gated; missing publications cannot become support or refutation. Retrieval, judgments, report status vocabulary, and run fencing remain intact.
+- **Limit:** Extraction is capped at 100 claims and the transcript at 100,000 characters. A later evidence-provider interruption may still fail the job; this change does not claim a fix for provider availability.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

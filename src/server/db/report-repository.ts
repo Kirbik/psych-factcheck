@@ -16,7 +16,7 @@ import {
   ReportLocalizationError,
   translateReportTextToRussian,
 } from "@/server/ai/report-localization";
-import { CLAIM_EXTRACTION_VERSION } from "@/server/ai/claim-extraction";
+import { SUPPORTED_CLAIM_EXTRACTION_VERSIONS } from "@/server/ai/claim-extraction";
 import { SUPPORTED_EVIDENCE_RERANKING_VERSIONS } from "@/server/evidence/reranking";
 import { SUPPORTED_EVIDENCE_RETRIEVAL_VERSIONS } from "@/server/evidence/search";
 import {
@@ -140,9 +140,11 @@ export function reportRepository(client: ReportClient) {
 
       const { data: extraction, error: extractionError } = await client
         .from("claim_extractions")
-        .select("id")
+        .select("id, extraction_version")
         .eq("transcript_id", transcript.id)
-        .eq("extraction_version", CLAIM_EXTRACTION_VERSION)
+        .in("extraction_version", [...SUPPORTED_CLAIM_EXTRACTION_VERSIONS])
+        .order("extraction_version", { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (extractionError || !extraction)
         return { kind: "unavailable", ...common };

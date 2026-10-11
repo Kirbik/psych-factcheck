@@ -92,6 +92,30 @@ test("shows durable progress after reload without claiming AI completion", async
   ).toContainText("Готово");
 });
 
+test("labels transcript-wide claim extraction as video thesis analysis", async ({
+  page,
+}) => {
+  await page.route("**/api/analysis**", (route) =>
+    route.fulfill({
+      json: {
+        job: { ...job, status: "running", stage: "extract_claims", attempt: 1 },
+      },
+    }),
+  );
+  await page.goto(`/processing?contentItemId=${contentId}`);
+  await expect(
+    page
+      .locator("li")
+      .filter({ hasText: "Анализ тезисов из видео" }),
+  ).toContainText("Выполняется");
+  await expect(page.getByRole("status")).toContainText(
+    "Анализируем все проверяемые тезисы из транскрипции.",
+  );
+  await expect(
+    page.getByText("Поиск научных источников", { exact: true }),
+  ).toHaveCount(0);
+});
+
 test("shows a screened-out outcome without marking transcription complete", async ({
   page,
 }) => {

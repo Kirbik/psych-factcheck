@@ -262,9 +262,9 @@ export function WorkflowProgress({
               : job.status === "running" && job.stage === "transcribe_video"
                 ? "Транскрибируем видео через OpenAI."
                 : job.status === "running" && job.stage === "extract_claims"
-                  ? "Выделяем и классифицируем утверждения."
+                  ? "Анализируем все проверяемые тезисы из транскрипции."
                   : job.status === "running" && job.stage === "build_evidence"
-                    ? "Ищем научные источники и сохраняем пакеты доказательств."
+                    ? "Сопоставляем тезисы с доступными научными данными."
                     : job.status === "running" && job.stage === "judge_claims"
                       ? "Сверяем утверждения с найденными источниками."
                       : job.status === "running" &&

@@ -238,7 +238,7 @@ describe("workflow progress upload lock", () => {
       await screen.findByText("Сверяем утверждения с найденными источниками."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Сопоставление данных").closest("li"),
+      screen.getByText("Проверка тезисов").closest("li"),
     ).toHaveTextContent("Выполняется");
 
     realtime.onChange?.({
@@ -256,7 +256,7 @@ describe("workflow progress upload lock", () => {
       await screen.findByText("Проверка завершена. Отчет готов к просмотру."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Сопоставление данных").closest("li"),
+      screen.getByText("Проверка тезисов").closest("li"),
     ).toHaveTextContent("Готово");
     expect(
       screen.getByText("Подготовка отчета").closest("li"),
