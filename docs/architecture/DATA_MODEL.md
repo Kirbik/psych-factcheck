@@ -1,6 +1,6 @@
 # Data Model
 
-IDs are UUIDs, timestamps UTC, and user-owned rows use RLS plus server ownership checks. Session 26 retires shared RAG tables and RPCs while retaining transcripts, claims, Evidence Packages, judgments, citations and narrative/history. Migrations `20261009120000_retire_local_rag.sql` and `20261011100000_psychology_evidence_assessment.sql` are prepared locally, not applied to Production. Historical migrations create the catalog before this upgrade removes it; the latest TypeScript contract describes the post-upgrade schema. Billing remains future schema.
+IDs are UUIDs, timestamps UTC, and user-owned rows use RLS plus server ownership checks. Session 26 retires shared RAG tables and RPCs while retaining transcripts, claims, Evidence Packages, judgments, citations and narrative/history. Session 29 disables scientific publication search in the active workflow; new assessment packages contain no scientific text. Historical packages and sources remain unchanged. Migrations `20261009120000_retire_local_rag.sql` and `20261011100000_psychology_evidence_assessment.sql` are prepared locally, not applied to Production. Historical migrations create the catalog before this upgrade removes it; the latest TypeScript contract describes the post-upgrade schema. Billing remains future schema.
 
 ## Identity and content
 
@@ -76,10 +76,10 @@ After Session 26 migration, `sources`, `evidence_chunks`, `evidence_embeddings`,
 
 ### `evidence_packages`
 
-- **Purpose:** immutable, versioned result of retrieving and reranking evidence for one extracted claim.
+- **Purpose:** immutable, versioned evidence/assessment input for one extracted claim. Historical rows contain retrieved passages; current no-search rows are empty skill-assessment packages.
 - **Implemented fields:** `id`, `claim_id`, retrieval/reranking versions, coverage (`none`, `limited`, or `multi_source`), warnings, trace, full package payload, and `created_at`.
 - **Relations/ownership:** belongs to one claim; owner access follows claim → extraction → transcript → content. Authenticated users can select only their own packages. Writes are service-role-only through `save_evidence_packages`.
-- **Lifecycle:** unique by `(claim_id, retrieval_version, reranking_version)`. Retries reuse an existing package. The saved payload retains claim wording, evidence/source snapshots, scores, filters, provider/search/prompt/schema versions, and trace for audit. Session 12 also stores bounded bibliographic references in the JSON payload; metadata-only references are labeled and excluded from evidence/citations. A licensed Europe PMC excerpt and its attribution are stored only as snapshots for this check. Source/excerpt UUIDs derive from publication identity and excerpt content. Unique package versions make retries idempotent. No full article is persisted.
+- **Lifecycle:** unique by `(claim_id, retrieval_version, reranking_version)`. Retries reuse an existing package. Current versions are `psychology-skill-no-search-v1` and `no-reranking-v1`; package warnings state that scientific search was not performed, and the trace marks retrieval as not used. Earlier packages retain their search/provider versions, licensed excerpts and bibliographic attribution. Unique package versions make retries idempotent. No new publication text is persisted.
 
 ### `evidence_package_items`
 
@@ -90,16 +90,16 @@ After Session 26 migration, `sources`, `evidence_chunks`, `evidence_embeddings`,
 
 ### Search and judgment boundary
 
-- Search versions are `publication-search-v1` / `external-evidence-v2`; packages use schema `evidence-package-v2` and reranker `evidence-reranking-v2`. Historical payloads keep optional embedding traces for read compatibility, with no runtime embedding calls.
-- Europe PMC excerpts require publication-specific OA/CC BY 4.0 rights and a maximum of 1,000 characters. Unknown/unsuitable licenses and Crossref records remain metadata references. Full text is transient and is not retained.
-- Model and database boundaries reject citations outside the exact package. Empty evidence cannot support an evidence-based verdict.
+- New workflow runs do not search publication APIs or a local corpus. The former `publication-search-v1` / `external-evidence-v2` versions and provider adapters remain historical/isolated; package schema `evidence-package-v2` remains readable. Historical payloads keep optional embedding traces for read compatibility, with no runtime embedding calls.
+- Legacy Europe PMC excerpts require publication-specific OA/CC BY 4.0 rights and a maximum of 1,000 characters. Unknown/unsuitable licenses and Crossref records remain metadata references. Full text is transient and is not retained.
+- Model and database boundaries reject citations outside the exact package. For the current no-search package, server validation accepts only `unknown` or `not_empirical`; model knowledge cannot support a verdict.
 
-### `fact_checks` — Sessions 11 and 27
+### `fact_checks` — Sessions 11, 27 and 29
 
 - **Purpose:** versioned judgment for one claim and frozen retrieval run.
-- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, app verdict, nullable legacy numeric confidence, optional JSON assessment, explanation, limitations, and creation time. Session 27 assessment stores skill claim type/verdict, categorical evidence strength/confidence, conclusion, reasoning, caveats and needed evidence.
+- **Implemented fields:** `id`, `claim_id`, `evidence_package_id`, judgment version, provider/model/instruction/schema versions, app verdict, nullable legacy numeric confidence, optional JSON assessment, explanation, limitations, and creation time. Current Session 29 judgment v6 stores skill claim type/verdict, categorical evidence strength/confidence, conclusion, reasoning, caveats and needed evidence. Empirical claims without source review save `unknown` and map to `INSUFFICIENT_EVIDENCE`.
 - **Relations/ownership:** references one Evidence Package for the same claim. Owner reads follow claim → extraction → transcript → content; writes are restricted to the service-role RPC.
-- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. Judgment prompt/model/schema versions remain independent of search versions. Sessions 26 and 27 migrations are local only; no Production upgrade verification has been performed.
+- **Lifecycle:** immutable per claim, Evidence Package, and judgment version; retries return the existing row. Session 12's wrapper locks and checks the active job generation, run, and `judge_claims` stage before writing. Judgment prompt/model/schema versions remain independent of package versions. Sessions 26 and 27 migrations are local only; no Production upgrade verification has been performed.
 
 ### `fact_check_evidence` — Session 11, migration deployed
 
@@ -124,7 +124,7 @@ After Session 26 migration, `sources`, `evidence_chunks`, `evidence_embeddings`,
 - **Purpose:** durable analysis state and retry/audit record.
 - **Implemented fields:** `id`, `user_id`, `content_item_id`, `status`, `created_at`, `updated_at`, `pipeline_version`, `generation`, `stage`, `run_id`, `attempt`, `error_code`, `started_at`, `completed_at`. `(content_item_id, pipeline_version)` is unique. `status` is constrained to `queued`, `running`, `completed`, `failed`, or `cancelled`.
 - **Relations/ownership:** belongs to user and content item; `foreign key (content_item_id, user_id)` prevents mismatched ownership. User can read their status; server controls writes.
-- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence`; Session 12 adds `judge_claims`; Session 25 stores a fenced report-narrative artifact before completion. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`. See [Workflows](WORKFLOWS.md).
+- **Lifecycle:** uploads queue jobs atomically. Owner-only request/retry and service-only transition RPCs enforce generation/run fencing. Session 6A adds `screen_video`; Session 7 adds `extract_claims`; Session 10 adds `build_evidence` (now empty assessment-package preparation, no source search); Session 12 adds `judge_claims`; Session 25 stores a fenced report-narrative artifact before completion. High-confidence off-topic results complete with `VIDEO_OUT_OF_SCOPE`. See [Workflows](WORKFLOWS.md).
 
 ## Commercial access
 

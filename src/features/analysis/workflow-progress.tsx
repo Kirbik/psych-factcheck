@@ -220,7 +220,7 @@ export function WorkflowProgress({
                 ? "failed"
                 : "pending"
       }
-      evidenceSearchStatus={
+      analysisPreparationStatus={
         job?.status === "completed" &&
         job.error_code !== SCREENED_OUT_ERROR_CODE
           ? "completed"
@@ -264,9 +264,9 @@ export function WorkflowProgress({
                 : job.status === "running" && job.stage === "extract_claims"
                   ? "Анализируем все проверяемые тезисы из транскрипции."
                   : job.status === "running" && job.stage === "build_evidence"
-                    ? "Сопоставляем тезисы с доступными научными данными."
+                    ? "Готовим тезисы к оценке по методике психологии."
                     : job.status === "running" && job.stage === "judge_claims"
-                      ? "Сверяем утверждения с найденными источниками."
+                      ? "Оцениваем тезисы по методике психологии."
                       : job.status === "running" &&
                           job.stage === "validate_upload"
                         ? "Проверяем загруженное видео."

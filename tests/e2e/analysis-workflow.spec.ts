@@ -112,8 +112,31 @@ test("labels transcript-wide claim extraction as video thesis analysis", async (
     "Анализируем все проверяемые тезисы из транскрипции.",
   );
   await expect(
-    page.getByText("Поиск научных источников", { exact: true }),
+    page.getByText("Сопоставление тезисов с данными", { exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.getByText("Подготовка анализа тезисов", { exact: true }),
+  ).toBeVisible();
+});
+
+test("shows skill analysis instead of a scientific source search", async ({
+  page,
+}) => {
+  await page.route("**/api/analysis**", (route) =>
+    route.fulfill({
+      json: {
+        job: { ...job, status: "running", stage: "build_evidence", attempt: 1 },
+      },
+    }),
+  );
+  await page.goto(`/processing?contentItemId=${contentId}`);
+  await expect(
+    page.locator("li").filter({ hasText: "Подготовка анализа тезисов" }),
+  ).toContainText("Выполняется");
+  await expect(page.getByRole("status")).toContainText(
+    "Готовим тезисы к оценке по методике психологии.",
+  );
+  await expect(page.getByText(/научн(ым|ых) источник/)).toHaveCount(0);
 });
 
 test("shows a screened-out outcome without marking transcription complete", async ({

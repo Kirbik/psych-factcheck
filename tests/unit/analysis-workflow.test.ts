@@ -324,7 +324,7 @@ describe("workflow execution", () => {
     expect(repo.saveClaimExtraction).not.toHaveBeenCalled();
   });
 
-  it("retrieves and persists an idempotent evidence package before judgment", async () => {
+  it("persists an empty skill-assessment package without searching publications", async () => {
     const repo = repository();
     repo.listClaims.mockResolvedValue([
       {
@@ -338,46 +338,8 @@ describe("workflow execution", () => {
         },
       },
     ]);
-    const retrieveEvidence = vi.fn(async () => [
-      {
-        retrievalVersion: "evidence-retrieval-v1",
-        provider: "openai",
-        model: "text-embedding-3-small",
-        embeddingVersion: "openai-text-embedding-3-small-1536-v1",
-        filters: {
-          sourceStatus: "active" as const,
-          language: null,
-          sourceTypes: null,
-          publishedAfter: null,
-          publishedBefore: null,
-          limit: 10,
-        },
-        candidates: [
-          {
-            chunkId: "88888888-8888-4888-8888-888888888888",
-            sourceId: "99999999-9999-4999-8999-999999999999",
-            chunkKey: "memory-result",
-            content: "Stress impaired memory performance in the study.",
-            language: "en",
-            locator: "Abstract > Results",
-            source: {
-              key: "doi:10.0000/memory",
-              title: "Stress and memory",
-              authors: ["A. Author"],
-              journal: "Example Journal",
-              publishedAt: "2024-01-01",
-              type: "journal_article" as const,
-              canonicalUrl: "https://example.org/study",
-            },
-            similarity: 0.8,
-          },
-        ],
-        warnings: [],
-      },
-    ]);
-
     await expect(
-      executeEvidencePackageStage(payload, runId, 2, repo, retrieveEvidence),
+      executeEvidencePackageStage(payload, runId, 2, repo),
     ).resolves.toEqual({ outcome: "ready_for_fact_checks" });
     expect(repo.setStage).toHaveBeenNthCalledWith(
       1,
@@ -393,15 +355,15 @@ describe("workflow execution", () => {
       "build_evidence",
       2,
     );
-    expect(retrieveEvidence).toHaveBeenCalledExactlyOnceWith([
-      "Stress impairs memory.",
-    ]);
     expect(repo.saveEvidencePackages).toHaveBeenCalledWith(extractionId, [
       expect.objectContaining({
         claimId,
         package: expect.objectContaining({
-          rerankingVersion: "evidence-reranking-v2",
-          trace: expect.objectContaining({ candidateCount: 1 }),
+          retrievalVersion: "psychology-skill-no-search-v1",
+          rerankingVersion: "no-reranking-v1",
+          evidence: [],
+          warnings: ["scientific_search_not_performed"],
+          trace: expect.objectContaining({ candidateCount: 0 }),
         }),
       }),
     ]);
@@ -423,12 +385,9 @@ describe("workflow execution", () => {
       },
     ]);
     repo.existingEvidencePackageClaimIds.mockResolvedValue(new Set([claimId]));
-    const retrieveEvidence = vi.fn();
-
     await expect(
-      executeEvidencePackageStage(payload, runId, 2, repo, retrieveEvidence),
+      executeEvidencePackageStage(payload, runId, 2, repo),
     ).resolves.toEqual({ outcome: "ready_for_fact_checks" });
-    expect(retrieveEvidence).not.toHaveBeenCalled();
     expect(repo.saveEvidencePackages).not.toHaveBeenCalled();
   });
 
@@ -443,48 +402,14 @@ describe("workflow execution", () => {
       claimType: "causal_mechanistic" as const,
     };
     repo.listClaims.mockResolvedValue([{ id: claimId, claim }]);
-    const candidate = {
-      chunkId: "88888888-8888-4888-8888-888888888888",
-      sourceId: "99999999-9999-4999-8999-999999999999",
-      chunkKey: "memory-result",
-      content: "Stress impaired memory performance in the reported study.",
-      language: "en",
-      locator: "Results",
-      source: {
-        key: "doi:10.0000/memory",
-        title: "Stress and memory",
-        authors: ["A. Author"],
-        journal: "Example Journal",
-        publishedAt: "2024-01-01",
-        type: "journal_article" as const,
-        canonicalUrl: "https://example.org/study",
-      },
-      similarity: 0.8,
-    };
-    await executeEvidencePackageStage(payload, runId, 2, repo, async () => [
-      {
-        retrievalVersion: "evidence-retrieval-v2",
-        provider: "openai",
-        model: "text-embedding-3-small",
-        embeddingVersion: "embedding-v1",
-        filters: {
-          sourceStatus: "active",
-          language: null,
-          sourceTypes: null,
-          publishedAfter: null,
-          publishedBefore: null,
-          limit: 10,
-        },
-        candidates: [candidate],
-        warnings: [],
-        references: [],
-        externalSearchVersion: "external-evidence-v1",
-      },
-    ]);
+    await executeEvidencePackageStage(payload, runId, 2, repo);
     expect(repo.saveEvidencePackages).toHaveBeenCalledWith(extractionId, [
       expect.objectContaining({
         claimId,
-        package: expect.objectContaining({ references: [] }),
+        package: expect.objectContaining({
+          retrievalVersion: "psychology-skill-no-search-v1",
+          evidence: [],
+        }),
       }),
     ]);
 
@@ -1181,7 +1106,7 @@ describe("workflow execution", () => {
     const failure = new Error("Database unavailable");
     repo.setStage.mockResolvedValueOnce(true).mockRejectedValueOnce(failure);
     await expect(
-      executeEvidencePackageStage(payload, runId, 1, repo, async () => []),
+      executeEvidencePackageStage(payload, runId, 1, repo),
     ).rejects.toBe(failure);
   });
 });

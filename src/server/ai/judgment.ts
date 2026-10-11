@@ -7,20 +7,22 @@ import {
 } from "./providers";
 import { verdicts } from "../../types/fact-check";
 
-export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v5";
-export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
-export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
-export const OLDER_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
-export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
+export const FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v6";
+export const PREVIOUS_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v5";
+export const LEGACY_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v4";
+export const OLDER_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v3";
+export const OLDEST_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v2";
+export const OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION = "fact-check-judgment-v1";
 export const SUPPORTED_FACT_CHECK_JUDGMENT_VERSIONS = [
   FACT_CHECK_JUDGMENT_VERSION,
   PREVIOUS_FACT_CHECK_JUDGMENT_VERSION,
   LEGACY_FACT_CHECK_JUDGMENT_VERSION,
   OLDER_FACT_CHECK_JUDGMENT_VERSION,
   OLDEST_FACT_CHECK_JUDGMENT_VERSION,
+  OLDEST_SUPPORTED_FACT_CHECK_JUDGMENT_VERSION,
 ] as const;
 export const FACT_CHECK_JUDGMENT_SCHEMA_VERSION =
-  "fact-check-judgment-schema-v4";
+  "fact-check-judgment-schema-v5";
 export const FACT_CHECK_JUDGMENT_MODEL = "gpt-4o-mini";
 export const MAX_JUDGMENT_EVIDENCE_ITEMS = 5;
 export const MAX_JUDGMENT_LIMITATIONS = 8;
@@ -125,7 +127,7 @@ export const evidencePackageSchema = z
             embeddingVersion: z.string().min(1).max(100).optional(),
             filters: z
               .object({
-                sourceStatus: z.literal("active"),
+                sourceStatus: z.enum(["active", "not_used"]),
                 language: z.string().max(20).nullable(),
                 sourceTypes: z.array(sourceTypeSchema).max(10).nullable(),
                 publishedAfter: z.string().max(100).nullable(),
@@ -387,6 +389,18 @@ export function validateEvidenceBoundJudgment(
       parsedJudgment.data.verdict !== "INSUFFICIENT_EVIDENCE" &&
       parsedJudgment.data.verdict !== "UNVERIFIABLE") ||
     (requiresEvidenceCitation && citedChunkIds.length === 0)
+  ) {
+    throw new FactCheckJudgmentError("FACT_CHECK_EVIDENCE_REQUIRED");
+  }
+
+  if (
+    evidencePackage.retrievalVersion === "psychology-skill-no-search-v1" &&
+    parsedJudgment.data.assessment &&
+    (parsedJudgment.data.assessment.researchVerdict === "unknown"
+      ? parsedJudgment.data.assessment.evidenceStrength !== "insufficient" ||
+        parsedJudgment.data.assessment.confidence !== "low"
+      : parsedJudgment.data.assessment.researchVerdict !== "not_empirical" ||
+        parsedJudgment.data.assessment.evidenceStrength !== "not_applicable")
   ) {
     throw new FactCheckJudgmentError("FACT_CHECK_EVIDENCE_REQUIRED");
   }

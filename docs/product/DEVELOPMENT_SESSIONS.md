@@ -435,6 +435,15 @@ Session 13 until Session 12 is accepted.
 - **Preserved:** Scientific sources remain evidence-gated; missing publications cannot become support or refutation. Retrieval, judgments, report status vocabulary, and run fencing remain intact.
 - **Limit:** Extraction is capped at 100 claims and the transcript at 100,000 characters. A later evidence-provider interruption may still fail the job; this change does not claim a fix for provider availability.
 
+## Session 29 — Use Psychology Evidence Check Without Publication Search
+
+**Status:** Implemented locally. `pnpm check` passed (261 tests / 4 skipped), `pnpm evals` passed (8), `pnpm test:e2e` passed (15 / 6 skipped), and `pnpm build` passed. `pnpm build:vinext` also exited successfully; Wrangler emitted a sandbox EPERM warning while writing its log. New runs no longer call Europe PMC, Crossref, local RAG, or embeddings. The existing `build_evidence` workflow stage now persists an empty package under `psychology-skill-no-search-v1` / `no-reranking-v1`; `fact-check-judgment-v6` uses the versioned `psychology-evidence-check-v2` server prompt. Empirical claims are constrained to `unknown` / `INSUFFICIENT_EVIDENCE`, and citations must be empty. Historical packages and judgments remain readable. Migration `20261012100000_no_search_skill_judgment.sql` updates the fenced SQL persistence contract and has not been applied or deployed. No Production behavior is verified.
+
+- **Goal:** Analyze extracted video theses using the psychology evidence-check method without searching scientific confirmations.
+- **Scope:** Disconnect publication providers from the Worker, create idempotent empty assessment packages, update skill prompt/judgment versions and strict validation, update processing copy, tests and docs.
+- **Preserved:** Transcription, claim extraction, reports/history, old evidence snapshots, idempotency, generation/run fencing, and the isolated historical provider adapters.
+- **Limit:** Empirical claims cannot be scientifically confirmed or refuted in this mode; they are marked `unknown`. Model quality remains unconfirmed without expert-reviewed golden cases. Production migration/deployment is still required.
+
 ## Post-MVP — Payments
 
 - **Goal:** Implement one real `BillingProvider`, such as Stripe, after a separate product decision.

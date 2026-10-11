@@ -119,15 +119,15 @@ describe("OpenAI judgment provider", () => {
     });
     expect(request.input).toContain("Синтетический фрагмент");
     expect(request.instructions).toContain("не используй собственные знания");
-    expect(request.instructions).toContain("Отсутствие найденных публикаций никогда не доказывает ложность");
+    expect(request.instructions).toContain("научный поиск отключён");
     expect(
       request.text.format.schema.properties.citations.items.properties.chunk_id,
     ).toEqual({ type: "string", enum: [chunkId] });
     expect(provider).toMatchObject({
       provider: "openai",
-      judgmentVersion: "fact-check-judgment-v5",
-      instructionsVersion: "psychology-evidence-check-v1",
-      schemaVersion: "fact-check-judgment-schema-v4",
+      judgmentVersion: "fact-check-judgment-v6",
+      instructionsVersion: "psychology-evidence-check-v2",
+      schemaVersion: "fact-check-judgment-schema-v5",
     });
   });
 
@@ -155,6 +155,40 @@ describe("OpenAI judgment provider", () => {
     ).resolves.toMatchObject({ verdict: "INSUFFICIENT_EVIDENCE", citations: [] });
     const request = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
     expect(request.text.format.schema.properties.citations.maxItems).toBe(0);
+  });
+
+  it("returns unknown for an empirical claim when this run did not search sources", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      apiResponse({
+        ...validOutput,
+        verdict: "unknown",
+        evidence_strength: "insufficient",
+        assessment_confidence: "low",
+        citations: [],
+      }),
+    );
+    const emptyPackage = {
+      ...packageFixture,
+      evidence: [],
+      retrievalVersion: "psychology-skill-no-search-v1",
+      rerankingVersion: "no-reranking-v1",
+      coverage: "none",
+      warnings: ["scientific_search_not_performed"],
+      trace: {
+        ...packageFixture.trace,
+        retrieval: { provider: "none", model: "none", filters: packageFixture.trace.retrieval.filters },
+        candidateCount: 0,
+        selectedChunkIds: [],
+      },
+    } as const;
+
+    await expect(
+      createOpenAIJudgmentProvider("secret", fetcher).judge(emptyPackage),
+    ).resolves.toMatchObject({
+      verdict: "INSUFFICIENT_EVIDENCE",
+      assessment: { researchVerdict: "unknown", evidenceStrength: "insufficient" },
+      citations: [],
+    });
   });
 
   it("rejects a model citation that is not in the supplied package", async () => {

@@ -35,9 +35,7 @@ flowchart TD
   SCREEN -->|relevant or uncertain| TRANS[OpenAI timestamped transcription]
   SCREEN -->|clearly unrelated| STOP[Completed as out of scope]
   TRANS --> CLAIMS[OpenAI claim extraction and persistence]
-  CLAIMS --> SEARCH[Europe PMC and Crossref publication search]
-  SEARCH --> RIGHTS[Item-level OA and license gate]
-  RIGHTS --> PACKAGE[Owner-scoped Evidence Package]
+  CLAIMS --> PACKAGE[Owner-scoped empty assessment package]
   PACKAGE --> JUDGE[Evidence-bound judgment]
   JUDGE --> REPORT[Owner-scoped report view from persisted results]
 ```
@@ -55,13 +53,12 @@ External services sit behind these contracts:
 - `ClaimExtractionProvider`: OpenAI claim extraction with versioned prompt/schema
 - `LLMProvider`: evidence-bound judgment contract and OpenAI adapter, connected to the Session 12 Worker workflow
 - `TranscriptionProvider`: timestamped transcription (OpenAI `whisper-1` adapter implemented for Session 6)
-- `EvidenceSearchProvider`: replaceable publication discovery boundary, implemented by Europe PMC and Crossref adapters
 - `ContentProvider`: future external content acquisition
 - `BillingProvider`: future checkout and subscription operations
 
-Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. The OpenAI transcription, topic-screening, claim-extraction adapters are server-only; the first three and evidence retrieval are used by the Cloudflare Worker workflow. Claim extraction uses `gpt-4o-mini` structured output, validates each source excerpt against the transcript, and stores the model, prompt, and schema versions with an idempotent extraction record. Content and billing adapters are not implemented. Topic screening demuxes at most three four-second ranges from the compressed audio track with Mediabunny, then calls OpenAI transcription and structured text classification. When audio-track duration is absent from container metadata, Mediabunny computes it from encoded packet timestamps. Unsupported samples, low-confidence decisions, and screening errors fail open to full transcription. The screening instruction/model versions and bounded decision metadata are persisted without the sample transcript.
+Composition belongs in a server-only application boundary. UI and domain services should never call vendor SDKs directly. OpenAI transcription, topic-screening, claim-extraction, judgment and narrative adapters are used by the Cloudflare Worker workflow; publication search adapters are not connected to it. Claim extraction uses `gpt-4o-mini` structured output, validates each source excerpt against the transcript, and stores model, prompt, and schema versions with an idempotent extraction record. Content and billing adapters are not implemented. Topic screening demuxes at most three four-second ranges from the compressed audio track with Mediabunny, then calls OpenAI transcription and structured text classification. When audio-track duration is absent from container metadata, Mediabunny computes it from encoded packet timestamps. Unsupported samples, low-confidence decisions, and screening errors fail open to full transcription. The screening instruction/model versions and bounded decision metadata are persisted without the sample transcript.
 
-Publication discovery is the sole evidence search path in the Session 26 code. Europe PMC is the only full-text retrieval path and uses its Open Access subset. A passage enters evidence only when that publication's license is verified as CC BY 4.0. At most one excerpt of 1,000 characters is retained. Crossref contributes bibliographic metadata, DOI, and license links only; abstracts are not used. Metadata-only results remain references and cannot be cited. This extension was deployed on 2026-10-03 in Worker version `9b3415bf-5f13-4795-ad0c-c5debe5605df`; its scientific API calls have not yet been live-verified. API coverage is incomplete and expert-reviewed model-quality cases are still absent.
+The active workflow does not search for scientific publications. It persists an empty, versioned package for each claim, then applies the server-side `psychology-evidence-check-v2` prompt based on the local skill. Empirical claims without checked sources are saved as `INSUFFICIENT_EVIDENCE`; model memory cannot be used as evidence. The former Europe PMC/Crossref adapters and records remain isolated for historical compatibility and tests, but the Worker no longer calls them. The Codex skill file itself is unavailable to the deployed Worker, so the method is represented by versioned server instructions.
 
 ## Supabase boundary
 
@@ -75,9 +72,9 @@ Sessions 6A–12 run bounded topic screening, timestamped transcription, claim e
 
 ## AI and evidence snapshots
 
-The AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and claim extraction have completed Production jobs. Historically, Sessions 9–12 deployed local retrieval, package persistence and judgment; a fresh authenticated Production analysis completed that path in generation 2. Session 26 replaces local retrieval in repository code, with deployment pending. `/report` now renders those persisted results for an authenticated owner. Successful job completion does not establish model quality. A separately persisted report artifact remains unimplemented. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and retrieved text are untrusted data, never instructions.
+The AI pipeline is detailed in `docs/architecture/AI_PIPELINE.md`. OpenAI transcription and claim extraction have completed Production jobs. Historically, Sessions 9–12 deployed local retrieval, package persistence and judgment; a fresh authenticated Production analysis completed that path in generation 2. Session 29 removes publication search from the active workflow. `/report` renders persisted results for an authenticated owner. Successful job completion does not establish model quality. A separately persisted report artifact remains unimplemented. Structured outputs must be parsed as `unknown` and validated with Zod; transcript and historical retrieved text are untrusted data, never instructions.
 
-Session 26 removes the shared scientific catalog, seed import, embeddings, and vector retrieval from runtime. Search results become bounded claim-specific snapshots; DOI/PMCID-derived source and excerpt IDs remain stable without catalog rows. Reports resolve citations through the selected fact check's own package items, including earlier retrieval versions. Claims, judgments, commentary, history, prompt versions, and run fencing are preserved.
+Session 26 removed the shared scientific catalog, seed import, embeddings, and vector retrieval. Session 29 also removes publication search from the active workflow. Current runs write empty claim-specific assessment packages; prior package snapshots, claims, judgments, commentary, history, prompt versions, and run fencing remain readable and preserved.
 
 Migration `20261009120000_retire_local_rag.sql` copies cited publication attribution into existing package items, scopes citation foreign keys to the exact package, and drops `sources`, `evidence_chunks`, `evidence_embeddings`, `claim_embeddings`, and the import/vector RPCs. Earlier migrations remain historical upgrade steps. The retirement is implemented locally and **not applied or deployed to Production**. A coordinated maintenance rollout is required; see [Evidence storage](docs/architecture/EVIDENCE_BASE.md). Successful mocks do not verify live API coverage or model quality; expert-reviewed golden cases remain required.
 

@@ -30,7 +30,7 @@ type ProcessingPreviewProps = {
   uploadStatus?: UploadProgressStatus;
   transcriptionStatus?: UploadProgressStatus;
   claimExtractionStatus?: UploadProgressStatus;
-  evidenceSearchStatus?: UploadProgressStatus;
+  analysisPreparationStatus?: UploadProgressStatus;
   factCheckStatus?: UploadProgressStatus;
   workflowMessage?: string;
   workflowMessageTone?: "warning";
@@ -63,7 +63,7 @@ const stepLabels = [
   "Загрузка видео",
   "Создание транскрипта",
   "Анализ тезисов из видео",
-  "Сопоставление тезисов с данными",
+  "Подготовка анализа тезисов",
   "Проверка тезисов",
   "Подготовка отчета",
 ];
@@ -91,7 +91,7 @@ export function ProcessingPreview({
   uploadStatus = "pending",
   transcriptionStatus = "pending",
   claimExtractionStatus = "pending",
-  evidenceSearchStatus = "pending",
+  analysisPreparationStatus = "pending",
   factCheckStatus = "pending",
   workflowMessage,
   workflowMessageTone,
@@ -116,7 +116,7 @@ export function ProcessingPreview({
           : index === 2
             ? claimExtractionStatus
             : index === 3
-              ? evidenceSearchStatus
+              ? analysisPreparationStatus
               : index === 4
                 ? factCheckStatus
                 : factCheckStatus === "completed"

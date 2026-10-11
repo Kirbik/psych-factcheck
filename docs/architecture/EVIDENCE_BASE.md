@@ -1,29 +1,30 @@
-# Evidence storage — local RAG retired in Session 26
+# Evidence storage — source search disabled in Session 29
 
 ## Current implementation
 
-Evidence discovery uses Europe PMC/Crossref through `EvidenceSearchProvider`.
-No local scientific catalog, seed import, vector retrieval or embedding call
-remains in the Session 26 runtime. Claims extracted from videos and their
-results remain persisted.
+New workflow runs do not search Europe PMC, Crossref, a local scientific
+catalog, or vector embeddings. After claim extraction, the Worker persists an
+empty, versioned assessment package and applies the psychology evidence-check
+method without using model memory as evidence. Empirical claims save as
+`unknown` / `INSUFFICIENT_EVIDENCE` because no publication was reviewed. Claims
+and results remain persisted.
 
-Only publication-specific Europe PMC OA subset text with confirmed CC BY 4.0
-rights can enter evidence. Crossref contributes bibliographic metadata and links;
-its abstracts/full text are never assumed reusable. Unknown/incompatible licenses
-remain metadata-only. No paywall bypass or publisher scraping occurs.
+Historical package snapshots remain attached to their original judgments and
+citations; they are not reprocessed or deleted. Europe PMC/Crossref provider
+adapters and tests remain isolated for historical compatibility, but the
+Worker no longer invokes them. No scientific publication text is added to new
+packages. No paywall bypass or publisher scraping occurs.
 
-Each check stores a bounded Evidence Package with up to five selected passages,
-at most 1,000 characters per Europe PMC publication, and necessary attribution:
-DOI/PMCID, title, authors/year, URL, data provider/version, OA type and license.
-Full articles are not persisted. Stable source/excerpt UUIDs identify snapshots,
-not reusable catalog rows. Reports and citations resolve against the exact package
+Each new check stores an empty Evidence Package with versions
+`psychology-skill-no-search-v1` and `no-reranking-v1`; its trace records that no
+provider was used. Old checks can still contain bounded and attributable
+passages. Reports and historical citations resolve against their exact package
 items; RLS derives ownership through the claim and content item.
 
-Search, provider, query trace, reranker, schema, judgment and prompt versions remain
-recorded. Retries reuse first saved artifacts. Missing publications cannot imply
-refutation. Europe PMC/Crossref coverage, especially licensed full text in Russian
-and broad psychology/relationship topics, is incomplete. Contract tests do not
-confirm model quality without expert-reviewed golden cases.
+Package, judgment and prompt versions remain recorded. Retries reuse first saved
+artifacts, and new versions are idempotent. Since sources are not checked, no
+scientific support or refutation is claimed. Model quality is unconfirmed without
+expert-reviewed golden cases.
 
 ## Retirement migration and rollout
 
@@ -48,10 +49,9 @@ schema/data from backup. No Production live validation is claimed.
 ## Historical implementation
 
 Sessions 8–10 introduced the seed, embeddings and local retrieval; Sessions 23–24
-expanded that corpus. Their migrations are retained in the schema history and
-must run before the retirement upgrade on a fresh database. Seed/vector scripts,
-runtime modules, generated catalog types and obsolete corpus-specific tests/evals
-are removed. Earlier read-only package formats remain compatible.
+expanded that corpus. Session 26 retired the shared catalog, and Session 29
+removed the publication API call from the active workflow. Their migrations are
+retained in schema history. Earlier read-only package formats remain compatible.
 
 Historical verification:
 [Session 8](../testing/SESSION_8.md),

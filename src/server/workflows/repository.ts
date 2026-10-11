@@ -15,8 +15,10 @@ import {
   transcriptSegmentsSchema,
 } from "@/server/ai/claim-extraction";
 import type { EvidencePackage, ExtractedClaim } from "@/server/ai/providers";
-import { EVIDENCE_RERANKING_VERSION } from "@/server/evidence/reranking";
-import { EVIDENCE_RETRIEVAL_VERSION } from "@/server/evidence/search";
+import {
+  SKILL_ASSESSMENT_RETRIEVAL_VERSION,
+  SKILL_ASSESSMENT_RERANKING_VERSION,
+} from "@/server/evidence/skill-assessment-package";
 import {
   FACT_CHECK_JUDGMENT_VERSION,
   validateEvidencePackage,
@@ -252,8 +254,8 @@ export function workflowRepository(client: WorkflowClient) {
         .from("evidence_packages")
         .select("claim_id")
         .in("claim_id", [...claimIds])
-        .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
-        .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
+        .eq("retrieval_version", SKILL_ASSESSMENT_RETRIEVAL_VERSION)
+        .eq("reranking_version", SKILL_ASSESSMENT_RERANKING_VERSION);
       if (error)
         throw workflowDatabaseFailure("Evidence package read", error.code);
       return new Set(data.map(({ claim_id }) => claim_id));
@@ -278,8 +280,8 @@ export function workflowRepository(client: WorkflowClient) {
       });
       const { error } = await client.rpc("save_evidence_packages", {
         p_claim_extraction_id: extractionId,
-        p_retrieval_version: EVIDENCE_RETRIEVAL_VERSION,
-        p_reranking_version: EVIDENCE_RERANKING_VERSION,
+        p_retrieval_version: SKILL_ASSESSMENT_RETRIEVAL_VERSION,
+        p_reranking_version: SKILL_ASSESSMENT_RERANKING_VERSION,
         p_packages: payload as unknown as Json,
       });
       if (error)
@@ -291,8 +293,8 @@ export function workflowRepository(client: WorkflowClient) {
         .from("evidence_packages")
         .select("id, claim_id, payload")
         .in("claim_id", [...claimIds])
-        .eq("retrieval_version", EVIDENCE_RETRIEVAL_VERSION)
-        .eq("reranking_version", EVIDENCE_RERANKING_VERSION);
+        .eq("retrieval_version", SKILL_ASSESSMENT_RETRIEVAL_VERSION)
+        .eq("reranking_version", SKILL_ASSESSMENT_RERANKING_VERSION);
       if (error)
         throw workflowDatabaseFailure("Evidence package read", error.code);
       return data.map(({ id, claim_id, payload }) => {

@@ -72,7 +72,7 @@ successful workflow run, not extraction quality. The screening duration
 fallback was deployed on 2026-09-30; the previously affected clip must be
 uploaded again to verify the fresh screening path.
 
-Session 26 replaces the earlier local vector path in `build_evidence` with public publication search only. Normalized claims go to `EvidenceSearchProvider`; Europe PMC/Crossref responses are validated, and only publication-specific Europe PMC OA/CC BY 4.0 excerpts enter evidence. Crossref and unusable records remain references. Search timeout, rate limit or unavailability become warnings and empty evidence; no model knowledge substitutes for missing passages. The processing UI labels the extraction stage “Анализ тезисов из видео” and the following stage “Сопоставление тезисов с данными”; publication search remains an internal evidence-discovery operation. The deterministic reranker and idempotent package RPC preserve bounded claim-specific snapshots, not a shared corpus. No full article, embedding query, seed import or vector RPC is used.
+Session 26 briefly replaced the earlier local vector path in `build_evidence` with public publication search. Session 29 supersedes that runtime behavior: no scientific source search is performed in new runs. The stage persists an empty skill-assessment package with a versioned no-search trace. The UI labels it “Подготовка анализа тезисов”; “Проверка тезисов” runs the skill-based judgment. Europe PMC/Crossref adapters remain isolated and are not called by the Worker. Historical packages and citation paths remain readable.
 
 The current search/reranking versions create new packages without mutating historical artifacts. Reports accept supported earlier versions and resolve each citation in its own package. Claims, transcript versions, generation/run fences and durable per-claim judgment steps are preserved. Migration `20261009120000_retire_local_rag.sql` and the compatible Worker are prepared locally, not deployed in this session. See [Evidence storage](EVIDENCE_BASE.md) for the coordinated maintenance rollout; migration and code must ship together with active runs drained.
 
@@ -99,6 +99,19 @@ prepared locally and has not been applied to Production. The Codex skill file
 itself is not callable in the deployed Worker; the Worker uses versioned prompt
 instructions. Europe PMC/Crossref coverage is incomplete and no expert-reviewed
 golden cases verify model quality.
+
+Session 29 updates judgment to `fact-check-judgment-v6` and prompt
+`psychology-evidence-check-v2`. The server prompt applies the skill method but
+explicitly performs no source search and forbids using model memory as evidence.
+For the active `psychology-skill-no-search-v1` package, server validation only
+accepts `unknown` or `not_empirical` and citations must be empty. Empirical
+claims therefore save as `INSUFFICIENT_EVIDENCE`; this is not a finding that the
+claim is false. Current package creation stays idempotent and inside the
+existing fenced `build_evidence` stage. No schema migration is required; old
+publication packages and judgments remain supported. The local Codex skill is
+not loaded at Worker runtime; its method is represented by the versioned
+server prompt. Model quality remains unconfirmed without expert-reviewed
+golden cases.
 
 The judgment response schema constrains `chunk_id` to the current package's
 evidence members, and the server validates membership again before persistence.
@@ -156,7 +169,7 @@ There is no fake executor in production.
 
 Lifecycle: `queued → running → completed/failed/cancelled`; interrupted queued
 runs can also fail or cancel. Stage is `queued`, `validate_upload`,
-`screen_video`, `transcribe_video`, `extract_claims`, `build_evidence`,
+`screen_video`, `transcribe_video`, `extract_claims`, `build_evidence` (empty package preparation; no source search),
 `judge_claims`, or `complete`. In-scope jobs complete after fact checks and
 citations are saved and a fenced `judge_claims` step persists the versioned
 report narrative. Retries reuse the unique narrative artifact for the current

@@ -2,7 +2,7 @@
 
 ## Current status
 
-`pnpm evals` runs synthetic screening/extraction/judgment contracts and publication-search rights/citation contracts. It makes no live provider/model calls and establishes no scientific relevance or verdict quality. Expert-reviewed golden cases remain absent.
+`pnpm evals` runs synthetic screening/extraction/judgment contracts and isolated publication-search rights/citation contracts retained for historical compatibility. The active Worker no longer uses publication search. Evals make no live provider/model calls and establish no scientific relevance or verdict quality. Expert-reviewed golden cases remain absent.
 
 Session 26 retires the seed-based lexical P@5 evals and `retrieval-v2.json`, because that corpus and vector path are removed from runtime. The former provisional six-case P@5 0.300 remains a historical Session 24 result, not a baseline for public API discovery. Replacement contract cases gate text reuse and fabricated citations; relevance/coverage metrics still need representative expert-reviewed API evidence.
 
@@ -23,7 +23,7 @@ Example:
 
 The repository currently contains one synthetic fixture demonstrating the expected case shape. **Synthetic fixtures are NOT medical ground truth.** They must never be used to claim clinical validity or production quality. Domain experts must review real golden labels and source evidence before release.
 
-`evals/fixtures/fact-check-judgment-v1.json` exercises the Session 11 judgment contract with synthetic accepted and rejected outputs, including empty-evidence handling and fabricated-citation rejection. Session 27 unit/integration tests cover the psychology-evidence-check-v1 output mapping, categorical assessment persistence, required citation relations, package membership and legacy numeric rows. These checks do not assess whether a passage semantically supports its assigned verdict. Europe PMC/Crossref coverage is incomplete, and the expert-reviewed golden verdict/citation set required for a judgment quality gate has not yet been created; no model-quality claim can be based on synthetic fixtures.
+`evals/fixtures/fact-check-judgment-v1.json` exercises the Session 11 judgment contract with synthetic accepted and rejected outputs, including empty-evidence handling and fabricated-citation rejection. Session 27–29 tests cover the psychology evidence-check output mapping, categorical assessment persistence, no-search behavior (`unknown` for empirical claims), package membership and legacy numeric rows. These checks do not assess semantic model quality. Expert-reviewed golden verdict/citation cases have not been created; no model-quality claim can be based on synthetic fixtures.
 
 The screening fixture includes an incidental psychology mention as a false-positive guard, an ambiguous short excerpt as a false-negative guard, and one clear in-scope case. These examples document desired behavior only; no model output is scored against them yet.
 

@@ -12,6 +12,7 @@ import type { EvidenceCandidate, EvidenceSearchResult } from "./search.ts";
 export const EVIDENCE_RERANKING_VERSION = "evidence-reranking-v2";
 export const SUPPORTED_EVIDENCE_RERANKING_VERSIONS = [
   EVIDENCE_RERANKING_VERSION,
+  "no-reranking-v1",
   "evidence-reranking-v1",
 ] as const;
 export const MAX_EVIDENCE_PACKAGE_SIZE = 5;

@@ -3,6 +3,7 @@ export const EVIDENCE_RETRIEVAL_VERSION = "publication-search-v1";
 // Historical reports only: these versions never enable a local search path.
 export const SUPPORTED_EVIDENCE_RETRIEVAL_VERSIONS = [
   EVIDENCE_RETRIEVAL_VERSION,
+  "psychology-skill-no-search-v1",
   "evidence-retrieval-v2",
   "evidence-retrieval-v1",
 ] as const;

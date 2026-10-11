@@ -103,7 +103,7 @@ export interface EvidencePackage {
       readonly model: string;
       readonly embeddingVersion?: string;
       readonly filters: {
-        readonly sourceStatus: "active";
+        readonly sourceStatus: "active" | "not_used";
         readonly language: string | null;
         readonly sourceTypes:
           | readonly (

@@ -11,7 +11,7 @@ import {
 import {
   PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS,
   PSYCHOLOGY_EVIDENCE_CHECK_INSTRUCTIONS_VERSION,
-} from "./prompts/psychology-evidence-check-v1";
+} from "./prompts/psychology-evidence-check-v2";
 import type { EvidencePackage, JudgmentProvider } from "./providers";
 
 const responseContentSchema = z

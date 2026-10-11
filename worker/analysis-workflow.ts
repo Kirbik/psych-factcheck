@@ -31,9 +31,6 @@ import {
   createOpenAIClaimExtractionProvider,
   ClaimExtractionProviderError,
 } from "@/server/ai/openai-claim-extraction-provider";
-import { createEvidenceSearchProvider } from "@/server/evidence/search-provider";
-import { searchExternalPublications } from "@/server/evidence/external-publications";
-import { EvidenceRerankingError } from "@/server/evidence/reranking";
 import { readWorkflowVideoHeader } from "@/server/workflows/video-header";
 import { readWorkflowVideo } from "@/server/workflows/video-download";
 import {
@@ -64,7 +61,6 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
     const transcriptionProvider = createOpenAITranscriptionProvider(apiKey);
     const screeningProvider = createOpenAIVideoScreeningProvider(apiKey);
     const claimExtractionProvider = createOpenAIClaimExtractionProvider(apiKey);
-    const evidenceSearchProvider = createEvidenceSearchProvider();
     const judgmentProvider = createOpenAIJudgmentProvider(apiKey);
     const factCheckService = createFactCheckService(
       factCheckRepository(client),
@@ -264,7 +260,7 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
 
       activeStage = "build_evidence";
       const evidence = await step.do(
-        "retrieve and package claim evidence",
+        "prepare claim assessment package",
         {
           retries: {
             limit: 2,
@@ -281,14 +277,8 @@ export class AnalysisWorkflow extends WorkflowEntrypoint<
               event.instanceId,
               context.attempt,
               repository,
-              (claims) =>
-                searchExternalPublications(evidenceSearchProvider, claims),
             );
           } catch (error) {
-            if (error instanceof EvidenceRerankingError) {
-              failureCode = error.code;
-              throw new NonRetryableError(error.code);
-            }
             if (error instanceof PermanentWorkflowError) {
               failureCode = error.message;
               throw new NonRetryableError(error.message);

@@ -9,9 +9,7 @@ import type {
   ClaimExtractionProvider,
   TranscriptionResult,
 } from "@/server/ai/providers";
-import { buildEvidencePackage } from "@/server/evidence/reranking";
-import type { EvidenceSearchResult } from "@/server/evidence/search";
-import type { PublicationReference } from "@/server/ai/providers";
+import { buildSkillAssessmentPackage } from "@/server/evidence/skill-assessment-package";
 import { MAX_OPENAI_TRANSCRIPTION_BYTES } from "@/server/ai/openai-transcription-provider";
 import { FactCheckJudgmentError } from "@/server/ai/judgment";
 import {
@@ -241,12 +239,6 @@ export async function executeEvidencePackageStage(
   runId: string,
   attempt: number,
   repository: WorkflowRepository,
-  retrieveEvidence: (normalizedClaims: readonly string[]) => Promise<
-    readonly (EvidenceSearchResult & {
-      readonly references?: readonly PublicationReference[];
-      readonly externalSearchVersion?: string;
-    })[]
-  >,
 ) {
   const job = await repository.advance(payload, runId, "running", attempt);
   if (!job) return { outcome: "obsolete" } as const;
@@ -264,19 +256,10 @@ export async function executeEvidencePackageStage(
   );
   const pendingClaims = claims.filter(({ id }) => !existingPackages.has(id));
   if (pendingClaims.length > 0) {
-    const retrievalResults = await retrieveEvidence(
-      pendingClaims.map(({ claim }) => claim.normalized),
-    );
-    const packages = await Promise.all(
-      pendingClaims.map(async (item, index) => {
-        const retrieval = retrievalResults[index];
-        if (!retrieval) throw new Error("Evidence search result missing");
-        return {
-          claimId: item.id,
-          package: await buildEvidencePackage(item.claim, retrieval),
-        };
-      }),
-    );
+    const packages = pendingClaims.map((item) => ({
+      claimId: item.id,
+      package: buildSkillAssessmentPackage(item.claim),
+    }));
     await repository.saveEvidencePackages(extractionId, packages);
   }
 

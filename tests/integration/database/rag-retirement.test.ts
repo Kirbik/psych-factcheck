@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { searchExternalPublications } from "@/server/evidence/external-publications";
 import { buildEvidencePackage } from "@/server/evidence/reranking";
+import { buildSkillAssessmentPackage } from "@/server/evidence/skill-assessment-package";
 import {
   validateEvidencePackage,
   validateEvidenceBoundJudgment,
@@ -278,6 +279,7 @@ describe("retire local RAG while preserving claim results", () => {
   `);
     await db.exec(await sqlFile("20261009120000_retire_local_rag.sql"));
     await db.exec(await sqlFile("20261011100000_psychology_evidence_assessment.sql"));
+    await db.exec(await sqlFile("20261012100000_no_search_skill_judgment.sql"));
   }, 30000);
   afterAll(async () => {
     await db?.close();
@@ -503,6 +505,57 @@ describe("retire local RAG while preserving claim results", () => {
         [id, pkgId, chunk],
       ),
     ).rejects.toThrow(/foreign key/);
+  });
+
+  it("saves a no-search skill judgment and rejects unsupported claims of evidence", async () => {
+    const pkg = validateEvidencePackage(buildSkillAssessmentPackage(claim));
+    expect((await savePackage(pkg)).rows[0].saved).toBe(1);
+    const pkgId = (
+      await db.query<{ id: string }>(
+        "select id from public.evidence_packages where claim_id=$1 and retrieval_version=$2",
+        [claimId, pkg.retrievalVersion],
+      )
+    ).rows[0].id;
+    const valid: FactCheckJudgment = {
+      verdict: "INSUFFICIENT_EVIDENCE",
+      confidence: null,
+      assessment: {
+        claimType: "causal",
+        researchVerdict: "unknown",
+        evidenceStrength: "insufficient",
+        confidence: "low",
+        shortConclusion: "Источники в этом запуске не проверялись.",
+        reasoning: "Научный поиск отключен, поэтому поддержка тезиса неизвестна.",
+        caveats: ["Это не означает, что тезис ложен."],
+        neededForAssessment: "Нужно проверить подходящие научные публикации.",
+      },
+      explanation: "Источники в этом запуске не проверялись.",
+      limitations: ["Это не означает, что тезис ложен."],
+      citations: [],
+    };
+    const savedId = (
+      await saveCheck(pkgId, valid)
+    ).rows[0].id;
+    expect(savedId).toBeTruthy();
+
+    const unsupportedPackage = {
+      ...pkg,
+      rerankingVersion: "no-reranking-negative-test-v1",
+    };
+    await savePackage(unsupportedPackage);
+    const unsupportedPackageId = (
+      await db.query<{ id: string }>(
+        "select id from public.evidence_packages where claim_id=$1 and reranking_version=$2",
+        [claimId, unsupportedPackage.rerankingVersion],
+      )
+    ).rows[0].id;
+    await expect(
+      saveCheck(unsupportedPackageId, {
+        ...valid,
+        assessment: { ...valid.assessment!, researchVerdict: "false" },
+        verdict: "CONTRADICTED",
+      }),
+    ).rejects.toThrow(/Invalid fact-check judgment fields/);
   });
 
   it("rejects unlicensed and unbounded publication text in the SQL boundary", async () => {

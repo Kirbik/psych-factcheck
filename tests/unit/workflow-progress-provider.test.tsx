@@ -235,7 +235,7 @@ describe("workflow progress upload lock", () => {
     });
 
     expect(
-      await screen.findByText("Сверяем утверждения с найденными источниками."),
+      await screen.findByText("Оцениваем тезисы по методике психологии."),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Проверка тезисов").closest("li"),

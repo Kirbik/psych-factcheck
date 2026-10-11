@@ -142,6 +142,46 @@ describe("evidence-bound fact-check judgment", () => {
     ).toBe("INSUFFICIENT_EVIDENCE");
   });
 
+  it("rejects memory-based assessments for packages explicitly marked no-search", () => {
+    const noSearchPackage = {
+      ...evidencePackage([]),
+      retrievalVersion: "psychology-skill-no-search-v1",
+      rerankingVersion: "no-reranking-v1",
+      warnings: ["scientific_search_not_performed"],
+      trace: {
+        ...evidencePackage([]).trace,
+        retrieval: {
+          ...evidencePackage([]).trace.retrieval,
+          provider: "none",
+          model: "none",
+          filters: {
+            ...evidencePackage([]).trace.retrieval.filters,
+            sourceStatus: "not_used",
+          },
+        },
+      },
+    };
+    expect(() =>
+      validateEvidenceBoundJudgment(noSearchPackage, {
+        verdict: "INSUFFICIENT_EVIDENCE",
+        confidence: null,
+        assessment: {
+          claimType: "causal",
+          researchVerdict: "unsupported",
+          evidenceStrength: "insufficient",
+          confidence: "low",
+          shortConclusion: "Данные недостаточны.",
+          reasoning: "Научный поиск не выполнялся.",
+          caveats: ["Источники не проверялись."],
+          neededForAssessment: "Нужно проверить исследования.",
+        },
+        explanation: "Данные недостаточны.",
+        limitations: ["Источники не проверялись."],
+        citations: [],
+      }),
+    ).toThrowError("FACT_CHECK_EVIDENCE_REQUIRED");
+  });
+
   it("keeps metadata-only publications outside the evidence basis", () => {
     const packageWithReferences = {
       ...evidencePackage([]),
