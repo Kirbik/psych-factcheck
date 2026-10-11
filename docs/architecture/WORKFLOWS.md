@@ -183,7 +183,11 @@ runs can also fail or cancel. Stage is `queued`, `validate_upload`,
 `judge_claims`, or `complete`. In-scope jobs complete after fact checks and
 citations are saved and a fenced `judge_claims` step persists the versioned
 report narrative. Retries reuse the unique narrative artifact for the current
-job generation and schema version. `/report` reads saved judgments and
+job generation and schema version. The narrative lookup is a best-effort cache
+read: if it fails, the workflow continues with validated judgment inputs and
+the run-fenced save RPC. That RPC's unique key prevents duplicate narrative
+artifacts; a retry after a successful write may repeat the model call, but it
+cannot replace or duplicate the saved result. `/report` reads saved judgments and
 narrative; it does not call a model on page load. Older completed jobs without
 a narrative remain readable and show an explicit unavailable note.
 `generation` counts explicit restarts;

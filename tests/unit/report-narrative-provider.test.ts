@@ -320,7 +320,7 @@ describe("report narrative provider", () => {
     ).toBe(true);
   });
 
-  it("persists resolved book attribution alongside the opinion through the fenced RPC", async () => {
+  it("falls back to the fenced idempotent save when the narrative cache read fails", async () => {
     const packageId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
     const factCheckId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
     const rows: Record<string, unknown> = {
@@ -348,10 +348,16 @@ describe("report narrative provider", () => {
     const rpc = vi
       .fn()
       .mockResolvedValue({ data: "saved-narrative-id", error: null });
+    let narrativeReadFails = true;
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     // Test only the repository methods this service uses; the SDK is not invoked.
     const client = {
       from: vi.fn((table: string) => {
-        const response = Promise.resolve({ data: rows[table], error: null });
+        const response =
+          table === "analysis_report_narratives" && narrativeReadFails
+            ? Promise.resolve({ data: null, error: { code: "" }, status: 0 })
+            : Promise.resolve({ data: rows[table], error: null, status: 200 });
+        if (table === "analysis_report_narratives") narrativeReadFails = false;
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
@@ -383,6 +389,11 @@ describe("report narrative provider", () => {
     await expect(service.generateAndSave(run)).resolves.toBe(
       "saved-narrative-id",
     );
+    expect(warning).toHaveBeenCalledWith(
+      "[analysis] Existing report narrative lookup failed; continuing to idempotent save",
+      { errorCode: null, httpStatus: 0 },
+    );
+    warning.mockRestore();
     expect(rpc).toHaveBeenCalledWith(
       "save_analysis_report_narrative_for_run",
       expect.objectContaining({
@@ -410,33 +421,4 @@ describe("report narrative provider", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it("includes a safe HTTP status when reading the existing narrative fails", async () => {
-    const query = {
-      select: vi.fn(() => query),
-      eq: vi.fn(() => query),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: null,
-        error: { code: "" },
-        status: 0,
-      }),
-    };
-    const client = {
-      from: vi.fn(() => query),
-    } as unknown as SupabaseClient<Database>;
-    const service = createReportNarrativeService(
-      client,
-      createOpenAIReportNarrativeProvider("test-key"),
-    );
-
-    await expect(
-      service.generateAndSave({
-        targets: [],
-        jobId: claimId,
-        generation: 4,
-        runId: "current-run",
-      }),
-    ).rejects.toThrow(
-      "Report narrative read failed (Supabase error code unavailable, HTTP status 0)",
-    );
-  });
 });

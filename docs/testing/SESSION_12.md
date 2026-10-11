@@ -212,3 +212,18 @@ and no retry for an unclassified endpoint. Production deployment completed at
 Worker endpoint returned HTTP 200. No new analysis generation was triggered,
 so recovery of this failed job and a complete post-fix Production workflow have
 not yet been verified.
+
+The later generation 3 reached narrative generation after its claim
+judgments had been saved. The optional existing-narrative cache read failed
+with HTTP status 0; Supabase API logs show no request to
+`analysis_report_narratives` during that run, while the surrounding fact-check,
+package and stage requests returned HTTP 200. Cloudflare recorded six bounded
+fetch attempts with a generic `Error`, so the transport-level cause remains
+unknown. The narrative save RPC already enforces a unique key and run fence.
+The local follow-up treats only that cache read as best-effort and continues to
+validated inputs plus the idempotent save RPC; on a replay this may repeat the
+model call but cannot create or overwrite a second narrative artifact. This
+mitigation was deployed on 2026-10-11 as Worker version
+`207f86c2-c4b4-4ff6-8e00-a7b7467f23a5` (100% traffic). The public endpoint
+returned HTTP 200. No new analysis generation was triggered, so this specific
+fallback and a complete authenticated Production run remain unverified.

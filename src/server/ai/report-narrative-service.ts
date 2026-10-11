@@ -61,13 +61,24 @@ export function createReportNarrativeService(
         .eq("generation", input.generation)
         .eq("schema_version", provider.schemaVersion)
         .maybeSingle();
-      if (existingError)
-        throw databaseFailure(
-          "Report narrative read",
-          existingError.code,
-          existingStatus,
+      if (existingError) {
+        const safeCode =
+          existingError.code && /^[a-z0-9_-]{1,32}$/i.test(existingError.code)
+            ? existingError.code
+            : null;
+        const safeStatus =
+          Number.isInteger(existingStatus) &&
+          existingStatus >= 0 &&
+          existingStatus <= 599
+            ? existingStatus
+            : null;
+        console.warn(
+          "[analysis] Existing report narrative lookup failed; continuing to idempotent save",
+          { errorCode: safeCode, httpStatus: safeStatus },
         );
-      if (existing) return existing.id;
+      } else if (existing) {
+        return existing.id;
+      }
 
       const claimIds = input.targets.map(({ claimId }) => claimId);
       const packageIds = input.targets.map(
