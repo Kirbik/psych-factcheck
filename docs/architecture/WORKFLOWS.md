@@ -181,7 +181,11 @@ a narrative remain readable and show an explicit unavailable note.
 browser are fixed messages, never raw provider errors. The step retries
 transient failures up to three total attempts. OpenAI requests time out after
 180 seconds, full Storage downloads after 60 seconds, and the Workflow step
-after 4 minutes. Permanent input/configuration errors stop immediately.
+after 4 minutes. Worker-to-Supabase requests also retry network failures and
+transient HTTP responses (408, 425, 429 and selected 5xx statuses) twice with
+bounded delays; each request retains its 15-second timeout. Fact-check write
+errors preserve a sanitized Supabase error code for Workflow diagnostics.
+Permanent input/configuration errors stop immediately.
 
 ## API and UI
 

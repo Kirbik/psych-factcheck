@@ -79,7 +79,16 @@ const judgment = {
   ],
 };
 
-function repositoryWithPersistedPackage(persistedPackage: EvidencePackage) {
+function repositoryWithPersistedPackage(
+  persistedPackage: EvidencePackage,
+  rpcResult: {
+    data: string | null;
+    error: { code?: string } | null;
+  } = {
+    data: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    error: null,
+  },
+) {
   const packageQuery = {
     select: vi.fn(() => packageQuery),
     eq: vi.fn(() => packageQuery),
@@ -88,10 +97,7 @@ function repositoryWithPersistedPackage(persistedPackage: EvidencePackage) {
       error: null,
     }),
   };
-  const rpc = vi.fn().mockResolvedValue({
-    data: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-    error: null,
-  });
+  const rpc = vi.fn().mockResolvedValue(rpcResult);
   const client = {
     from: vi.fn(() => packageQuery),
     rpc,
@@ -148,8 +154,25 @@ describe("fact-check repository", () => {
         p_run_id: metadata.runId,
         p_claim_id: claimId,
         p_evidence_package_id: packageId,
-        p_judgment: expect.objectContaining({ verdict: "SUPPORTED", assessment: null }),
+        p_judgment: expect.objectContaining({
+          verdict: "SUPPORTED",
+          assessment: null,
+        }),
       }),
     );
+  });
+
+  it("exposes only a safe Supabase error code for failed writes", async () => {
+    const savedPackage = createEvidencePackage(
+      "The persisted passage reports an association.",
+    );
+    const { repository } = repositoryWithPersistedPackage(savedPackage, {
+      data: null,
+      error: { code: "P0001" },
+    });
+
+    await expect(
+      repository.save(metadata, savedPackage, judgment),
+    ).rejects.toThrow("Fact-check write failed (Supabase error code P0001)");
   });
 });

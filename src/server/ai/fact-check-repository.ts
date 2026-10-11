@@ -70,31 +70,44 @@ export function factCheckRepository(client: SupabaseClient<Database>) {
         persistedPackage,
         judgmentInput,
       );
-      const { data, error } = await client.rpc("save_fact_check_for_analysis_run", {
-        p_job_id: metadata.jobId,
-        p_generation: metadata.generation,
-        p_run_id: metadata.runId,
-        p_claim_id: metadata.claimId,
-        p_evidence_package_id: metadata.evidencePackageId,
-        p_judgment_version: metadata.judgmentVersion,
-        p_provider: metadata.provider,
-        p_model: metadata.model,
-        p_instructions_version: metadata.instructionsVersion,
-        p_schema_version: metadata.schemaVersion,
-        p_judgment: {
-          verdict: judgment.verdict,
-          confidence: judgment.confidence,
-          assessment: judgment.assessment ?? null,
-          explanation: judgment.explanation,
-          limitations: judgment.limitations,
-          citations: judgment.citations.map((citation) => ({
-            chunkId: citation.chunkId,
-            relation: citation.relation,
-            rationale: citation.rationale,
-          })),
-        } as unknown as Json,
-      });
-      if (error || !data) throw new Error("Fact-check write failed");
+      const { data, error } = await client.rpc(
+        "save_fact_check_for_analysis_run",
+        {
+          p_job_id: metadata.jobId,
+          p_generation: metadata.generation,
+          p_run_id: metadata.runId,
+          p_claim_id: metadata.claimId,
+          p_evidence_package_id: metadata.evidencePackageId,
+          p_judgment_version: metadata.judgmentVersion,
+          p_provider: metadata.provider,
+          p_model: metadata.model,
+          p_instructions_version: metadata.instructionsVersion,
+          p_schema_version: metadata.schemaVersion,
+          p_judgment: {
+            verdict: judgment.verdict,
+            confidence: judgment.confidence,
+            assessment: judgment.assessment ?? null,
+            explanation: judgment.explanation,
+            limitations: judgment.limitations,
+            citations: judgment.citations.map((citation) => ({
+              chunkId: citation.chunkId,
+              relation: citation.relation,
+              rationale: citation.rationale,
+            })),
+          } as unknown as Json,
+        },
+      );
+      if (error) {
+        const safeCode =
+          error.code && /^[a-z0-9_-]{1,32}$/i.test(error.code)
+            ? error.code
+            : "unavailable";
+        throw new Error(
+          `Fact-check write failed (Supabase error code ${safeCode})`,
+        );
+      }
+      if (!data)
+        throw new Error("Fact-check write failed (Supabase returned no row)");
       return data;
     },
   };
