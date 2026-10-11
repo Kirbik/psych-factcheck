@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRetryingFetch } from "../../worker/retrying-fetch";
+import {
+  createRetryingFetch,
+  type FetchRetryFailure,
+} from "../../worker/retrying-fetch";
 
 describe("Worker Supabase fetch retries", () => {
   it("retries transient network errors and then returns the response", async () => {
@@ -51,6 +54,72 @@ describe("Worker Supabase fetch retries", () => {
     expect(waitBeforeRetry).toHaveBeenNthCalledWith(3, 2_000);
     expect(waitBeforeRetry).toHaveBeenNthCalledWith(4, 4_000);
     expect(waitBeforeRetry).toHaveBeenNthCalledWith(5, 8_000);
+  });
+
+  it("logs sanitized endpoint metadata when network retries are exhausted", async () => {
+    const timeout = new DOMException("request timed out", "TimeoutError");
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(timeout);
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+    const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
+
+    await expect(
+      createRetryingFetch(
+        fetchImplementation,
+        waitBeforeRetry,
+        logFailure,
+      )(
+        "https://project.supabase.co/rest/v1/rpc/advance_analysis_job?token=secret",
+        { method: "post", body: "private payload" },
+      ),
+    ).rejects.toBe(timeout);
+
+    expect(fetchImplementation).toHaveBeenCalledTimes(6);
+    expect(logFailure).toHaveBeenCalledTimes(1);
+    expect(logFailure).toHaveBeenCalledWith({
+      method: "POST",
+      host: "project.supabase.co",
+      route: "rest_rpc",
+      attempts: 6,
+      kind: "network_error",
+      errorName: "TimeoutError",
+    });
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain("secret");
+    expect(JSON.stringify(logFailure.mock.calls)).not.toContain(
+      "private payload",
+    );
+  });
+
+  it("logs the final transient HTTP status after exhausting retries", async () => {
+    const fetchImplementation = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => new Response(null, { status: 503 }));
+    const waitBeforeRetry = vi.fn<(...args: [number]) => Promise<void>>(
+      async () => undefined,
+    );
+    const logFailure = vi.fn<(failure: FetchRetryFailure) => void>();
+
+    const response = await createRetryingFetch(
+      fetchImplementation,
+      waitBeforeRetry,
+      logFailure,
+    )("https://project.supabase.co/rest/v1/fact_checks", {
+      method: "GET",
+    });
+
+    expect(response.status).toBe(503);
+    expect(fetchImplementation).toHaveBeenCalledTimes(6);
+    expect(logFailure).toHaveBeenCalledExactlyOnceWith({
+      method: "GET",
+      host: "project.supabase.co",
+      route: "rest_table",
+      attempts: 6,
+      kind: "transient_http_status",
+      status: 503,
+    });
   });
 
   it("honors Retry-After for transient provider responses", async () => {

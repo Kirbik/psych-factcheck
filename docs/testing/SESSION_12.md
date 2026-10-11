@@ -123,3 +123,28 @@ unit/integration tests (243 passed, 5 skipped), evals (7 passed), build, and
 Playwright E2E (11 passed, 6 skipped). E2E was rerun with network access after
 the sandboxed dev server stalled while fetching existing Google Fonts. No live
 scientific API requests or Production workflow were performed.
+
+## Production follow-up (2026-10-11)
+
+The missing judgment migrations `20261012130000_prompt_model_verdict` and
+`20261012140000_no_search_judgment_normalization` were applied and registered
+in the linked Production migration history. Cloudflare Worker Observability
+now reports logs and traces enabled. Logs for job
+`bd97e728-d8bd-40a4-b760-7f508e0b6c1f` show Supabase requests ending with
+`HTTP status 0` after the workflow had persisted fact checks; generation 5 had
+10 fact checks and no report narrative. The dashboard returned no traces for
+the inspected time window. Restarting only the narrative step was rejected as
+`RUN_OBSOLETE` by the existing run fence. This points to a transport failure,
+but the exact network cause is not yet available from Production telemetry.
+
+The Worker fetch adapter now emits a sanitized structured log only when its
+bounded retry budget is exhausted. It records method, host, broad endpoint
+category, attempt count, and either a normalized network error name or final
+transient HTTP status. It omits full URLs, query parameters, headers, and
+bodies. This diagnostic change was deployed in Worker version
+`8998bff6-f4ed-4758-981b-807340f531f1`. The next controlled retry,
+generation 6, completed in 13.3 seconds; Supabase confirmed `stage = complete`,
+10 persisted fact checks, and one report narrative. The retry did not exhaust
+its Supabase retry budget, so the new failure diagnostic was not exercised.
+This successful run verifies the complete Production path after the migrations,
+but it does not establish the cause of the earlier intermittent HTTP status 0.
